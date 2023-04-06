@@ -9,6 +9,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 import warnings
 warnings.simplefilter("ignore")
 
+import time
 
 
 def test_har():
@@ -16,9 +17,11 @@ def test_har():
         "../datasets/experiments/student_commute.txt", delimiter="\t", header=None)[0]
     ds_name = "student commute"
 
-    cps = [0, 2012,5662,6800,8795,9712,10467,17970,18870,24169,
-           25896,26754,27771,33952,34946,43423,43830,47661,
-           56162,56294,56969,57479,58135]
+    # cps = [0, 2012,5662,6800,8795,9712,10467,17970,18870,24169,
+    #       25896,26754,27771,33952,34946,43423,43830,47661,
+    #       56162,56294,56969,57479,58135]
+
+    cps = [0, 10000, 20000, 30000]
     activities = ['start','walk','climb,stairs','walk','go down stairs','walk','wait',
                   'get,on','ride, train (standing)','get,off','walk','go down stairs',
                   'walk','wait for traffic lights','walk','wait for traffic lights',
@@ -37,3 +40,25 @@ def test_har():
         dists, motiflets, elbow_points = plot_elbow(
             ks, series, ds_name=activities[i],  # , plot_elbows=True,
             motif_length=motif_length)
+
+
+
+def test_har_2():
+    har_series = pd.read_csv(
+        "../datasets/experiments/student_commute.txt", delimiter="\t", header=None)[0]
+    ds_name = "student commute"
+
+    cps = [0, 20000, 40000]
+
+    for i, (a, b) in enumerate(zip(cps[:-1], cps[1:])):
+        series = har_series[a:b].values
+
+        start = time.process_time()
+        ml.compute_distances_full(series, 100)
+        seq_end = time.process_time() - start
+
+        start = time.process_time()
+        ml.compute_distances_full_parallel(series, 100)
+        par_end = time.process_time() - start
+
+        print("Seq", seq_end, "Par", par_end)
