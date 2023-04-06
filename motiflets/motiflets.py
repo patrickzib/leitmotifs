@@ -267,7 +267,86 @@ def _sliding_mean_std(ts, m):
     return [movmean, movstd]
 
 
-def compute_distances_full(ts, m, exclude_trivial_match=True):
+def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4):
+    dot_first = _sliding_dot_product(ts[:m], ts)
+
+    ranges = []
+    bin_size = ts.shape[0] // n_jobs
+    for idx in range(n_jobs):
+        start = idx * bin_size
+        end = min((idx + 1) * bin_size,  ts.shape[0] - m + 1)
+        ranges.append((start, end))
+
+    return compute_distances_full_parallel_inner(
+        ts, m, ranges, dot_first, exclude_trivial_match)
+
+# @njit(fastmath=True, cache=True, parallel=True)
+def compute_distances_full_parallel_inner(
+        ts, m, ranges, dot_first, exclude_trivial_match=True):
+    """Compute the full Distance Matrix between all pairs of subsequences.
+
+    Computes pairwise distances between n-m+1 subsequences, of length, extracted from
+    the time series, of length n.
+
+    Z-normed ED is used for distances.
+
+    This implementation is in O(n^2) by using the sliding dot-product.
+
+    Parameters
+    ----------
+    ts : array-like
+        The time series
+    m : int
+        The window length
+
+    Returns
+    -------
+    D : 2d array-like
+        The O(n^2) z-normed ED distances between all pairs of subsequences
+
+    """
+    n = len(ts) - m + 1
+    halve_m = 0
+    if exclude_trivial_match:
+        halve_m = int(m * slack)
+
+    D = np.zeros((n, n), dtype=np.float32)
+    dot_prev = None
+    means, stds = _sliding_mean_std(ts, m)
+
+    # for order in range(0, n):
+    for idx in range(len(ranges)):
+        start, end = ranges[idx]
+
+        for order in range(start, end):
+            if order == start:
+                dot_rolled = dot_first[start:end]
+            else:
+                # constant time O(1) operations
+                dot_rolled = np.roll(dot_prev, 1) + ts[order + m - 1] * ts[m - 1:n + m] - \
+                             ts[order - 1] * np.roll(ts[:n], 1)
+                dot_rolled[0] = dot_first[order]
+
+            x_mean = means[order]
+            x_std = stds[order]
+
+            dist = 2 * m * (1 - (dot_rolled - m * means * x_mean) / (m * stds * x_std))
+
+            # self-join: eclusion zone
+            trivialMatchRange = (max(0, order - halve_m),
+                                 min(order + halve_m, n))
+            dist[trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
+
+            # allow subsequence itself to be in result
+            dist[order] = 0
+            D[order, start:end] = dist
+
+            dot_prev = dot_rolled
+
+    return D
+
+
+def compute_distances_full_seq(ts, m, exclude_trivial_match=True):
     """Compute the full Distance Matrix between all pairs of subsequences.
 
     Computes pairwise distances between n-m+1 subsequences, of length, extracted from
