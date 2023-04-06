@@ -266,7 +266,7 @@ def _sliding_mean_std(ts, m):
     return [movmean, movstd]
 
 
-def compute_distances_full_parallel(ts, m, exclude_trivial_match=True, n_jobs=8):
+def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4):
     """Compute the full Distance Matrix between all pairs of subsequences.
 
         Computes pairwise distances between n-m+1 subsequences, of length, extracted from
@@ -299,13 +299,13 @@ def compute_distances_full_parallel(ts, m, exclude_trivial_match=True, n_jobs=8)
         dot_firsts.append(_sliding_dot_product(ts[start:start+m], ts))
 
     return compute_distances_full_parallel_inner(
-        ts, m, np.array(ranges), np.array(dot_firsts), dot_firsts[0],
+        ts, m, np.array(ranges), np.array(dot_firsts),
         exclude_trivial_match)
 
 @njit(fastmath=True, cache=True, parallel=True)
 def compute_distances_full_parallel_inner(
-        ts, m, ranges, dot_firsts, dot_red, exclude_trivial_match): # pragma: no cover
-    n = len(ts) - m + 1
+        ts, m, ranges, dot_firsts, exclude_trivial_match):
+    n = np.int32(ts.shape[0] - m + 1)
     halve_m = 0
     if exclude_trivial_match:
         halve_m = int(m * slack)
@@ -335,7 +335,7 @@ def compute_distances_full_parallel_inner(
                 # constant time O(1) operations
                 dot_rolled = np.roll(dot_prev, 1) + ts[order + m - 1] * ts[m - 1:n + m] - \
                              ts[order - 1] * np.roll(ts[:n], 1)
-                dot_rolled[0] = dot_red[order]
+                dot_rolled[0] = dot_firsts[0][order]
 
                 # there is a numba bug, thus we have to repeat all codes:
                 # https: // github.com / numba / numba / issues / 7681
@@ -356,7 +356,7 @@ def compute_distances_full_parallel_inner(
     return D
 
 
-def compute_distances_full(ts, m, exclude_trivial_match=True):
+def compute_distances_full_seq(ts, m, exclude_trivial_match=True):
     """Compute the full Distance Matrix between all pairs of subsequences.
 
     Computes pairwise distances between n-m+1 subsequences, of length, extracted from
