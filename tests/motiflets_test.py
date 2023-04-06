@@ -31,7 +31,7 @@ def test_har():
         series = har_series[a:b].values
         ks = 50
 
-        length_range = np.arange(20,150,10)
+        # length_range = np.arange(20,150,10)
         # motif_length = plot_motif_length_selection(
         #    ks, series, length_range, activities[i]
         # )
@@ -53,12 +53,12 @@ def test_har_2():
     for i, (a, b) in enumerate(zip(cps[:-1], cps[1:])):
         series = har_series[a:b].values
 
-        start = time.process_time()
+        start = time.time()
         ml.compute_distances_full(series, 100)
-        seq_end = time.process_time() - start
+        seq_end = time.time() - start
 
-        start = time.process_time()
+        start = time.time()
         ml.compute_distances_full_parallel(series, 100)
-        par_end = time.process_time() - start
+        par_end = time.time() - start
 
         print("Seq", seq_end, "Par", par_end)
