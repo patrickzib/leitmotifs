@@ -498,31 +498,12 @@ def _get_top_k_non_trivial_matches_inner(
     idx : the <= k subsequences within `lowest_dist`
 
     """
-    # admissible pruning: are there enough offsets within range?
-    if len(candidates) < k:
-        return candidates
-
     p = 0
     for i in range(len(candidates), 0, -1):
         if dist[candidates[i-1]] <= lowest_dist:
             p = i
             break
     return candidates[:p]
-
-
-    """
-    dists = np.copy(dist)
-    idx = []  # there may be less than k, thus use a list
-    for i in range(len(candidates)):
-        pos = candidates[np.argmin(dists[candidates])]
-        if dists[pos] <= lowest_dist:
-            idx.append(pos)
-            dists[pos] = np.inf
-        else:
-            break
-
-    return np.array(idx, dtype=np.int32)
-    """
 
 
 @njit(fastmath=True, cache=True)
