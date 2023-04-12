@@ -302,27 +302,25 @@ def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4):
     D = np.zeros((n, n), dtype=np.float32)
     means, stds = _sliding_mean_std(ts, m)
 
+    dot_first = _sliding_dot_product(ts[:m], ts)
     bin_size = ts.shape[0] // n_jobs
     for idx in prange(n_jobs):
         start = idx * bin_size
         end = min((idx + 1) * bin_size, ts.shape[0] - m + 1)
 
         dot_prev = None
-        # O(n log n) Operation
-        dot_first = _sliding_dot_product(ts[start:start + m], ts)
-
         for order in np.arange(start, end):
             if order == start:
-                dot_rolled = dot_first
+                # O(n log n) Operation
+                dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
             else:
                 # constant time O(1) operations
-                dot_rolled = np.roll(dot_prev, 1) + ts[order + m - 1] * ts[
-                                                                        m - 1:n + m] - \
-                             ts[order - 1] * np.roll(ts[:n], 1)
+                dot_rolled = np.roll(dot_prev, 1) \
+                                + ts[order + m - 1] * ts[m - 1:n + m] \
+                                - ts[order - 1] * np.roll(ts[:n], 1)
                 dot_rolled[0] = dot_first[order]
 
             D[order, :] = distance(dot_rolled, n, m, means, stds, order, halve_m)
-
             dot_prev = dot_rolled
 
     return D
@@ -495,7 +493,7 @@ def _get_top_k_non_trivial_matches_inner(
 
     """
     # admissible pruning: are there enough offsets within range?
-    if (len(candidates) < k):
+    if len(candidates) < k:
         return candidates
 
     dists = np.copy(dist)
@@ -535,7 +533,6 @@ def _get_top_k_non_trivial_matches(
 
     """
     dist_idx = np.argwhere(dist <= lowest_dist).flatten().astype(np.int32)
-
     halve_m = int(m * slack)
 
     dists = np.copy(dist)
@@ -546,7 +543,7 @@ def _get_top_k_non_trivial_matches(
             idx.append(pos)
 
             # exclude all trivial matches
-            dists[max(0, pos - halve_m):min(pos + halve_m, n)] = np.inf
+            dists[max(0, pos - halve_m) : min(pos + halve_m, n)] = np.inf
         else:
             break
     return np.array(idx, dtype=np.int32)
