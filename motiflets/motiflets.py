@@ -502,6 +502,15 @@ def _get_top_k_non_trivial_matches_inner(
     if len(candidates) < k:
         return candidates
 
+    p = 0
+    for i in range(len(candidates), 0, -1):
+        if dist[candidates[i-1]] <= lowest_dist:
+            p = i
+            break
+    return candidates[:p]
+
+
+    """
     dists = np.copy(dist)
     idx = []  # there may be less than k, thus use a list
     for i in range(len(candidates)):
@@ -513,6 +522,7 @@ def _get_top_k_non_trivial_matches_inner(
             break
 
     return np.array(idx, dtype=np.int32)
+    """
 
 
 @njit(fastmath=True, cache=True)
@@ -545,7 +555,9 @@ def _get_top_k_non_trivial_matches(
     idx = []  # there may be less than k, thus use a list
     for i in range(k):
         pos = dist_idx[np.argmin(dists[dist_idx])]
-        if (not np.isnan(dists[pos])) and (dists[pos] <= lowest_dist):
+        if (not np.isnan(dists[pos]))  \
+                and (not np.isinf(dists[pos])) \
+                and (dists[pos] <= lowest_dist):
             idx.append(pos)
 
             # exclude all trivial matches
@@ -554,6 +566,59 @@ def _get_top_k_non_trivial_matches(
             break
     return np.array(idx, dtype=np.int32)
 
+
+@njit(fastmath=True, cache=True)
+def _get_top_k_non_trivial_matches_new(
+        dist, k, m, n, lowest_dist=np.inf):
+    """Finds the closest k-NN non-overlapping subsequences in candidates.
+
+    Parameters
+    ----------
+    dist : array-like
+        the distances
+    k : int
+        The k in k-NN
+    m : int
+        The window-length
+    n : int
+        time series length
+    lowest_dist : float
+        Used for admissible pruning
+
+    Returns
+    -------
+    idx : the <= k subsequences within `lowest_dist`
+
+    """
+    dist_idx = np.argwhere(dist <= lowest_dist).flatten().astype(np.int32)
+    halve_m = int(m * slack)
+
+    idx = []  # there may be less than k, thus use a list
+    for i in range(k):
+        current_min = lowest_dist
+        current_pos = -1
+
+        for pos in dist_idx:
+            if dist[pos] <= current_min \
+                    and (not np.isnan(dist[pos])) \
+                    and (not np.isinf(dist[pos])):
+                overlap = False
+                for ks in idx:
+                    # exclude all trivial matches
+                    if max(-1, ks - halve_m) < pos < min(ks + halve_m, n):
+                        overlap = True
+                        break
+
+                if not overlap:
+                    current_min = dist[pos]
+                    current_pos = pos
+
+        if current_pos >= 0:
+            idx.append(current_pos)
+        else: # nothing left
+            break
+
+    return np.array(idx, dtype=np.int32)
 
 # @njit
 def get_approximate_k_motiflet(
@@ -610,6 +675,7 @@ def get_approximate_k_motiflet(
             idx = _get_top_k_non_trivial_matches_inner(
                 dist, k, all_candidates[order], motiflet_dist)
         else:
+            # idx = _get_top_k_non_trivial_matches_new(dist, k, m, n, motiflet_dist)
             idx = _get_top_k_non_trivial_matches(dist, k, m, n, motiflet_dist)
 
         motiflet_all_candidates[i] = idx
