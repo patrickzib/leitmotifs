@@ -499,10 +499,11 @@ def _get_top_k_non_trivial_matches_inner(
 
     """
     # admissible pruning: are there enough offsets within range?
+    """
     if len(candidates) < k:
         return candidates
+    """
 
-    # TODO there seems to be a bug when retreiving TOP-2 motifs?
     p = 0
     for i in range(len(candidates), 0, -1):
         if dist[candidates[i-1]] <= lowest_dist:
