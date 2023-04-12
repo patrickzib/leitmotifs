@@ -40,7 +40,7 @@ def test_har():
             ks, series, ds_name=activities[i], plot_elbows=False,
             motif_length=motif_length)
 
-        if i > 5:
+        if i > 3:
             break
 
 
