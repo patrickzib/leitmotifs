@@ -287,6 +287,10 @@ def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4):
             The time series
         m : int
             The window length
+        exclude_trivial_match : bool
+            Trivial matches will be excluded if this parameter is set
+        n_jobs : int
+            Number of jobs to used
 
         Returns
         -------
@@ -311,7 +315,7 @@ def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4):
         dot_prev = None
         for order in np.arange(start, end):
             if order == start:
-                # O(n log n) Operation
+                # O(n log n) operation
                 dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
             else:
                 # constant time O(1) operations
@@ -359,6 +363,8 @@ def compute_distances_full_seq(ts, m, exclude_trivial_match=True):
         The time series
     m : int
         The window length
+    exclude_trivial_match : bool
+        Trivial matches will be excluded if this parameter is set
 
     Returns
     -------
