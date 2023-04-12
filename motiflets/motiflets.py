@@ -18,7 +18,8 @@ from numba import njit, prange, objmode
 from scipy.stats import zscore
 from tqdm.auto import tqdm
 
-slack = 0.6
+# TODO make it a parameter!
+# slack = 0.5
 
 
 def as_series(data, index_range, index_name):
@@ -271,7 +272,7 @@ def _sliding_mean_std(ts, m):
 
 
 @njit(fastmath=True, cache=True, parallel=True)
-def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4):
+def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
     """Compute the full Distance Matrix between all pairs of subsequences.
 
         Computes pairwise distances between n-m+1 subsequences, of length, extracted from
@@ -347,7 +348,7 @@ def distance(dot_rolled, n, m, means, stds, order, halve_m):
     return dist
 
 
-def compute_distances_full_seq(ts, m, exclude_trivial_match=True):
+def compute_distances_full_seq(ts, m, exclude_trivial_match=True, slack=0.5):
     """Compute the full Distance Matrix between all pairs of subsequences.
 
     Computes pairwise distances between n-m+1 subsequences, of length, extracted from
@@ -527,7 +528,7 @@ def _get_top_k_non_trivial_matches_inner(
 
 @njit(fastmath=True, cache=True)
 def _get_top_k_non_trivial_matches(
-        dist, k, m, n, lowest_dist=np.inf):
+        dist, k, m, n, lowest_dist=np.inf, slack=0.5):
     """Finds the closest k-NN non-overlapping subsequences in candidates.
 
     Parameters
@@ -569,7 +570,7 @@ def _get_top_k_non_trivial_matches(
 
 @njit(fastmath=True, cache=True)
 def _get_top_k_non_trivial_matches_new(
-        dist, k, m, n, lowest_dist=np.inf):
+        dist, k, m, n, lowest_dist=np.inf, slack=0.5):
     """Finds the closest k-NN non-overlapping subsequences in candidates.
 
     Parameters
@@ -623,7 +624,7 @@ def _get_top_k_non_trivial_matches_new(
 # @njit
 def get_approximate_k_motiflet(
         ts, m, k, D,
-        upper_bound=np.inf, incremental=False, all_candidates=None
+        upper_bound=np.inf, incremental=False, all_candidates=None, slack=0.5
 ):
     """Compute the approximate k-Motiflets.
 
@@ -675,8 +676,8 @@ def get_approximate_k_motiflet(
             idx = _get_top_k_non_trivial_matches_inner(
                 dist, k, all_candidates[order], motiflet_dist)
         else:
-            # idx = _get_top_k_non_trivial_matches_new(dist, k, m, n, motiflet_dist)
-            idx = _get_top_k_non_trivial_matches(dist, k, m, n, motiflet_dist)
+            # idx = _get_top_k_non_trivial_matches_new(dist, k, m, n, motiflet_dist, slack)
+            idx = _get_top_k_non_trivial_matches(dist, k, m, n, motiflet_dist, slack)
 
         motiflet_all_candidates[i] = idx
 
@@ -813,7 +814,7 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.05):
     return np.sort(np.array(list(set(elbow_points))))
 
 
-def _inner_au_ef(data, k_max, m, upper_bound):
+def _inner_au_ef(data, k_max, m, upper_bound, slack=0.5):
     """Computes the Area under the Elbow-Function within an interval [2...k_max].
 
     Parameters
@@ -844,7 +845,8 @@ def _inner_au_ef(data, k_max, m, upper_bound):
         k_max,
         data,
         m,
-        upper_bound=upper_bound)
+        upper_bound=upper_bound,
+        slack=slack)
 
     dists = dists[(~np.isinf(dists)) & (~np.isnan(dists))]
     au_efs = ((dists - dists.min()) / (dists.max() - dists.min())).sum() / len(dists)
@@ -925,7 +927,9 @@ def search_k_motiflets_elbow(
         motif_length_range=None,
         exclusion=None,
         upper_bound=np.inf,
-        elbow_deviation=1.05):
+        elbow_deviation=1.05,
+        slack=0.5
+    ):
     """Computes the elbow-function.
 
     This is the method to find the characteristic k-Motiflets within range
@@ -991,7 +995,7 @@ def search_k_motiflets_elbow(
     k_motiflet_distances = np.zeros(k_max_)
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
-    D_full = compute_distances_full(data_raw, m)
+    D_full = compute_distances_full(data_raw, m, slack)
 
     exclusion_m = int(m * slack)
     motiflet_candidates = []
@@ -1011,7 +1015,8 @@ def search_k_motiflets_elbow(
             data_raw, m, test_k, D_full,
             upper_bound=upper_bound,
             incremental=incremental,  # we use an incremental computation
-            all_candidates=motiflet_candidates
+            all_candidates=motiflet_candidates,
+            slack=slack
         )
         incremental = True
 
@@ -1040,7 +1045,7 @@ def search_k_motiflets_elbow(
 
 
 @njit(fastmath=True, cache=True)
-def candidate_dist(D_full, pool, upperbound, m):
+def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
     motiflet_candidate_dist = 0
     m_half = int(m * slack)
     for i in pool:
@@ -1057,7 +1062,7 @@ def candidate_dist(D_full, pool, upperbound, m):
 
 
 @njit
-def find_k_motiflets(ts, D_full, m, k, upperbound=None):
+def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
     """Exact algorithm to compute k-Motiflets
 
     Warning: The algorithm has exponential runtime complexity.
@@ -1084,7 +1089,7 @@ def find_k_motiflets(ts, D_full, m, k, upperbound=None):
     motiflet_dist = upperbound
     if upperbound is None:
         motiflet_candidate, motiflet_dist, _ = get_approximate_k_motiflet(
-            ts, m, k, D_full, upper_bound=np.inf)
+            ts, m, k, D_full, upper_bound=np.inf, slack=slack)
 
         motiflet_pos = motiflet_candidate
 
@@ -1102,7 +1107,7 @@ def find_k_motiflets(ts, D_full, m, k, upperbound=None):
                 # exhaustive search over all subsets
                 for permutation in itertools.combinations(D_candidates, k):
                     if np.ptp(permutation) > k_halve_m:
-                        dist = candidate_dist(D_full, permutation, motiflet_dist, m)
+                        dist = candidate_dist(D_full, permutation, motiflet_dist, m, slack)
                         if dist < motiflet_dist:
                             motiflet_dist = dist
                             motiflet_pos = np.copy(permutation)
