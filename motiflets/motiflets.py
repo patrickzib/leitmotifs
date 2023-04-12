@@ -14,7 +14,7 @@ import numpy as np
 import numpy.fft as fft
 import pandas as pd
 from joblib import Parallel, delayed
-from numba import njit, prange
+from numba import njit, prange, objmode
 from scipy.stats import zscore
 from tqdm.auto import tqdm
 
@@ -191,7 +191,8 @@ def read_dataset(dataset, sampling_factor=10000):
     return zscore(data)
 
 
-def _sliding_dot_product(query, ts):
+@njit(fastmath=True, cache=True)
+def _sliding_dot_product(query, time_series):
     """Compute a sliding dot-product using the Fourier-Transform
 
     Parameters
@@ -204,26 +205,29 @@ def _sliding_dot_product(query, ts):
     Returns
     -------
     dot_product : array-like
-        The result of the sliding dot-podouct
+        The result of the sliding dot-product
     """
 
     m = len(query)
-    n = len(ts)
+    n = len(time_series)
 
-    ts_add = 0
+    time_series_add = 0
     if n % 2 == 1:
-        ts = np.insert(ts, 0, 0)
-        ts_add = 1
+        time_series = np.concatenate((np.array([0]), time_series))
+        time_series_add = 1
 
     q_add = 0
     if m % 2 == 1:
-        query = np.insert(query, 0, 0)
+        query = np.concatenate((np.array([0]), query))
         q_add = 1
 
     query = query[::-1]
-    query = np.pad(query, (0, n - m + ts_add - q_add), 'constant')
-    trim = m - 1 + ts_add
-    dot_product = fft.irfft(fft.rfft(ts) * fft.rfft(query))
+
+    query = np.concatenate((query, np.zeros(n - m + time_series_add - q_add)))
+
+    trim = m - 1 + time_series_add
+    with objmode(dot_product="float64[:]"):
+        dot_product = fft.irfft(fft.rfft(time_series) * fft.rfft(query))
     return dot_product[trim:]
 
 
@@ -266,6 +270,7 @@ def _sliding_mean_std(ts, m):
     return [movmean, movstd]
 
 
+@njit(fastmath=True, cache=True, parallel=True)
 def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4):
     """Compute the full Distance Matrix between all pairs of subsequences.
 
@@ -289,22 +294,6 @@ def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4):
             The O(n^2) z-normed ED distances between all pairs of subsequences
 
     """
-    ranges = []
-    dot_firsts = []
-    bin_size = ts.shape[0] // n_jobs
-    for idx in range(n_jobs):
-        start = idx * bin_size
-        end = min((idx + 1) * bin_size,  ts.shape[0] - m + 1)
-        ranges.append([start, end])
-        dot_firsts.append(_sliding_dot_product(ts[start:start+m], ts))
-
-    return compute_distances_full_parallel_inner(
-        ts, m, np.array(ranges), np.array(dot_firsts),
-        exclude_trivial_match)
-
-@njit(fastmath=True, cache=True, parallel=True)
-def compute_distances_full_parallel_inner(
-        ts, m, ranges, dot_firsts, exclude_trivial_match):
     n = np.int32(ts.shape[0] - m + 1)
     halve_m = 0
     if exclude_trivial_match:
@@ -313,47 +302,47 @@ def compute_distances_full_parallel_inner(
     D = np.zeros((n, n), dtype=np.float32)
     means, stds = _sliding_mean_std(ts, m)
 
-    for idx in prange(ranges.shape[0]):
-        start, end = ranges[idx]
+    bin_size = ts.shape[0] // n_jobs
+    for idx in prange(n_jobs):
+        start = idx * bin_size
+        end = min((idx + 1) * bin_size, ts.shape[0] - m + 1)
+
         dot_prev = None
+        # O(n log n) Operation
+        dot_first = _sliding_dot_product(ts[start:start + m], ts)
 
         for order in np.arange(start, end):
             if order == start:
-                dot_rolled = dot_firsts[idx]
-
-                # there is a numba bug, thus we have to repeat all codes:
-                # https: // github.com / numba / numba / issues / 7681
-                dist = 2 * m * (1 - (dot_rolled - m * means * means[order]) / (
-                            m * stds * stds[order]))
-
-                # self-join: exclusion zone
-                trivialMatchRange = (max(0, order - halve_m),
-                                     min(order + halve_m, n))
-                dist[trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
-
+                dot_rolled = dot_first
             else:
                 # constant time O(1) operations
-                dot_rolled = np.roll(dot_prev, 1) + ts[order + m - 1] * ts[m - 1:n + m] - \
+                dot_rolled = np.roll(dot_prev, 1) + ts[order + m - 1] * ts[
+                                                                        m - 1:n + m] - \
                              ts[order - 1] * np.roll(ts[:n], 1)
-                dot_rolled[0] = dot_firsts[0][order]
+                dot_rolled[0] = dot_first[order]
 
-                # there is a numba bug, thus we have to repeat all codes:
-                # https: // github.com / numba / numba / issues / 7681
-                dist = 2 * m * (1 - (dot_rolled - m * means * means[order]) / (
-                        m * stds * stds[order]))
-
-                # self-join: exclusion zone
-                trivialMatchRange = (max(0, order - halve_m),
-                                     min(order + halve_m, n))
-                dist[trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
-
-            # allow subsequence itself to be in result
-            dist[order] = 0
-            D[order, :] = dist
+            D[order, :] = distance(dot_rolled, n, m, means, stds, order, halve_m)
 
             dot_prev = dot_rolled
 
     return D
+
+@njit(fastmath=True, cache=True)
+def distance(dot_rolled, n, m, means, stds, order, halve_m):
+    # there is a numba bug, thus we have to repeat all codes:
+    # https: // github.com / numba / numba / issues / 7681
+    dist = 2 * m * (1 - (dot_rolled - m * means * means[order]) / (
+            m * stds * stds[order]))
+
+    # self-join: exclusion zone
+    trivialMatchRange = (max(0, order - halve_m),
+                         min(order + halve_m, n))
+    dist[trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
+
+    # allow subsequence itself to be in result
+    dist[order] = 0
+
+    return dist
 
 
 def compute_distances_full_seq(ts, m, exclude_trivial_match=True):
@@ -938,6 +927,7 @@ def search_k_motiflets_elbow(
     exclusion_m = int(m * slack)
     motiflet_candidates = []
 
+    incremental = False
     for test_k in tqdm(range(k_max_ - 1, 1, -1), desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
         # Top-N retrieval
@@ -948,13 +938,13 @@ def search_k_motiflets_elbow(
                                          min(pos + exclusion_m, len(D_full)))
                     D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
 
-        incremental = (test_k < k_max_ - 1)
         candidate, candidate_dist, all_candidates = get_approximate_k_motiflet(
             data_raw, m, test_k, D_full,
             upper_bound=upper_bound,
             incremental=incremental,  # we use an incremental computation
             all_candidates=motiflet_candidates
         )
+        incremental = True
 
         if len(motiflet_candidates) == 0:
             motiflet_candidates = all_candidates
