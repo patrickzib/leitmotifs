@@ -31,15 +31,17 @@ def test_har():
         ks = 50
 
         length_range = np.arange(20, 150, 10)
-        motif_length = plot_motif_length_selection(
-           ks, series, length_range, activities[i]
-        )
+        #motif_length = plot_motif_length_selection(
+        #   ks, series, length_range, activities[i]
+        #)
 
-        #motif_length = 50
-        #dists, motiflets, elbow_points = plot_elbow(
-        #    ks, series, ds_name=activities[i],  # , plot_elbows=True,
-        #    motif_length=motif_length)
+        motif_length = 50
+        dists, motiflets, elbow_points = plot_elbow(
+            ks, series, ds_name=activities[i], plot_elbows=False,
+            motif_length=motif_length)
 
+        if i > 5:
+            break
 
 
 def test_har_2():
@@ -49,15 +51,25 @@ def test_har_2():
 
     cps = [0, 20000, 40000]
 
+    print("-----")
+
     for i, (a, b) in enumerate(zip(cps[:-1], cps[1:])):
         series = har_series[a:b].values
 
         start = time.time()
-        ml.compute_distances_full_seq(series, 100)
+        D1 = ml.compute_distances_full_seq(series, 100)
         seq_end = time.time() - start
 
         start = time.time()
-        ml.compute_distances_full(series, 100)
+        D2 = ml.compute_distances_full(series, 100, n_jobs=4)
         par_end = time.time() - start
 
-        print("Seq", seq_end, "Par", par_end)
+        #start = time.time()
+        #ml.compute_distances_full(series, 100, n_jobs=8)
+        #par2_end = time.time() - start
+
+        print("Equal", np.allclose(D1, D2))
+        print("Seq", seq_end,
+              "\tPar (n_jobs=4)", par_end,
+              #"\tPar (n_jobs=8)", par2_end
+            )
