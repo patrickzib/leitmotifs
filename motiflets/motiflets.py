@@ -461,9 +461,13 @@ def get_pairwise_extent(D_full, motifset_pos, upperbound=np.inf):
         The extent of the motif set, if smaller than `upperbound`, else np.inf
     """
 
+    if -1 in motifset_pos:
+        return np.inf
+
     motifset_extent = np.float64(0.0)
     for ii in range(len(motifset_pos) - 1):
         i = motifset_pos[ii]
+
         for jj in range(ii + 1, len(motifset_pos)):
             j = motifset_pos[jj]
 
