@@ -158,7 +158,7 @@ def pd_series_to_numpy(data):
     else:
         data_raw = data
         data_index = np.arange(len(data))
-    return data_index, data_raw
+    return data_index, data_raw.astype(np.float64, copy=False)
 
 
 def read_dataset(dataset, sampling_factor=10000):
@@ -224,8 +224,10 @@ def _sliding_dot_product(query, time_series):
     query = np.concatenate((query, np.zeros(n - m + time_series_add - q_add)))
 
     trim = m - 1 + time_series_add
+
     with objmode(dot_product="float64[:]"):
         dot_product = fft.irfft(fft.rfft(time_series) * fft.rfft(query))
+
     return dot_product[trim:]
 
 
