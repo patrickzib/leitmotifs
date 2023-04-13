@@ -899,18 +899,20 @@ def find_au_ef_motif_length(data, k_max, motif_length_range,
 
     # in reverse order
     au_efs = np.zeros(len(motif_length_range), dtype=object)
+    au_efs.fill(np.inf)
     elbows = np.zeros(len(motif_length_range), dtype=object)
     top_motiflets = np.zeros(len(motif_length_range), dtype=object)
 
     upper_bound = np.inf
     for i, m in enumerate(motif_length_range[::-1]):
-        au_efs[i], elbows[i], top_motiflets[i], dist = _inner_au_ef(
-            data, k_max, int(m / subsample),
-            upper_bound=upper_bound,
-            elbow_deviation=elbow_deviation,
-            slack=slack)
-        if dist is not None:
-            upper_bound = min(dist[-1], upper_bound)
+        if m < data.shape[0]:
+            au_efs[i], elbows[i], top_motiflets[i], dist = _inner_au_ef(
+                data, k_max, int(m / subsample),
+                upper_bound=upper_bound,
+                elbow_deviation=elbow_deviation,
+                slack=slack)
+            if dist is not None:
+                upper_bound = min(dist[-1], upper_bound)
 
     au_efs = np.array(au_efs, dtype=np.float64)[::-1]
     elbows = elbows[::-1]
@@ -995,7 +997,7 @@ def search_k_motiflets_elbow(
         assert False
 
     # non-overlapping motifs only
-    k_max_ = max(3, min(int(len(data) / (m * slack)) - 5, k_max))
+    k_max_ = max(3, min(int(len(data) / (m * slack)), k_max))
 
     k_motiflet_distances = np.zeros(k_max_)
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
