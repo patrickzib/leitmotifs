@@ -30,10 +30,10 @@ def test_har():
         series = har_series[a:b].values
         ks = 50
 
-        length_range = np.arange(20, 150, 10)
-        #motif_length = plot_motif_length_selection(
-        #   ks, series, length_range, activities[i]
-        #)
+        length_range = np.arange(20, 150, 5)
+        motif_length = plot_motif_length_selection(
+           ks, series, length_range, activities[i]
+        )
 
         motif_length = 50
         dists, motiflets, elbow_points = plot_elbow(

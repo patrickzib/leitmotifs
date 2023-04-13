@@ -609,7 +609,7 @@ def get_approximate_k_motiflet(
         ts, m, k, D,
         upper_bound=np.inf,
         incremental=False,
-        all_candidates=None,
+        all_candidates=np.zeros((1, 1), dtype=np.int32),   # Empty type to fool numba
         slack=0.5
 ):
     """Compute the approximate k-Motiflets.
