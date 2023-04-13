@@ -664,7 +664,6 @@ def get_approximate_k_motiflet(
             idx = _get_top_k_non_trivial_matches_inner(
                 dist, k, all_candidates[order], motiflet_dist)
         else:
-            # idx = _get_top_k_non_trivial_matches_new(dist, k, m, n, motiflet_dist, slack)
             idx = _get_top_k_non_trivial_matches(dist, k, m, n, motiflet_dist, slack)
 
         motiflet_all_candidates[i, :len(idx)] = idx

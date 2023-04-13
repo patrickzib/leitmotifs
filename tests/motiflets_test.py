@@ -30,7 +30,7 @@ def test_har():
         series = har_series[a:b].values
         ks = 50
 
-        length_range = np.arange(20, 150, 5)
+        length_range = np.arange(20, 150, 1)
         motif_length = plot_motif_length_selection(
            ks, series, length_range, activities[i]
         )
