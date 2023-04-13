@@ -415,7 +415,7 @@ def compute_distances_full_seq(ts, m, exclude_trivial_match=True, slack=0.5):
 @njit(fastmath=True, cache=True)
 def get_radius(D_full, motifset_pos):
     """Computes the radius of the passed motif set (motiflet).
-    
+
     Parameters
     ----------
     D_full : 2d array-like
@@ -671,7 +671,7 @@ def get_approximate_k_motiflet(
         motiflet_all_candidates[i, len(idx):] = -1
 
         if len(idx) >= k and dist[idx[-1]] <= motiflet_dist:
-            # get_pairwise_extent requires the full matrix 
+            # get_pairwise_extent requires the full matrix
             motiflet_extent = get_pairwise_extent(D, idx[:k], motiflet_dist)
             if motiflet_extent <= motiflet_dist:
                 motiflet_dist = motiflet_extent
@@ -750,7 +750,7 @@ def _filter_unique(elbow_points, candidates, motif_length):
 
 
 @njit(fastmath=True, cache=True)
-def find_elbow_points(dists, alpha=2, elbow_deviation=1.05):
+def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
     """Finds elbow-points in the elbow-plot (extent over each k).
 
     Parameters
@@ -760,7 +760,7 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.05):
     alpha : float
         A threshold used to detect an elbow-point in the distances.
         It measures the relative change in deviation from k-1 to k to k+1.
-    elbow_deviation : float, default=1.05
+    elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
@@ -803,7 +803,9 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.05):
     return np.sort(np.array(list(set(elbow_points))))
 
 
-def _inner_au_ef(data, k_max, m, upper_bound, slack=0.5):
+def _inner_au_ef(data, k_max, m, upper_bound,
+                 elbow_deviation=1.00,
+                 slack=0.5):
     """Computes the Area under the Elbow-Function within an interval [2...k_max].
 
     Parameters
@@ -816,6 +818,10 @@ def _inner_au_ef(data, k_max, m, upper_bound, slack=0.5):
         Motif length
     upper_bound : float
         Distance used for admissible pruning
+    elbow_deviation : float, default=1.00
+        The minimal absolute deviation needed to detect an elbow.
+        It measures the absolute change in deviation from k to k+1.
+        1.05 corresponds to 5% increase in deviation.
 
     Returns
     -------
@@ -835,6 +841,7 @@ def _inner_au_ef(data, k_max, m, upper_bound, slack=0.5):
         data,
         m,
         upper_bound=upper_bound,
+        elbow_deviation=elbow_deviation,
         slack=slack)
 
     dists = dists[(~np.isinf(dists)) & (~np.isnan(dists))]
@@ -853,7 +860,9 @@ def _inner_au_ef(data, k_max, m, upper_bound, slack=0.5):
     return au_efs, elbows, top_motiflet, dists
 
 
-def find_au_ef_motif_length(data, k_max, motif_length_range):
+def find_au_ef_motif_length(data, k_max, motif_length_range,
+                            elbow_deviation=1.00,
+                            slack=0.5):
     """Computes the Area under the Elbow-Function within an of motif lengths.
 
     Parameters
@@ -864,6 +873,10 @@ def find_au_ef_motif_length(data, k_max, motif_length_range):
         The interval of k's to compute the area of a single AU_EF.
     motif_length_range : array-like
         The range of lengths to compute the AU-EF.
+    elbow_deviation : float, default=1.00
+        The minimal absolute deviation needed to detect an elbow.
+        It measures the absolute change in deviation from k to k+1.
+        1.05 corresponds to 5% increase in deviation.
 
     Returns
     -------
@@ -894,7 +907,9 @@ def find_au_ef_motif_length(data, k_max, motif_length_range):
     for i, m in enumerate(motif_length_range[::-1]):
         au_efs[i], elbows[i], top_motiflets[i], dist = _inner_au_ef(
             data, k_max, int(m / subsample),
-            upper_bound=upper_bound)
+            upper_bound=upper_bound,
+            elbow_deviation=elbow_deviation,
+            slack=slack)
         if dist is not None:
             upper_bound = min(dist[-1], upper_bound)
 
@@ -916,7 +931,7 @@ def search_k_motiflets_elbow(
         motif_length_range=None,
         exclusion=None,
         upper_bound=np.inf,
-        elbow_deviation=1.05,
+        elbow_deviation=1.00,
         slack=0.5
     ):
     """Computes the elbow-function.
@@ -943,7 +958,7 @@ def search_k_motiflets_elbow(
         exclusion zone - use when searching for the TOP-2 motiflets
     upper_bound : float
         Admissible pruning on distance computations.
-    elbow_deviation : float, default=1.05
+    elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
@@ -969,7 +984,9 @@ def search_k_motiflets_elbow(
             print("Warning: no valid motiflet range set")
             assert False
         m, _, _, _ = find_au_ef_motif_length(
-            data, k_max, motif_length_range)
+            data, k_max, motif_length_range,
+            elbow_deviation=elbow_deviation,
+            slack=slack)
     elif isinstance(motif_length, int) or \
             isinstance(motif_length, np.int32) or \
             isinstance(motif_length, np.int64):
@@ -979,7 +996,7 @@ def search_k_motiflets_elbow(
         assert False
 
     # non-overlapping motifs only
-    k_max_ = min(int(len(data) / (m * slack)), k_max)
+    k_max_ = max(2, min(int(len(data) / (m * slack)) - 5, k_max))
 
     k_motiflet_distances = np.zeros(k_max_)
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
@@ -1030,7 +1047,8 @@ def search_k_motiflets_elbow(
         k_motiflet_distances[i - 1] = min(k_motiflet_distances[i],
                                           k_motiflet_distances[i - 1])
 
-    elbow_points = find_elbow_points(k_motiflet_distances, elbow_deviation=elbow_deviation)
+    elbow_points = find_elbow_points(k_motiflet_distances,
+                                     elbow_deviation=elbow_deviation)
     return k_motiflet_distances, k_motiflet_candidates, elbow_points, m
 
 
