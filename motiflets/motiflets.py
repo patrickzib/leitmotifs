@@ -995,7 +995,7 @@ def search_k_motiflets_elbow(
         assert False
 
     # non-overlapping motifs only
-    k_max_ = max(2, min(int(len(data) / (m * slack)) - 5, k_max))
+    k_max_ = max(3, min(int(len(data) / (m * slack)) - 5, k_max))
 
     k_motiflet_distances = np.zeros(k_max_)
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
