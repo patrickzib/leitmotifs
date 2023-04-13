@@ -14,7 +14,7 @@ import numpy as np
 import numpy.fft as fft
 import pandas as pd
 from joblib import Parallel, delayed
-from numba import njit, prange, objmode
+from numba import njit, prange, objmode, typed
 from scipy.stats import zscore
 from tqdm.auto import tqdm
 
@@ -502,7 +502,7 @@ def _get_top_k_non_trivial_matches_inner(
         if dist[candidates[i-1]] <= lowest_dist:
             p = i
             break
-    return candidates[:p]
+    return candidates[:min(k, p)]
 
 
 @njit(fastmath=True, cache=True)
@@ -600,10 +600,13 @@ def _get_top_k_non_trivial_matches_new(
 
     return np.array(idx, dtype=np.int32)
 
-# @njit
+@njit(fastmath=True, cache=True)
 def get_approximate_k_motiflet(
         ts, m, k, D,
-        upper_bound=np.inf, incremental=False, all_candidates=None, slack=0.5
+        upper_bound=np.inf,
+        incremental=False,
+        all_candidates=None,
+        slack=0.5
 ):
     """Compute the approximate k-Motiflets.
 
@@ -642,7 +645,7 @@ def get_approximate_k_motiflet(
     motiflet_dist = upper_bound
     motiflet_candidate = None
 
-    motiflet_all_candidates = np.zeros(n, dtype=object)
+    motiflet_all_candidates = np.zeros((n, k), dtype=np.int32)
 
     # allow subsequence itself
     np.fill_diagonal(D, 0)
@@ -658,7 +661,8 @@ def get_approximate_k_motiflet(
             # idx = _get_top_k_non_trivial_matches_new(dist, k, m, n, motiflet_dist, slack)
             idx = _get_top_k_non_trivial_matches(dist, k, m, n, motiflet_dist, slack)
 
-        motiflet_all_candidates[i] = idx
+        motiflet_all_candidates[i, :len(idx)] = idx
+        motiflet_all_candidates[i, len(idx):] = -1
 
         if len(idx) >= k and dist[idx[-1]] <= motiflet_dist:
             # get_pairwise_extent requires the full matrix 
@@ -977,7 +981,7 @@ def search_k_motiflets_elbow(
     D_full = compute_distances_full(data_raw, m, slack)
 
     exclusion_m = int(m * slack)
-    motiflet_candidates = []
+    motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
 
     incremental = False
     for test_k in tqdm(range(k_max_ - 1, 1, -1), desc='Compute ks (' + str(k_max_) + ")",
@@ -997,10 +1001,11 @@ def search_k_motiflets_elbow(
             all_candidates=motiflet_candidates,
             slack=slack
         )
-        incremental = True
 
-        if len(motiflet_candidates) == 0:
+        if not incremental:
             motiflet_candidates = all_candidates
+
+        incremental = True
 
         if candidate is None and \
             len(k_motiflet_candidates) > test_k+1 and \
@@ -1040,7 +1045,7 @@ def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
     return motiflet_candidate_dist
 
 
-@njit
+@njit(fastmath=True, cache=True)
 def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
     """Exact algorithm to compute k-Motiflets
 
