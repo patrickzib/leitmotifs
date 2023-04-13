@@ -18,9 +18,6 @@ from numba import njit, prange, objmode
 from scipy.stats import zscore
 from tqdm.auto import tqdm
 
-# TODO make it a parameter!
-# slack = 0.5
-
 
 def as_series(data, index_range, index_name):
     """Coverts a time series to a series with an index.
