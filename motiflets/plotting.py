@@ -247,6 +247,7 @@ def plot_elbow(k_max,
                ground_truth=None,
                filter=True,
                method_name=None,
+               elbow_deviation=1.00,
                slack=0.5):
     """Plots the elbow-plot for k-Motiflets.
 
@@ -275,6 +276,10 @@ def plot_elbow(k_max,
         filters overlapping motiflets from the result,
     method_name:  String
         used for display only.
+    elbow_deviation : float, default=1.05
+        The minimal absolute deviation needed to detect an elbow.
+        It measures the absolute change in deviation from k to k+1.
+        1.05 corresponds to 5% increase in deviation.
 
     Returns
     -------
@@ -293,6 +298,7 @@ def plot_elbow(k_max,
         raw_data,
         motif_length,
         exclusion=exclusion,
+        elbow_deviation = elbow_deviation,
         slack=slack)
     endTime = (time.perf_counter() - startTime)
 
