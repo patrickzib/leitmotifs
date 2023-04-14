@@ -36,9 +36,9 @@ def test_har():
         )
 
         # motif_length = 50
-        dists, motiflets, elbow_points = plot_elbow(
-            ks, series, ds_name=activities[i], plot_elbows=False,
-            motif_length=motif_length)
+        #dists, motiflets, elbow_points = plot_elbow(
+        #    ks, series, ds_name=activities[i], plot_elbows=False,
+        #    motif_length=motif_length)
 
         if i > 3:
             break

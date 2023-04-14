@@ -903,16 +903,18 @@ def find_au_ef_motif_length(data, k_max, motif_length_range,
     elbows = np.zeros(len(motif_length_range), dtype=object)
     top_motiflets = np.zeros(len(motif_length_range), dtype=object)
 
-    upper_bound = np.inf
+    # upper_bound = np.inf
     for i, m in enumerate(motif_length_range[::-1]):
         if m < data.shape[0]:
             au_efs[i], elbows[i], top_motiflets[i], dist = _inner_au_ef(
                 data, k_max, int(m / subsample),
-                upper_bound=upper_bound,
+                # upper_bound=upper_bound,
                 elbow_deviation=elbow_deviation,
                 slack=slack)
-            if dist is not None:
-                upper_bound = min(dist[-1], upper_bound)
+
+            # this is not correct
+            # if dist is not None:
+            #    upper_bound = min(dist[-1], upper_bound)
 
     au_efs = np.array(au_efs, dtype=np.float64)[::-1]
     elbows = elbows[::-1]
