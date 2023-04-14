@@ -904,6 +904,7 @@ def find_au_ef_motif_length(data, k_max, motif_length_range,
     elbows = np.zeros(len(motif_length_range), dtype=object)
     top_motiflets = np.zeros(len(motif_length_range), dtype=object)
 
+    # TODO parallelize?
     # upper_bound = np.inf
     for i, m in enumerate(motif_length_range[::-1]):
         if m < data.shape[0]:
