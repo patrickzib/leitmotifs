@@ -913,7 +913,7 @@ def find_au_ef_motif_length(data, k_max, motif_length_range,
                 elbow_deviation=elbow_deviation,
                 slack=slack)
 
-            # this is not correct
+            # TODO we have to recompute the upper bound each time we change the length
             # if dist is not None:
             #    upper_bound = min(dist[-1], upper_bound)
 
