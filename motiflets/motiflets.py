@@ -802,7 +802,8 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
     return np.sort(np.array(list(set(elbow_points))))
 
 
-def _inner_au_ef(data, k_max, m, upper_bound,
+def _inner_au_ef(data, k_max, m,
+                 upper_bound=np.inf,
                  elbow_deviation=1.00,
                  slack=0.5):
     """Computes the Area under the Elbow-Function within an interval [2...k_max].
