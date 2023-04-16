@@ -820,7 +820,7 @@ def _inner_au_ef(data, k_max, m,
         Motif length
     approximate_motiflet_pos : array-like
         An initial estimate of the positions of the k-Motiflets for each k in the
-        given range [2...k_max]
+        given range [2...k_max]. Will be used for bounding distance computations.
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
@@ -863,9 +863,12 @@ def _inner_au_ef(data, k_max, m,
     return au_efs, elbows, top_motiflet, dists, candidates
 
 
-def find_au_ef_motif_length(data, k_max, motif_length_range,
-                            elbow_deviation=1.00,
-                            slack=0.5):
+def find_au_ef_motif_length(
+        data,
+        k_max,
+        motif_length_range,
+        elbow_deviation=1.00,
+        slack=0.5):
     """Computes the Area under the Elbow-Function within an of motif lengths.
 
     Parameters
@@ -906,6 +909,8 @@ def find_au_ef_motif_length(data, k_max, motif_length_range,
     au_efs.fill(np.inf)
     elbows = np.zeros(len(motif_length_range), dtype=object)
     top_motiflets = np.zeros(len(motif_length_range), dtype=object)
+
+    # stores the position of the l+1 motif set as an approximate pos for l
     approximate_pos = None
 
     # TODO parallelize?
@@ -963,7 +968,7 @@ def search_k_motiflets_elbow(
         exclusion zone - use when searching for the TOP-2 motiflets
     approximate_motiflet_pos : array-like
         An initial estimate of the positions of the k-Motiflets for each k in the
-        given range [2...k_max]
+        given range [2...k_max]. Will be used for bounding distance computations.
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
