@@ -506,7 +506,8 @@ def _get_top_k_non_trivial_matches_inner(
     # admissible pruning: are there enough offsets within range?
     p = 0
     for i in range(len(candidates), 0, -1):
-        if dist[candidates[i - 1]] <= lowest_dist:
+        if (candidates[i - 1] >= 0) \
+                and (dist[candidates[i - 1]] <= lowest_dist):
             p = i
             break
     return candidates[:min(k, p)]
@@ -671,7 +672,7 @@ def get_approximate_k_motiflet(
         motiflet_all_candidates[i, :len(idx)] = idx
         motiflet_all_candidates[i, len(idx):] = -1
 
-        if len(idx) >= k and dist[idx[-1]] <= motiflet_dist:
+        if len(idx) >= k and idx[-1] >= 0 and dist[idx[-1]] <= motiflet_dist:
             # get_pairwise_extent requires the full matrix
             motiflet_extent = get_pairwise_extent(D, idx[:k], motiflet_dist)
             if motiflet_extent <= motiflet_dist:
@@ -1045,15 +1046,10 @@ def search_k_motiflets_elbow(
             slack=slack
         )
 
-        if not incremental:
-            motiflet_candidates = all_candidates
-
-        incremental = True
-
         if candidate is None and \
                 len(k_motiflet_candidates) > test_k + 1 and \
                 k_motiflet_candidates[test_k + 1] is not None:
-            # This should not happen, but does?
+            # TODO: This should not happen, but does (when using the approximate bound?
             candidate = k_motiflet_candidates[test_k + 1][:test_k]
             candidate_dist = get_pairwise_extent(D_full, candidate)
 
@@ -1065,6 +1061,12 @@ def search_k_motiflets_elbow(
         if candidate is not None:
             dist_new = get_pairwise_extent(D_full, candidate[:(test_k-1)])
             upper_bound = min(upper_bound, dist_new)
+
+        if not incremental:
+            motiflet_candidates = all_candidates
+
+        incremental = True
+
 
 
     # smoothen the line to make it monotonically increasing
