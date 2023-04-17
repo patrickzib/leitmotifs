@@ -848,8 +848,8 @@ def _inner_au_ef(data, k_max, m,
         elbow_deviation=elbow_deviation,
         slack=slack)
 
-    dists = dists[(~np.isinf(dists)) & (~np.isnan(dists))]
-    au_efs = ((dists - dists.min()) / (dists.max() - dists.min())).sum() / len(dists)
+    dists_ = dists[(~np.isinf(dists)) & (~np.isnan(dists))]
+    au_efs = ((dists_ - dists_.min()) / (dists_.max() - dists_.min())).sum() / len(dists_)
     elbow_points = _filter_unique(elbow_points, candidates, m)
 
     top_motiflet = None
