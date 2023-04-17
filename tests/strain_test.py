@@ -19,12 +19,12 @@ def test_strain():
     data[:] = zscore(data)
 
     k_max = 20
-    length_range = np.arange(40, 100, 10)
+    length_range = np.arange(40, 100, 1)
     motif_length = plot_motif_length_selection(
         k_max,
         data.values,
         length_range,
-        "left-0"
+        "Strain"
     )
     print (motif_length)
 
