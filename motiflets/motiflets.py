@@ -1032,11 +1032,13 @@ def search_k_motiflets_elbow(
                     D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
 
         # use an approximate position as an initial estimate, if available
+        bound_set = False
         if approximate_motiflet_pos is not None \
                 and len(approximate_motiflet_pos) > test_k \
                 and approximate_motiflet_pos[test_k] is not None:
             dd = get_pairwise_extent(D_full, approximate_motiflet_pos[test_k])
             upper_bound = min(dd, upper_bound)
+            bound_set = True
 
         candidate, candidate_dist, all_candidates = get_approximate_k_motiflet(
             data_raw, m, test_k, D_full,
@@ -1046,12 +1048,9 @@ def search_k_motiflets_elbow(
             slack=slack
         )
 
-        if candidate is None and \
-                len(k_motiflet_candidates) > test_k + 1 and \
-                k_motiflet_candidates[test_k + 1] is not None:
-            # TODO: This should not happen, but does (when using the approximate bound?
-            candidate = k_motiflet_candidates[test_k + 1][:test_k]
-            candidate_dist = get_pairwise_extent(D_full, candidate)
+        if candidate is None and bound_set:
+            # If we already found the best motif in length l+1
+            candidate = approximate_motiflet_pos[test_k]
 
         k_motiflet_distances[test_k] = candidate_dist
         k_motiflet_candidates[test_k] = candidate
