@@ -274,8 +274,8 @@ def _sliding_mean_std(ts, m):
 def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
     """Compute the full Distance Matrix between all pairs of subsequences.
 
-        Computes pairwise distances between n-m+1 subsequences, of length, extracted from
-        the time series, of length n.
+        Computes pairwise distances between n-m+1 subsequences, of length, extracted
+        from the time series, of length n.
 
         Z-normed ED is used for distances.
 
@@ -329,11 +329,74 @@ def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.
 
     return D
 
+@njit(fastmath=True, cache=True, parallel=True)
+def compute_distances_full_mv(time_series, m,
+                              exclude_trivial_match=True, n_jobs=4, slack=0.5):
+    """ Compute the full Distance Matrix between all pairs of subsequences of a
+        multivariate time series.
+
+        Computes pairwise distances between n-m+1 subsequences, of length, extracted
+        from the time series, of length n.
+
+        Z-normed ED is used for distances.
+
+        This implementation is in O(n^2) by using the sliding dot-product.
+
+        Parameters
+        ----------
+        time_series : array-like
+            The time series
+        m : int
+            The window length
+        exclude_trivial_match : bool
+            Trivial matches will be excluded if this parameter is set
+        n_jobs : int
+            Number of jobs to used
+
+        Returns
+        -------
+        D : 2d array-like
+            The O(n^2) z-normed ED distances between all pairs of subsequences
+
+    """
+    dims = time_series.shape[0]
+    n = np.int32(time_series.shape[-1] - m + 1)
+    halve_m = 0
+    if exclude_trivial_match:
+        halve_m = int(m * slack)
+
+    D_all = np.zeros((dims, n, n), dtype=np.float32)
+    for d in prange(dims):
+        ts = time_series[d, :]
+        means, stds = _sliding_mean_std(ts, m)
+
+        dot_first = _sliding_dot_product(ts[:m], ts)
+        bin_size = ts.shape[-1] // n_jobs
+        for idx in prange(n_jobs):
+            start = idx * bin_size
+            end = min((idx + 1) * bin_size, ts.shape[-1] - m + 1)
+
+            dot_prev = None
+            for order in np.arange(start, end):
+                if order == start:
+                    # O(n log n) operation
+                    dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
+                else:
+                    # constant time O(1) operations
+                    dot_rolled = np.roll(dot_prev, 1) \
+                                 + ts[order + m - 1] * ts[m - 1:n + m] \
+                                 - ts[order - 1] * np.roll(ts[:n], 1)
+                    dot_rolled[0] = dot_first[order]
+
+                D_all[d, order, :] = distance(dot_rolled, n, m, means, stds, order, halve_m)
+                dot_prev = dot_rolled
+
+    return D_all
+
 
 @njit(fastmath=True, cache=True)
 def distance(dot_rolled, n, m, means, stds, order, halve_m):
-    # there is a numba bug, thus we have to repeat all codes:
-    # https: // github.com / numba / numba / issues / 7681
+    # Implementation of z-normalized Euclidean distance
     dist = 2 * m * (1 - (dot_rolled - m * means * means[order]) / (
             m * stds * stds[order]))
 
@@ -346,71 +409,6 @@ def distance(dot_rolled, n, m, means, stds, order, halve_m):
     dist[order] = 0
 
     return dist
-
-
-def compute_distances_full_seq(ts, m, exclude_trivial_match=True, slack=0.5):
-    """Compute the full Distance Matrix between all pairs of subsequences.
-
-    Computes pairwise distances between n-m+1 subsequences, of length, extracted from
-    the time series, of length n.
-
-    Z-normed ED is used for distances.
-
-    This implementation is in O(n^2) by using the sliding dot-product.
-
-    Parameters
-    ----------
-    ts : array-like
-        The time series
-    m : int
-        The window length
-    exclude_trivial_match : bool
-        Trivial matches will be excluded if this parameter is set
-
-    Returns
-    -------
-    D : 2d array-like
-        The O(n^2) z-normed ED distances between all pairs of subsequences
-
-    """
-    n = len(ts) - m + 1
-    halve_m = 0
-    if exclude_trivial_match:
-        halve_m = int(m * slack)
-
-    D = np.zeros((n, n), dtype=np.float32)
-    dot_prev = None
-    means, stds = _sliding_mean_std(ts, m)
-
-    for order in range(0, n):
-
-        # first iteration O(n log n)
-        if order == 0:
-            dot_first = _sliding_dot_product(ts[:m], ts)
-            dot_rolled = dot_first
-        # O(1) further operations
-        else:
-            dot_rolled = np.roll(dot_prev, 1) + ts[order + m - 1] * ts[m - 1:n + m] - \
-                         ts[order - 1] * np.roll(ts[:n], 1)
-            dot_rolled[0] = dot_first[order]
-
-        x_mean = means[order]
-        x_std = stds[order]
-
-        dist = 2 * m * (1 - (dot_rolled - m * means * x_mean) / (m * stds * x_std))
-
-        # self-join: eclusion zone
-        trivialMatchRange = (max(0, order - halve_m),
-                             min(order + halve_m, n))
-        dist[trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
-
-        # allow subsequence itself to be in result
-        dist[order] = 0
-        D[order, :] = dist
-
-        dot_prev = dot_rolled
-
-    return D
 
 
 @njit(fastmath=True, cache=True)
@@ -650,7 +648,7 @@ def get_approximate_k_motiflet(
             For each subsequence, a motifset, with minimal extent, found containing it.
             Used for refinement in incremental computation `incremental=True`.
     """
-    n = len(ts) - m + 1
+    n = ts.shape[-1] - m + 1
     motiflet_dist = upper_bound
     motiflet_candidate = None
 
@@ -902,9 +900,6 @@ def find_au_ef_motif_length(
     subsample = 2
     data = data[::subsample]
 
-    # index = (data.index / subsample) if isinstance(data, pd.Series) else np.arange(
-    #     len(data))
-
     # in reverse order
     au_efs = np.zeros(len(motif_length_range), dtype=object)
     au_efs.fill(np.inf)
@@ -1008,12 +1003,16 @@ def search_k_motiflets_elbow(
         assert False
 
     # non-overlapping motifs only
-    k_max_ = max(3, min(int(len(data) / (m * slack)), k_max))
+    k_max_ = max(3, min(int(data.shape[-1] / (m * slack)), k_max))
 
     k_motiflet_distances = np.zeros(k_max_)
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
-    D_full = compute_distances_full(data_raw, m, slack)
+    if data_raw.ndim > 1:
+        D_ = compute_distances_full_mv(data_raw, m, slack)
+        D_full = D_.sum(axis=0, dtype=np.float32)
+    else:
+        D_full = compute_distances_full(data_raw, m, slack)
 
     exclusion_m = int(m * slack)
     motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
@@ -1119,7 +1118,7 @@ def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
     -------
     best found motiflet and its extent.
     """
-    n = len(ts) - m + 1
+    n = ts.shape[-1] - m + 1
 
     motiflet_dist = upperbound
     if upperbound is None:
