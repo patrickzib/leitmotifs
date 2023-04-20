@@ -1007,13 +1007,12 @@ def search_k_motiflets_elbow(
 
     use_dim = 6
     k_motiflet_distances = np.zeros(k_max_)
-    k_motiflet_dimensions = np.zeros((k_max_, use_dim))
+    # k_motiflet_dimensions = np.zeros((k_max_, use_dim))
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
     # if data_raw.ndim > 1:
 
     D_ = compute_distances_full_mv(data_raw, m, slack)
-    # dim_index = np.argsort(D_, axis=0)[:k]
     D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
     D_ = np.take_along_axis(D_, D_index, axis=0)
     D_full = D_[D_index].sum(axis=0, dtype=np.float32)
