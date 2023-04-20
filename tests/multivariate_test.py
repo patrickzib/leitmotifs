@@ -3,24 +3,13 @@ import motiflets.motiflets as ml
 from motiflets.competitors import *
 from motiflets.plotting import *
 
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 import amc.amc_parser as amc_parser
 
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
-
-asf_path = '../datasets/motion_data/13.asf'
-amc_path = '../datasets/motion_data/13_17.amc'
-
-joint_names = np.asarray(
-    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
-     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
-     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
-     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
 
 
 
@@ -95,11 +84,6 @@ def plot_multivariate_motiflet(
         else:
             ax.set_title('$T_{{{0}}}$'.format(i + 1))
 
-        #if i not in d:
-        #    color = ['b', 'g']
-        #else:
-        #    color = ['r', 'y']
-
         for idx, pos in enumerate(motifset):
             ax.plot(range(0, m), data[i, :][pos:pos + m]) #c=color[idx])
 
@@ -108,12 +92,41 @@ def plot_multivariate_motiflet(
     plt.tight_layout()
     plt.show()
 
-# left
-use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
-              'rfemur', 'rtibia', 'rfoot', 'rtoes']
+
+amc_name = "13_17"
+asf_path = '../datasets/motion_data/13.asf'
+amc_path = '../datasets/motion_data/'+amc_name+'.amc'
+
+#amc_name = "19_15"
+#asf_path = '../datasets/motion_data/19.asf'
+#amc_path = '../datasets/motion_data/'+amc_name+'.amc'
+
+
+# http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
+# 13_29: jumping jacks, side twists, bend over, squats
+
+joint_names = np.asarray(
+    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
+     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
+     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
+
+# Body
+# use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
+
+# Right
+use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
+                'rhand', 'rfingers', 'rthumb']
+
+#use_joints = [  'lhand', 'lfingers', 'lthumb'
+#                'rhand', 'rfingers', 'rthumb']
+
+#use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
+#                'rhand', 'rfingers', 'rthumb',
+#                'rfemur', 'rtibia', 'rfoot', 'rtoes']
 
 # footwork
-use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
+# use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 def test_motion_capture():
     joints = amc_parser.parse_asf(asf_path)
@@ -124,7 +137,7 @@ def test_motion_capture():
     df = exclude_body_joints(df)
     df = include_joints(df, use_joints)
 
-    bones = df.index
+    # bones = df.index
     series = df.values
 
     ks = 10
@@ -133,7 +146,8 @@ def test_motion_capture():
     dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
         ks,
         series,
-        motif_length)
+        slack=1.0,
+        motif_length=motif_length)
 
     print("----")
     print(list(candidates[elbow_points]))
@@ -144,9 +158,8 @@ def test_motion_capture():
         for j, pos in enumerate(motiflet):
             fig = plt.figure()
             ax = plt.axes(projection='3d')
-            # ax = Axes3D(fig)
 
-            out_path = 'video/motiflet_'+str(i)+'_'+str(j)+'.gif'
+            out_path = 'video/motiflet_'+amc_name+'_'+str(i)+'_'+str(j)+'.gif'
             FuncAnimation(fig,
                           lambda i: draw_frame(ax, motions, joints, i),
                           range(pos, pos+motif_length, 4)).save(
@@ -155,6 +168,31 @@ def test_motion_capture():
                                 fps=20)
 
 
+# def test_animate():
+#
+#     motif_length = 100
+#     motif_sets = [np.array([4463, 1747, 1067,  233], dtype=np.int32),
+#                   np.array([ 792, 1893, 2903, 3575, 1848, 2253, 2499, 3805], dtype=np.int32)]
+#
+#     joints = amc_parser.parse_asf(asf_path)
+#     motions = amc_parser.parse_amc(amc_path)
+#
+#     for i, motiflet in enumerate(motif_sets):
+#         for j, pos in enumerate(motiflet):
+#             fig = plt.figure()
+#             ax = plt.axes(projection='3d')
+#             # ax = Axes3D(fig)
+#
+#             out_path = 'video/motiflet_'+str(i)+'_'+str(j)+'.gif'
+#             FuncAnimation(fig,
+#                           lambda i: draw_frame(ax, motions, joints, i),
+#                           range(pos, pos+motif_length, 4)).save(
+#                                 out_path,
+#                                 bitrate=1000,
+#                                 fps=20)
+#
+#     plt.close('all')
+#
 # def test_plot_motiflet_2():
 #     motif_length = 50
 #     motif_sets = [np.array([4463, 1747, 1067,  233], dtype=np.int32),
@@ -175,29 +213,21 @@ def test_motion_capture():
 #
 #         plot_multivariate_motiflet(series, motiflet_pos, motif_length, names=bones)
 
-
-def test_animate():
-
-
-    motif_length = 50
-    motif_sets = [np.array([4463, 1747, 1067,  233], dtype=np.int32),
-                  np.array([ 792, 1893, 2903, 3575, 1848, 2253, 2499, 3805], dtype=np.int32)]
+def tests():
 
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
 
-    for i, motiflet in enumerate(motif_sets):
-        for j, pos in enumerate(motiflet):
-            fig = plt.figure()
-            ax = plt.axes(projection='3d')
-            # ax = Axes3D(fig)
+    df = pd.DataFrame(
+        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+    df = exclude_body_joints(df)
+    df = include_joints(df, use_joints)
 
-            out_path = 'video/motiflet_'+str(i)+'_'+str(j)+'.gif'
-            FuncAnimation(fig,
-                          lambda i: draw_frame(ax, motions, joints, i),
-                          range(pos, pos+motif_length, 4)).save(
-                                out_path,
-                                bitrate=1000,
-                                fps=20)
+    data = df.values
+    D_ = ml.compute_distances_full_mv(data, m=50, slack=1.0)
+    k = 3
+    best = np.argpartition(D_, k, axis=0)[:k]
+    D_ = np.take_along_axis(D_, best, axis=0)
+    print(best.shape)
 
-    plt.close('all')
+    print("done")

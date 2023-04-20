@@ -1005,14 +1005,21 @@ def search_k_motiflets_elbow(
     # non-overlapping motifs only
     k_max_ = max(3, min(int(data.shape[-1] / (m * slack)), k_max))
 
+    use_dim = 6
     k_motiflet_distances = np.zeros(k_max_)
+    k_motiflet_dimensions = np.zeros((k_max_, use_dim))
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
-    if data_raw.ndim > 1:
-        D_ = compute_distances_full_mv(data_raw, m, slack)
-        D_full = D_.sum(axis=0, dtype=np.float32)
-    else:
-        D_full = compute_distances_full(data_raw, m, slack)
+    # if data_raw.ndim > 1:
+
+    D_ = compute_distances_full_mv(data_raw, m, slack)
+    # dim_index = np.argsort(D_, axis=0)[:k]
+    D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
+    D_ = np.take_along_axis(D_, D_index, axis=0)
+    D_full = D_[D_index].sum(axis=0, dtype=np.float32)
+
+    # else:
+    #     D_full = compute_distances_full(data_raw, m, slack)
 
     exclusion_m = int(m * slack)
     motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
@@ -1065,16 +1072,19 @@ def search_k_motiflets_elbow(
 
         incremental = True
 
-
-
     # smoothen the line to make it monotonically increasing
     k_motiflet_distances[0:2] = k_motiflet_distances[2]
     for i in range(len(k_motiflet_distances), 2):
         k_motiflet_distances[i - 1] = min(k_motiflet_distances[i],
                                           k_motiflet_distances[i - 1])
 
+    #for i, motiflet in enumerate(k_motiflet_candidates):
+    #    if motiflet is not None:
+    #        k_motiflet_dimensions[i] = D_index[motiflet[0]]
+
     elbow_points = find_elbow_points(k_motiflet_distances,
                                      elbow_deviation=elbow_deviation)
+
     return k_motiflet_distances, k_motiflet_candidates, elbow_points, m
 
 
