@@ -116,9 +116,9 @@ joint_names = np.asarray(
 
 # Right
 use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
-                'rhand', 'rfingers', 'rthumb']
+               'rhand', 'rfingers', 'rthumb']
 
-#use_joints = [  'lhand', 'lfingers', 'lthumb'
+# use_joints = [  'lhand', 'lfingers', 'lthumb'
 #                'rhand', 'rfingers', 'rthumb']
 
 #use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
@@ -225,9 +225,37 @@ def tests():
 
     data = df.values
     D_ = ml.compute_distances_full_mv(data, m=50, slack=1.0)
-    k = 3
-    best = np.argpartition(D_, k, axis=0)[:k]
+
+    dim = 12
+    best = np.argpartition(D_, dim, axis=0)[:dim]
     D_ = np.take_along_axis(D_, best, axis=0)
     print(best.shape)
 
     print("done")
+
+
+def test_plotting():
+    joints = amc_parser.parse_asf(asf_path)
+    motions = amc_parser.parse_amc(amc_path)
+
+    df = pd.DataFrame(
+        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+    df = exclude_body_joints(df)
+    df = include_joints(df, use_joints)
+
+    print("Used joints:", use_joints)
+    series = df.values
+
+    ks = 10
+    motif_length = 50
+
+    dists, motiflets, elbow_points = plot_elbow(
+        ks, series,
+        ds_name=amc_name,
+        plot_elbows=True,
+        motif_length=motif_length)
+
+
+    print("----")
+    print(list(motiflets[elbow_points]))
+    print("----")

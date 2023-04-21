@@ -157,7 +157,7 @@ def pd_series_to_numpy(data):
         data_index = data.index
     else:
         data_raw = data
-        data_index = np.arange(len(data))
+        data_index = np.arange(data.shape[-1])
     return data_index, data_raw.astype(np.float64, copy=False)
 
 
@@ -1005,17 +1005,18 @@ def search_k_motiflets_elbow(
     # non-overlapping motifs only
     k_max_ = max(3, min(int(data.shape[-1] / (m * slack)), k_max))
 
-    use_dim = 6
     k_motiflet_distances = np.zeros(k_max_)
     # k_motiflet_dimensions = np.zeros((k_max_, use_dim))
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
     # if data_raw.ndim > 1:
 
+    # use_dim = data.shape[0]
     D_ = compute_distances_full_mv(data_raw, m, slack)
-    D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
-    D_ = np.take_along_axis(D_, D_index, axis=0)
-    D_full = D_[D_index].sum(axis=0, dtype=np.float32)
+
+    #D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
+    #D_ = np.take_along_axis(D_, D_index, axis=0)
+    D_full = D_.sum(axis=0, dtype=np.float32)
 
     # else:
     #     D_full = compute_distances_full(data_raw, m, slack)
@@ -1028,13 +1029,6 @@ def search_k_motiflets_elbow(
     for test_k in tqdm(range(k_max_ - 1, 1, -1),
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
-        # Top-N retrieval
-        if exclusion is not None and exclusion[test_k] is not None:
-            for pos in exclusion[test_k].flatten():
-                if pos is not None:
-                    trivialMatchRange = (max(0, pos - exclusion_m),
-                                         min(pos + exclusion_m, len(D_full)))
-                    D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
 
         # use an approximate position as an initial estimate, if available
         bound_set = False
