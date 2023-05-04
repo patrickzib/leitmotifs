@@ -230,18 +230,25 @@ def _plot_elbow_points(
 
             df = pd.DataFrame()
             df["time"] = data_index[range(0, motif_length)]
-            #for dim in range(data_raw.shape[0]):  # TODO how to display all dimensions?
-            for aa, pos in enumerate(motiflet):
-                df[str(aa)] = zscore(data_raw[0, pos:pos + motif_length])
+
+            for dim in range(data_raw.shape[0]):
+                pos = motiflet[0]
+                normed_data = zscore(data_raw[dim, pos:pos + motif_length])
+                df["dim_" + str(dim)] = normed_data
 
             df_melt = pd.melt(df, id_vars="time")
 
-            _ = sns.lineplot(ax=axins, data=df_melt, x="time", y="value", ci=99,
+            _ = sns.lineplot(ax=axins, data=df_melt,
+                             x="time", y="value",
+                             hue="variable",
+                             style="variable",
+                             ci=99,
                              n_boot=10, color=sns.color_palette("tab10")[i % 10])
             axins.set_xlabel("")
             axins.set_ylabel("")
             axins.xaxis.set_major_formatter(plt.NullFormatter())
             axins.yaxis.set_major_formatter(plt.NullFormatter())
+            axins.legend().set_visible(False)
 
     plt.show()
 
@@ -328,7 +335,7 @@ def plot_elbow(k_max,
     if plot_grid:
         plot_grid_motiflets(
             ds_name, data, candidates, elbow_points,
-            dists, motif_length, show_elbows=False,
+            dists, motif_length, show_elbows=plot_elbows,
             font_size=24,
             ground_truth=ground_truth, method_name=method_name)
 
@@ -576,8 +583,14 @@ def plot_grid_motiflets(
             df = pd.DataFrame()
             df["time"] = data_index[range(0, motif_length)]
 
+            for dim in range(data_raw.shape[0]):
+                # for aa, pos in enumerate(motiflet):
+                pos = motiflet[0]
+                normed_data = zscore(data_raw[dim, pos:pos + motif_length])
+                df["_dim_" + str(dim)] = normed_data
+
+
             for aa, pos in enumerate(motiflet):
-                df[str(aa)] = zscore(data_raw[0, pos:pos + motif_length])
                 ratio = 0.8
                 rect = Rectangle(
                     (data_index[pos], -i),
@@ -588,29 +601,29 @@ def plot_grid_motiflets(
                     alpha=0.7
                 )
                 ax_bars.add_patch(rect)
+                if method_name is not None:
+                    y_labels.append(method_name + "\nTop-" + str(i + 1))
 
-            if method_name is not None:
-                y_labels.append(method_name + "\nTop-" + str(i + 1))
+                elif method_names is not None:
+                    y_labels.append(method_names[i])
 
-            elif method_names is not None:
-                y_labels.append(method_names[i])
-
-            dists = ""
-            if (dist is not None):
-                dist = np.array(dist)
-                dist[dist == float("inf")] = 0
-                dists = str(dist[elbow_points[i]].astype(int))
+                # dists = ""
+                # if (dist is not None):
+                #    dist = np.array(dist)
+                #    dist[dist == float("inf")] = 0
+                #    dists = str(dist[elbow_points[i]].astype(int))
 
             label = ""
             if plot_minature:
-                df_melt = pd.melt(df, id_vars="time")
-                _ = sns.lineplot(ax=ax_motiflet, data=df_melt,
-                                 x="time", y="value",
+                df_melt = pd.melt(df, id_vars=["time"])
+                _ = sns.lineplot(ax=ax_motiflet,
+                                 data=df_melt,
+                                 x="time", y="value", hue="variable", style="variable",
                                  ci=99, n_boot=10,
                                  color=color_palette[
                                      (len(ground_truth) + ii % grid_dim) % len(
                                          color_palette)],
-                                 label=label + "k=" + str(len(motiflet)) + ",d=" + dists
+                                 # label=label + "k=" + str(len(motiflet)) + ",d=" + dists
                                  )
                 ax_motiflet.set_ylabel("")
 
@@ -618,7 +631,8 @@ def plot_grid_motiflets(
                     ax_motiflet.set_xlabel(data.index.name)
 
                 sns.despine()
-                ax_motiflet.legend(loc="upper right")
+                ax_motiflet.legend().set_visible(False)
+                # ax_motiflet.legend(loc="upper right")
 
             if method_names is not None:
                 ax_bars.plot([], [], label=method_names[elbow_points[i]].split()[0],
@@ -637,19 +651,22 @@ def plot_grid_motiflets(
                 if plot_minature:
                     ax_motiflet.set_title(method_name + " Top-" + str(i + 1))
 
-            if show_elbows:
-                axins = ax_elbow.inset_axes(
-                    [elbow_points[i] / len(candidates), 0.7, 0.1, 0.2])
-
-                _ = sns.lineplot(ax=axins, data=df_melt, x="time", y="value",
-                                 ci=0, n_boot=10,
-                                 color=color_palette[
-                                     (len(ground_truth) + ii % grid_dim) % len(
-                                         color_palette)])
-                axins.set_xlabel("")
-                axins.set_ylabel("")
-                axins.xaxis.set_major_formatter(plt.NullFormatter())
-                axins.yaxis.set_major_formatter(plt.NullFormatter())
+            # if show_elbows:
+            #     axins = ax_elbow.inset_axes(
+            #         [elbow_points[i] / len(candidates), 0.7, 0.1, 0.2])
+            #
+            #     _ = sns.lineplot(ax=axins,
+            #                      data=df_melt,
+            #                      x="time", y="value",
+            #                      hue="variable", style="variable",
+            #                      ci=0, n_boot=10,
+            #                      color=color_palette[
+            #                          (len(ground_truth) + ii % grid_dim) % len(
+            #                              color_palette)])
+            #     axins.set_xlabel("")
+            #     axins.set_ylabel("")
+            #     axins.xaxis.set_major_formatter(plt.NullFormatter())
+            #     axins.yaxis.set_major_formatter(plt.NullFormatter())
 
             if plot_minature:
                 ax_motiflet.set_yticks([])
