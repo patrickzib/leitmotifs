@@ -479,7 +479,7 @@ def plot_grid_motiflets(
 
     dims = int(np.ceil(len(elbow_points) / grid_dim)) + count_plots
 
-    fig = plt.figure(constrained_layout=True, figsize=(10, dims * 2))
+    fig = plt.figure(constrained_layout=True, figsize=(10, dims * 3))
     gs = fig.add_gridspec(dims, grid_dim, hspace=0.8, wspace=0.4)
 
     ax_ts = fig.add_subplot(gs[0:2, :])
@@ -492,32 +492,31 @@ def plot_grid_motiflets(
         data_raw = data_raw.reshape((1, -1))
 
     offset = 0
+
+    motiflets = candidates[elbow_points]
     for dim in range(data_raw.shape[0]):
-        offset -= 3
+        dim_data_raw = zscore(data_raw[dim, :])
+        offset -= (np.max(dim_data_raw) - np.min(dim_data_raw))
+
+        #  Plot the raw data
         _ = sns.lineplot(x=data_index,
-                         y=zscore(data_raw[dim, :]) + offset,
+                         y=dim_data_raw + offset,
                          ax=ax_ts,
                          linewidth=1,
-                         color=color_palette[0] )  # (dim%3) % len(color_palette)
+                         color=color_palette[-1] )
         ax_ts.set_yticklabels([], fontsize=12)
         sns.despine()
 
-        for aaa, column in enumerate(ground_truth):
-            for offsets in ground_truth[column]:
-                for pos, offset in enumerate(offsets):
-                    if pos == 0:
-                        sns.lineplot(x=data_index[dim, offset[0]: offset[1]],
-                                     y=data_raw[dim, offset[0]:offset[1]],
-                                     label=column,
-                                     color=color_palette[aaa + 1],
-                                     ci=None, estimator=None
-                                     )
-                    else:
-                        sns.lineplot(x=data_index[dim, offset[0]: offset[1]],
-                                     y=data_raw[dim, offset[0]:offset[1]],
-                                     color=color_palette[aaa + 1],
-                                     ci=None, estimator=None
-                                     )
+        #  Plot the motiflet
+        for i, motiflet in enumerate(motiflets):
+            if motiflet is not None:
+                for aa, pos in enumerate(motiflet):
+                    _ = sns.lineplot(x=data_index[pos : pos + motif_length],
+                                     y=dim_data_raw[pos : pos + motif_length] + offset,
+                                     ax=ax_ts,
+                                     linewidth=2,
+                                     color=color_palette[i])
+
 
     if len(candidates[elbow_points]) > 6:
         ax_bars = fig.add_subplot(gs[2:4, :], sharex=ax_ts)
@@ -547,7 +546,7 @@ def plot_grid_motiflets(
     #### Hack to add a subplot title
     ax_title = fig.add_subplot(gs[count_plots, :])
 
-    if (show_elbows):
+    if show_elbows:
         ax_title.set_title('(d) Shape of Top Motif Sets by Method', pad=0)
     else:
         ax_title.set_title('(c) Shape of Top Motif Sets by Method', pad=30)
@@ -586,7 +585,6 @@ def plot_grid_motiflets(
                     ratio,
                     facecolor=color_palette[
                         (len(ground_truth) + ii % grid_dim) % len(color_palette)],
-                    # hatch=hatches[i],
                     alpha=0.7
                 )
                 ax_bars.add_patch(rect)
@@ -602,12 +600,8 @@ def plot_grid_motiflets(
                 dist = np.array(dist)
                 dist[dist == float("inf")] = 0
                 dists = str(dist[elbow_points[i]].astype(int))
-                # dists = str(int(dist[elbow_points[i]]))
 
             label = ""
-            # if method_names is not None:
-            #    label =  method_names[elbow_points[i]]
-
             if plot_minature:
                 df_melt = pd.melt(df, id_vars="time")
                 _ = sns.lineplot(ax=ax_motiflet, data=df_melt,

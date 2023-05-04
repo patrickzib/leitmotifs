@@ -105,21 +105,21 @@ amc_path = '../datasets/motion_data/'+amc_name+'.amc'
 # http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
 # 13_29: jumping jacks, side twists, bend over, squats
 
-joint_names = np.asarray(
-    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
-     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
-     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
-     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
+#joint_names = np.asarray(
+#    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
+#     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+#     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
+#     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
 
 # Body
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 # Right
-use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
-               'rhand', 'rfingers', 'rthumb']
+#use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
+#               'rhand', 'rfingers', 'rthumb']
 
-# use_joints = [  'lhand', 'lfingers', 'lthumb'
-#                'rhand', 'rfingers', 'rthumb']
+use_joints = [  'lhand', 'lfingers', 'lthumb'
+               'rhand', 'rfingers', 'rthumb']
 
 #use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
 #                'rhand', 'rfingers', 'rthumb',
@@ -141,7 +141,7 @@ def test_motion_capture():
     series = df.values
 
     ks = 10
-    motif_length = 50
+    motif_length = 100
 
     dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
         ks,
@@ -247,7 +247,7 @@ def test_plotting():
     series = df.values
 
     ks = 10
-    motif_length = 50
+    motif_length = 100
 
     dists, motiflets, elbow_points = plot_elbow(
         ks, series,
