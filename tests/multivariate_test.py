@@ -94,30 +94,38 @@ def plot_multivariate_motiflet(
 
 
 # http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
-amc_name = "13_17" # Boxing
-asf_path = '../datasets/motion_data/13.asf'
-amc_path = '../datasets/motion_data/'+amc_name+'.amc'
 
-# amc_name = "93_08" # Fancy Charleston
+# ks = 15
+# motif_length = 100
+# amc_name = "13_17" # Boxing
+# asf_path = '../datasets/motion_data/13.asf'
+
+
+ks = 15
+motif_length = 120
+amc_name = "93_08" # Fancy Charleston
 # amc_name = "93_04" # Side By Side Female
 # amc_name = "93_05" # Side By Side Male
-# asf_path = '../datasets/motion_data/93.asf'
-# amc_path = '../datasets/motion_data/'+amc_name+'.amc'
+asf_path = '../datasets/motion_data/93.asf'
 
 
 
-use_joints = np.asarray(
-    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
-     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
-     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
-     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
+amc_path = '../datasets/motion_data/'+amc_name+'.amc'
+
+
+
+#use_joints = np.asarray(
+#    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
+#     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+#     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
+#     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
 
 # Body
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 # Right
-# use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
-#               'rhand', 'rfingers', 'rthumb']
+use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
+              'rhand', 'rfingers', 'rthumb']
 
 #use_joints = [  'lhand', 'lfingers', 'lthumb'
 #               'rhand', 'rfingers', 'rthumb']
@@ -140,6 +148,8 @@ def test_plot_length_selection():
     df = include_joints(df, use_joints)
 
     print("Used joints:", use_joints)
+    print("Data", df.shape)
+
     series = df.values
 
     ks = 15
@@ -172,12 +182,12 @@ def test_motion_capture():
     series = df.values
 
     ks = 15
-    motif_length = 100
+    motif_length = 120
 
     dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
         ks,
         series,
-        slack=1.0,
+        slack=0.5,
         motif_length=motif_length)
 
     print("----")
@@ -235,12 +245,12 @@ def test_plotting():
     series = df.values
 
     ks = 15
-    motif_length = 100
+    motif_length = 120
 
     dists, motiflets, elbow_points = plot_elbow(
         ks, series,
         ds_name=amc_name,
-        slack=1.0,
+        slack=0.5,
         plot_elbows=True,
         motif_length=motif_length)
 
@@ -251,51 +261,3 @@ def test_plotting():
     print(list(motiflets[elbow_points]))
     print("----")
 
-
-
-
-
-# def test_animate():
-#
-#     motif_length = 100
-#     motif_sets = [np.array([4463, 1747, 1067,  233], dtype=np.int32),
-#                   np.array([ 792, 1893, 2903, 3575, 1848, 2253, 2499, 3805], dtype=np.int32)]
-#
-#     joints = amc_parser.parse_asf(asf_path)
-#     motions = amc_parser.parse_amc(amc_path)
-#
-#     for i, motiflet in enumerate(motif_sets):
-#         for j, pos in enumerate(motiflet):
-#             fig = plt.figure()
-#             ax = plt.axes(projection='3d')
-#             # ax = Axes3D(fig)
-#
-#             out_path = 'video/motiflet_'+str(i)+'_'+str(j)+'.gif'
-#             FuncAnimation(fig,
-#                           lambda i: draw_frame(ax, motions, joints, i),
-#                           range(pos, pos+motif_length, 4)).save(
-#                                 out_path,
-#                                 bitrate=1000,
-#                                 fps=20)
-#
-#     plt.close('all')
-#
-# def test_plot_motiflet_2():
-#     motif_length = 50
-#     motif_sets = [np.array([4463, 1747, 1067,  233], dtype=np.int32),
-#                   np.array([ 792, 1893, 2903, 3575, 1848, 2253, 2499, 3805], dtype=np.int32)]
-#
-#     for motiflet_pos in motif_sets:
-#
-#         joints = amc_parser.parse_asf(asf_path)
-#         motions = amc_parser.parse_amc(amc_path)
-#
-#         df = pd.DataFrame(
-#             [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-#         df = exclude_body_joints(df)
-#         df = include_joints(df, use_joints)
-#
-#         bones = df.index
-#         series = df.values
-#
-#         plot_multivariate_motiflet(series, motiflet_pos, motif_length, names=bones)

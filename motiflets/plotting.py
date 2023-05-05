@@ -225,8 +225,13 @@ def _plot_elbow_points(
     motiflets = motifset_candidates[elbow_points]
     for i, motiflet in enumerate(motiflets):
         if motiflet is not None:
+            if elbow_points[i] - 3 < 0:
+                pos = 0
+            else:
+                pos = elbow_points[i] - 3 / (len(motifset_candidates) - 4)
+
             axins = ax.inset_axes(
-                [(elbow_points[i] - 3) / (len(motifset_candidates) - 4), 0.7, 0.2, 0.3])
+                [pos, 0.7, 0.2, 0.3])
 
             df = pd.DataFrame()
             df["time"] = data_index[range(0, motif_length)]
