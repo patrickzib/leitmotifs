@@ -257,7 +257,6 @@ def plot_elbow(k_max,
                data,
                ds_name,
                motif_length,
-               exclusion=None,
                plot_elbows=False,
                plot_grid=True,
                ground_truth=None,
@@ -282,8 +281,6 @@ def plot_elbow(k_max,
         the name of the dataset
     motif_length: int
         the length of the motif (user parameter)
-    exclusion: 2d-array
-        exclusion zone - use when searching for the TOP-2 motiflets
     plot_elbows: bool, default=False
         plots the elbow ploints into the plot
     plot_grid: bool, default=True
@@ -308,22 +305,19 @@ def plot_elbow(k_max,
 
     """
     _, raw_data = ml.pd_series_to_numpy(data)
-    print("Data", len(raw_data))
+    print("Data", raw_data.shape)
 
     startTime = time.perf_counter()
     dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
         k_max,
         raw_data,
         motif_length,
-        exclusion=exclusion,
         elbow_deviation=elbow_deviation,
+        filter=filter,
         slack=slack)
     endTime = (time.perf_counter() - startTime)
 
     print("Chosen window-size:", m, "in", np.round(endTime, 1), "s")
-
-    if filter:
-        elbow_points = ml._filter_unique(elbow_points, candidates, motif_length)
 
     print("Elbow Points", elbow_points)
 
@@ -335,7 +329,7 @@ def plot_elbow(k_max,
     if plot_grid:
         plot_grid_motiflets(
             ds_name, data, candidates, elbow_points,
-            dists, motif_length, show_elbows=plot_elbows,
+            dists, motif_length, show_elbows=False,
             font_size=24,
             ground_truth=ground_truth, method_name=method_name)
 

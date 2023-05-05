@@ -63,9 +63,12 @@ def _resample(data, sampling_factor=10000):
 
     """
     factor = 1
-    if len(data) > sampling_factor:
-        factor = np.int32(len(data) / sampling_factor)
-        data = data[::factor]
+    if data.shape[-1] > sampling_factor:
+        factor = np.int32(data.shape[-1] / sampling_factor)
+        if data.ndim >= 2:
+            data = data[:, ::factor]
+        else:
+            data = data[::factor]
     return data, factor
 
 
@@ -898,7 +901,10 @@ def find_au_ef_motif_length(
     """
     # apply sampling for speedup only
     subsample = 2
-    data = data[::subsample]
+    if data.ndim >= 2:
+        data = data[:, ::subsample]
+    else:
+        data = data[::subsample]
 
     # in reverse order
     au_efs = np.zeros(len(motif_length_range), dtype=object)
@@ -911,7 +917,7 @@ def find_au_ef_motif_length(
 
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
-        if m < data.shape[0]:
+        if m < data.shape[-1]:
             au_efs[i], elbows[i], top_motiflets[i], _, approximate_pos \
                 = _inner_au_ef(
                         data, k_max, int(m / subsample),
@@ -935,10 +941,10 @@ def search_k_motiflets_elbow(
         data,
         motif_length='auto',
         motif_length_range=None,
-        exclusion=None,
         approximate_motiflet_pos=None,
         elbow_deviation=1.00,
-        slack=0.5
+        filter=True,
+        slack=0.5,
 ):
     """Computes the elbow-function.
 
@@ -960,8 +966,6 @@ def search_k_motiflets_elbow(
         Can be used to determine to length of the motif set automatically.
         If a range is passed and `motif_length == 'auto'`, the best window length
         is first determined, prior to computing the elbow-plot.
-    exclusion : 2d-array
-        exclusion zone - use when searching for the TOP-2 motiflets
     approximate_motiflet_pos : array-like
         An initial estimate of the positions of the k-Motiflets for each k in the
         given range [2...k_max]. Will be used for bounding distance computations.
@@ -969,6 +973,9 @@ def search_k_motiflets_elbow(
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
+    filter: bool, default=True
+        filters overlapping motiflets from the result,
+
 
     Returns
     -------
@@ -1009,8 +1016,6 @@ def search_k_motiflets_elbow(
     # k_motiflet_dimensions = np.zeros((k_max_, use_dim))
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
-    # if data_raw.ndim > 1:
-
     # use_dim = data.shape[0]
     D_ = compute_distances_full_mv(data_raw, m, slack)
 
@@ -1018,10 +1023,6 @@ def search_k_motiflets_elbow(
     #D_ = np.take_along_axis(D_, D_index, axis=0)
     D_full = D_.sum(axis=0, dtype=np.float32)
 
-    # else:
-    #     D_full = compute_distances_full(data_raw, m, slack)
-
-    exclusion_m = int(m * slack)
     motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
 
     upper_bound = np.inf
@@ -1077,6 +1078,9 @@ def search_k_motiflets_elbow(
 
     elbow_points = find_elbow_points(k_motiflet_distances,
                                      elbow_deviation=elbow_deviation)
+
+    if filter:
+        elbow_points = _filter_unique(elbow_points, k_motiflet_candidates, motif_length)
 
     return k_motiflet_distances, k_motiflet_candidates, elbow_points, m
 

@@ -93,33 +93,34 @@ def plot_multivariate_motiflet(
     plt.show()
 
 
-amc_name = "13_17"
+# http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
+amc_name = "13_17" # Boxing
 asf_path = '../datasets/motion_data/13.asf'
 amc_path = '../datasets/motion_data/'+amc_name+'.amc'
 
-#amc_name = "19_15"
-#asf_path = '../datasets/motion_data/19.asf'
-#amc_path = '../datasets/motion_data/'+amc_name+'.amc'
+# amc_name = "93_08" # Fancy Charleston
+# amc_name = "93_04" # Side By Side Female
+# amc_name = "93_05" # Side By Side Male
+# asf_path = '../datasets/motion_data/93.asf'
+# amc_path = '../datasets/motion_data/'+amc_name+'.amc'
 
 
-# http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
-# 13_29: jumping jacks, side twists, bend over, squats
 
-#joint_names = np.asarray(
-#    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
-#     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
-#     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
-#     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
+use_joints = np.asarray(
+    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
+     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
+     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
 
 # Body
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 # Right
-#use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
+# use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
 #               'rhand', 'rfingers', 'rthumb']
 
-use_joints = [  'lhand', 'lfingers', 'lthumb'
-               'rhand', 'rfingers', 'rthumb']
+#use_joints = [  'lhand', 'lfingers', 'lthumb'
+#               'rhand', 'rfingers', 'rthumb']
 
 #use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
 #                'rhand', 'rfingers', 'rthumb',
@@ -127,6 +128,36 @@ use_joints = [  'lhand', 'lfingers', 'lthumb'
 
 # footwork
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
+
+
+def test_plot_length_selection():
+    joints = amc_parser.parse_asf(asf_path)
+    motions = amc_parser.parse_amc(amc_path)
+
+    df = pd.DataFrame(
+        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+    df = exclude_body_joints(df)
+    df = include_joints(df, use_joints)
+
+    print("Used joints:", use_joints)
+    series = df.values
+
+    ks = 15
+    length_range = list(range(10, 200, 10))
+    print(length_range)
+
+    m = plot_motif_length_selection(
+        ks,
+        series,
+        ds_name=amc_name,
+        motif_length_range=length_range,
+        slack=1.0)
+
+    print("----")
+    print("Best length", m)
+    print("----")
+
+
 
 def test_motion_capture():
     joints = amc_parser.parse_asf(asf_path)
@@ -137,10 +168,10 @@ def test_motion_capture():
     df = exclude_body_joints(df)
     df = include_joints(df, use_joints)
 
-    # bones = df.index
+    print("Used joints:", use_joints)
     series = df.values
 
-    ks = 10
+    ks = 15
     motif_length = 100
 
     dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
@@ -150,6 +181,8 @@ def test_motion_capture():
         motif_length=motif_length)
 
     print("----")
+    print(dists)
+    print(elbow_points)
     print(list(candidates[elbow_points]))
     print("----")
 
@@ -166,6 +199,60 @@ def test_motion_capture():
                                 out_path,
                                 bitrate=1000,
                                 fps=20)
+
+
+def tests():
+    joints = amc_parser.parse_asf(asf_path)
+    motions = amc_parser.parse_amc(amc_path)
+
+    df = pd.DataFrame(
+        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+    df = exclude_body_joints(df)
+    df = include_joints(df, use_joints)
+
+    print("Used joints:", use_joints)
+    series = df.values
+    D_ = ml.compute_distances_full_mv(series, m=100, slack=1.0)
+
+    dim = 12
+    best = np.argpartition(D_, dim, axis=0)[:dim]
+    D_ = np.take_along_axis(D_, best, axis=0)
+    print(best.shape)
+
+    print("done")
+
+
+def test_plotting():
+    joints = amc_parser.parse_asf(asf_path)
+    motions = amc_parser.parse_amc(amc_path)
+
+    df = pd.DataFrame(
+        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+    df = exclude_body_joints(df)
+    df = include_joints(df, use_joints)
+
+    print("Used joints:", use_joints)
+    series = df.values
+
+    ks = 15
+    motif_length = 100
+
+    dists, motiflets, elbow_points = plot_elbow(
+        ks, series,
+        ds_name=amc_name,
+        slack=1.0,
+        plot_elbows=True,
+        motif_length=motif_length)
+
+
+    print("----")
+    print(dists)
+    print(elbow_points)
+    print(list(motiflets[elbow_points]))
+    print("----")
+
+
+
 
 
 # def test_animate():
@@ -212,50 +299,3 @@ def test_motion_capture():
 #         series = df.values
 #
 #         plot_multivariate_motiflet(series, motiflet_pos, motif_length, names=bones)
-
-def tests():
-
-    joints = amc_parser.parse_asf(asf_path)
-    motions = amc_parser.parse_amc(amc_path)
-
-    df = pd.DataFrame(
-        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-    df = exclude_body_joints(df)
-    df = include_joints(df, use_joints)
-
-    data = df.values
-    D_ = ml.compute_distances_full_mv(data, m=50, slack=1.0)
-
-    dim = 12
-    best = np.argpartition(D_, dim, axis=0)[:dim]
-    D_ = np.take_along_axis(D_, best, axis=0)
-    print(best.shape)
-
-    print("done")
-
-
-def test_plotting():
-    joints = amc_parser.parse_asf(asf_path)
-    motions = amc_parser.parse_amc(amc_path)
-
-    df = pd.DataFrame(
-        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-    df = exclude_body_joints(df)
-    df = include_joints(df, use_joints)
-
-    print("Used joints:", use_joints)
-    series = df.values
-
-    ks = 10
-    motif_length = 100
-
-    dists, motiflets, elbow_points = plot_elbow(
-        ks, series,
-        ds_name=amc_name,
-        plot_elbows=True,
-        motif_length=motif_length)
-
-
-    print("----")
-    print(list(motiflets[elbow_points]))
-    print("----")
