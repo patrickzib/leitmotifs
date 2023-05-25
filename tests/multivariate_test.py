@@ -27,16 +27,14 @@ def exclude_body_joints(df):
     exclude = ['root', 'lowerback', 'upperback',
                'thorax', 'lowerneck', 'upperneck', 'head']
     exclude_bones = []
-    for k, v in zip('xyz', exclude):
-        exclude_bones.extend([x + "_" + k for x in exclude])
+    exclude_bones.extend([x + "_" + k for x in exclude for k in 'xyz'])
     exclude_bones
 
     return df[~df.index.isin(exclude_bones)]
 
 def include_joints(df, include):
     include_bones = []
-    for k, v in zip('xyz', include):
-        include_bones.extend([x + "_" + k for x in include])
+    include_bones.extend([x + "_" + k for x in include for k in 'xyz'])
 
     return df[df.index.isin(include_bones)]
 
@@ -259,5 +257,37 @@ def test_plotting():
     print(dists)
     print(elbow_points)
     print(list(motiflets[elbow_points]))
+    print("----")
+
+
+
+
+def test_dimension_plotting():
+    joints = amc_parser.parse_asf(asf_path)
+    motions = amc_parser.parse_amc(amc_path)
+
+    df = pd.DataFrame(
+        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+    df = exclude_body_joints(df)
+    df = include_joints(df, use_joints)
+
+    joints = df.index
+    print("Used joints:", use_joints)
+    series = df.values
+
+    ks = 15
+    motif_length = 120
+
+    dists, motiflets, elbow_points = plot_elbow_by_dimension(
+        ks, series,
+        dimension_labels=joints,
+        ds_name=amc_name,
+        slack=0.5,
+        motif_length=motif_length)
+
+    print("----")
+    # print(dists)
+    # print(elbow_points)
+    # print(list(motiflets[elbow_points]))
     print("----")
 
