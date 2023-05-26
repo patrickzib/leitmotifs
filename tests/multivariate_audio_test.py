@@ -1,37 +1,43 @@
-import motiflets.motiflets as ml
-from motiflets.competitors import *
-from motiflets.plotting import *
-
-import matplotlib
 from audio.lyrics import *
 
-import wave
-import librosa
-from os.path import exists
-
-ks = 10
-ds_name = "Numb - Linkin Park"
 path = "../../motiflets_use_cases/audio/"
-audio_file_url= path + "Numb - Linkin Park.wav"
-lrc_url= path + "Numb - Linkin Park.lrc"
+
+# channels = 3
+# ks = 10
+# length_in_seconds = 4
+# ds_name = "Numb - Linkin Park"
+# audio_file_url= path + "Numb - Linkin Park.wav"
+# lrc_url = path + "Numb - Linkin Park.lrc"
+
+# channels = 3
+# ks = 10
+# length_in_seconds = 7.75
+# ds_name = "What I've Done - Linkin Park"
+# audio_file_url = path + "What I've Done - Linkin Park.wav"
+# lrc_url = path + "What I've Done - Linkin Park.lrc"
+
+channels = 3
+ks = 15
+length_in_seconds = 5.4
+ds_name = "The Rolling Stones - Paint It, Black"
+audio_file_url = path + "The Rolling Stones - Paint It, Black.wav"
+lrc_url = path + "The Rolling Stones - Paint It, Black.lrc"
 
 
 def test_audio():
     # Read audio from wav file
     x, sr, mfcc_f, audio_length_seconds = read_audio(audio_file_url, True)
-
     print("Length:", audio_length_seconds)
+
     channels = 3
 
     index_range = np.arange(0, mfcc_f.shape[1]) * audio_length_seconds / mfcc_f.shape[1]
     df = pd.DataFrame(mfcc_f,
-                      index=["MFCC_" + str(a) for a in np.arange(0, 20)],
-                      #columns=index_range
+                      index=["MFCC " + str(a) for a in np.arange(0, 20)],
                       )
-    df.index.name="MFCC"
-    df = df.iloc[:channels,:]
+    df.index.name = "MFCC"
+    df = df.iloc[:channels]
 
-    length_in_seconds = 4
     motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
     print(motif_length)
 
@@ -52,9 +58,9 @@ def test_audio():
 
     lyrics = []
     for i, m in enumerate(motiflet):
-        l = (lookup_lyrics(df_sub, index_range[m], length_in_seconds))
+        l = lookup_lyrics(df_sub, index_range[m], length_in_seconds)
         lyrics.append(l)
-        print(i+1, l)
+        print(i + 1, l)
 
     name = ds_name + " " + lyrics[-1] + " (" + str(len(motiflet)) + "x)"
 
