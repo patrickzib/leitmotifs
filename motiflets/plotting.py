@@ -265,8 +265,8 @@ def plot_elbow(k_max,
                plot_elbows=False,
                plot_grid=True,
                ground_truth=None,
+               dimension_labels=None,
                filter=True,
-               method_name=None,
                elbow_deviation=1.00,
                slack=0.5):
     """Plots the elbow-plot for k-Motiflets.
@@ -294,12 +294,12 @@ def plot_elbow(k_max,
         Ground-truth information as pd.Series.
     filter: bool, default=True
         filters overlapping motiflets from the result,
-    method_name:  String
-        used for display only.
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
+    dimension_labels:
+        Labels for the dimensions
 
     Returns
     -------
@@ -336,7 +336,8 @@ def plot_elbow(k_max,
             ds_name, data, candidates, elbow_points,
             dists, motif_length, show_elbows=False,
             font_size=24,
-            ground_truth=ground_truth, method_name=method_name)
+            ground_truth=ground_truth,
+            dimension_labels=dimension_labels)
 
     return dists, candidates, elbow_points
 
@@ -545,13 +546,14 @@ def plot_motiflets_by_dimension(
     ax_bars.set_title("(b) Position of Top Motif Sets by Dimension")
 
     offset = 0
+    tick_offsets = []
     ii = -1
     y_labels = []
     for dim in range(data_raw.shape[0]):
         dim_motiflets = candidates[dim, elbow_points[dim]]
         dim_data_raw = zscore(data_raw[dim, :])
-
         offset -= (np.max(dim_data_raw) - np.min(dim_data_raw))
+        tick_offsets.append(offset)
 
         #  Plot the raw data
         _ = sns.lineplot(x=data_index,
@@ -575,14 +577,14 @@ def plot_motiflets_by_dimension(
 
         for i, motiflet in enumerate(dim_motiflets):
             if motiflet is not None:
-                color = color_palette[1]  # if len(motiflet) != 3 else "red"
+                color = color_palette[i]
                 for aa, pos in enumerate(motiflet):
                     ratio = 0.8
                     rect = Rectangle(
                         (data_index[pos], -ii),  # (x,y)
                         data_index[pos + motif_length - 1] - data_index[pos],
                         ratio,
-                        facecolor=color,  #color_palette[dim % len(color_palette)],
+                        facecolor=color,  # color_palette[dim % len(color_palette)],
                         alpha=0.5
                     )
                     ax_bars.add_patch(rect)
@@ -593,11 +595,13 @@ def plot_motiflets_by_dimension(
                     y_labels.append("Dim " + str(dim+1) + " Motif " + str(i + 1))
                 ii -= 1
 
-    ax_ts.set_yticklabels([], fontsize=12)
+    if dimension_labels is not None:
+        ax_ts.set_yticks(tick_offsets)
+        ax_ts.set_yticklabels(dimension_labels, fontsize=12)
+
     ax_bars.set_yticks(np.arange(len(y_labels)) + 1.5, )
     ax_bars.set_yticklabels(y_labels, fontsize=12)
     ax_bars.set_ylim([abs(ii) + 1, 1])
-    # ax_bars.legend(loc="best")
 
     if ground_truth is not None and len(ground_truth) > 0:
         ax_ts.legend(loc="upper left")
@@ -611,9 +615,8 @@ def plot_grid_motiflets(
         ds_name, data, candidates, elbow_points, dist,
         motif_length, font_size=20,
         ground_truth=None,
-        method_name=None,
-        method_names=None,
         show_elbows=False,
+        dimension_labels=None,
         color_palette=sns.color_palette("tab10"),
         grid_dim=None,
         plot_index=None):
@@ -637,14 +640,12 @@ def plot_grid_motiflets(
         Font-size to use for plotting.
     ground_truth: pd.Series
         Ground-truth information as pd.Series.
-    method_name: String
-        Name of a single method
-    method_names: array-like
-        Name of all methods
     show_elbows: bool
         Show an elbow plot
     color_palette:
         Color-palette to use
+    dimension_labels:
+        Labels for the dimensions
     grid_dim: int
         The dimensionality of the grid (number of columns)
     plot_index: int
@@ -679,8 +680,9 @@ def plot_grid_motiflets(
 
     dims = int(np.ceil(len(elbow_points) / grid_dim)) + count_plots
 
-    fig = plt.figure(constrained_layout=True, figsize=(10, dims * 3))
-    gs = fig.add_gridspec(dims, grid_dim, hspace=0.8, wspace=0.4)
+    fig = plt.figure(constrained_layout=True,
+                     figsize=(10, dims * 3))
+    gs = fig.add_gridspec(dims, grid_dim)
 
     ax_ts = fig.add_subplot(gs[0:2, :])
     ax_ts.set_title("(a) Dataset: " + ds_name + "")
@@ -692,11 +694,12 @@ def plot_grid_motiflets(
         data_raw = data_raw.reshape((1, -1))
 
     offset = 0
-
+    tick_offsets = []
     motiflets = candidates[elbow_points]
     for dim in range(data_raw.shape[0]):
         dim_data_raw = zscore(data_raw[dim, :])
         offset -= (np.max(dim_data_raw) - np.min(dim_data_raw))
+        tick_offsets.append(offset)
 
         #  Plot the raw data
         _ = sns.lineplot(x=data_index,
@@ -757,9 +760,6 @@ def plot_grid_motiflets(
     ax_title.axis('off')
     ax_title._frameon = False
     sns.despine()
-    ######
-
-    hatches = ['/', '\\', '|', '-', '+', 'x', 'o', 'O', '.', '*']
 
     y_labels = []
     ii = -1
@@ -778,7 +778,7 @@ def plot_grid_motiflets(
 
             for dim in range(data_raw.shape[0]):
                 # for aa, pos in enumerate(motiflet):
-                pos = motiflet[0]
+                pos = motiflet[0]  # only take one subsequence
                 normed_data = zscore(data_raw[dim, pos:pos + motif_length])
                 df["_dim_" + str(dim)] = normed_data
 
@@ -794,29 +794,16 @@ def plot_grid_motiflets(
                     alpha=0.7
                 )
                 ax_bars.add_patch(rect)
-                if method_name is not None:
-                    y_labels.append(method_name + "\nTop-" + str(i + 1))
 
-                elif method_names is not None:
-                    y_labels.append(method_names[i])
-
-                # dists = ""
-                # if (dist is not None):
-                #    dist = np.array(dist)
-                #    dist[dist == float("inf")] = 0
-                #    dists = str(dist[elbow_points[i]].astype(int))
-
-            label = ""
             if plot_minature:
                 df_melt = pd.melt(df, id_vars=["time"])
                 _ = sns.lineplot(ax=ax_motiflet,
                                  data=df_melt,
-                                 x="time", y="value", hue="variable", style="variable",
-                                 ci=99, n_boot=10,
-                                 color=color_palette[
-                                     (len(ground_truth) + ii % grid_dim) % len(
-                                         color_palette)],
-                                 # label=label + "k=" + str(len(motiflet)) + ",d=" + dists
+                                 x="time", y="value", style="variable",
+                                 # hue="variable",
+                                 # ci=99, n_boot=10,
+                                 ci=None, estimator=None,
+                                 color=color_palette[0],
                                  )
                 ax_motiflet.set_ylabel("")
 
@@ -825,49 +812,17 @@ def plot_grid_motiflets(
 
                 sns.despine()
                 ax_motiflet.legend().set_visible(False)
-                # ax_motiflet.legend(loc="upper right")
-
-            if method_names is not None:
-                ax_bars.plot([], [], label=method_names[elbow_points[i]].split()[0],
-                             linewidth=10,
-                             color=color_palette[
-                                 (len(ground_truth) + ii % grid_dim) % len(
-                                     color_palette)])
-                if plot_minature:
-                    ax_motiflet.set_title(method_names[elbow_points[i]])
-
-            elif method_name is not None:
-                ax_bars.plot([], [], label=method_name, linewidth=10,
-                             color=color_palette[
-                                 (len(ground_truth) + ii % grid_dim) % len(
-                                     color_palette)])
-                if plot_minature:
-                    ax_motiflet.set_title(method_name + " Top-" + str(i + 1))
-
-            # if show_elbows:
-            #     axins = ax_elbow.inset_axes(
-            #         [elbow_points[i] / len(candidates), 0.7, 0.1, 0.2])
-            #
-            #     _ = sns.lineplot(ax=axins,
-            #                      data=df_melt,
-            #                      x="time", y="value",
-            #                      hue="variable", style="variable",
-            #                      ci=0, n_boot=10,
-            #                      color=color_palette[
-            #                          (len(ground_truth) + ii % grid_dim) % len(
-            #                              color_palette)])
-            #     axins.set_xlabel("")
-            #     axins.set_ylabel("")
-            #     axins.xaxis.set_major_formatter(plt.NullFormatter())
-            #     axins.yaxis.set_major_formatter(plt.NullFormatter())
 
             if plot_minature:
                 ax_motiflet.set_yticks([])
 
+    if dimension_labels is not None:
+        ax_ts.set_yticks(tick_offsets)
+        ax_ts.set_yticklabels(dimension_labels, fontsize=12)
+
     ax_bars.set_yticks(-np.arange(len(y_labels)) + 0.5, )
     ax_bars.set_yticklabels(y_labels, fontsize=12)
     ax_bars.set_ylim([-len(motiflets) + 1, 1])
-    # ax_bars.legend(loc="best")
 
     if ground_truth is not None and len(ground_truth) > 0:
         ax_ts.legend(loc="upper left", ncol=label_cols)
@@ -884,6 +839,7 @@ def plot_all_competitors(
         motif_length,
         method_names=None,
         ground_truth=None,
+        dimension_labels=None,
         plot_index=None,
         color_palette=sns.color_palette("tab10"),
         slack=0.5):
@@ -903,6 +859,8 @@ def plot_all_competitors(
         Names of the method to plot
     ground_truth: pd.Series
         Ground-truth information as pd.Series.
+    dimension_labels:
+        Labels for the dimensions
     grid_dim: int
         The dimensionality of the grid (number of columns)
     plot_index: int
@@ -923,6 +881,7 @@ def plot_all_competitors(
         font_size=26,
         method_names=method_names,
         ground_truth=ground_truth,
+        dimension_labels=dimension_labels,
         color_palette=color_palette,
         plot_index=plot_index)
 
@@ -935,6 +894,7 @@ def plot_competitors(
         prefix="",
         filter=True,
         ground_truth=None,
+        dimension_labels=None,
         slack=0.5):
     """Plots motif sets of a single competitor method.
 
@@ -954,6 +914,8 @@ def plot_competitors(
         filter overlapping motifs
     ground_truth: pd.Series
         Ground-truth information as pd.Series.
+    dimension_labels:
+        Labels for the dimensions
 
     """
 
@@ -981,6 +943,7 @@ def plot_competitors(
     plot_grid_motiflets(
         ds_name, data, motifsets_filtered, elbow_points,
         dists, motif_length, method_name=prefix,
+        dimension_labels=dimension_labels,
         ground_truth=ground_truth)
 
     return motifsets_filtered[elbow_points]

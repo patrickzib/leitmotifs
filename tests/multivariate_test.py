@@ -197,6 +197,7 @@ def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
         ds_name=amc_name,
         slack=0.5,
         plot_elbows=True,
+        dimension_labels=df.index,
         motif_length=motif_length)
 
     print("----")
@@ -270,6 +271,7 @@ def test_plotting():
         ds_name=amc_name,
         slack=0.5,
         plot_elbows=True,
+        dimension_labels=df.index,
         motif_length=motif_length)
 
     print("----")
@@ -294,7 +296,7 @@ def test_dimension_plotting():
 
     dists, motiflets, elbow_points = plot_elbow_by_dimension(
         ks, series,
-        dimension_labels=joints,
+        dimension_labels=df.index,
         ds_name=amc_name,
         slack=0.5,
         motif_length=motif_length)
@@ -337,18 +339,3 @@ def test_dimension_plotting():
 
         #generate_motion_capture(joint_clusters[i],
         #                        prefix="Cluster" + str(i), add_xyz=False)
-
-    # joint_clusters = {1: }
-
-
-def test_filter():
-    joints = amc_parser.parse_asf(asf_path)
-    motions = amc_parser.parse_amc(amc_path)
-
-    df = pd.DataFrame(
-        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-    # df = exclude_body_joints(df)
-    # df = include_joints(df, use_joints)
-
-    to_use = ['rfemur_y', 'rtibia_x', 'rtibia_y', 'rfoot_x', 'rtoes_x']
-    print(include_joints(df, to_use, add_xyz=False))
