@@ -335,8 +335,8 @@ def test_dimension_plotting():
         print(joint_clusters[i])
         print("----")
 
-        generate_motion_capture(joint_clusters[i],
-                                prefix="Cluster" + str(i), add_xyz=False)
+        #generate_motion_capture(joint_clusters[i],
+        #                        prefix="Cluster" + str(i), add_xyz=False)
 
     # joint_clusters = {1: }
 

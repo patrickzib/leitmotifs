@@ -558,7 +558,7 @@ def plot_motiflets_by_dimension(
                          y=dim_data_raw + offset,
                          ax=ax_ts,
                          linewidth=1,
-                         color=color_palette[-1] )
+                         color=color_palette[-1])
 
         sns.despine()
 
@@ -570,21 +570,20 @@ def plot_motiflets_by_dimension(
                                      y=dim_data_raw[pos : pos + motif_length] + offset,
                                      ax=ax_ts,
                                      linewidth=2,
-                                     color=color_palette[dim%
-                                                         len(color_palette)])
+                                     color=color_palette[0])
 
 
         for i, motiflet in enumerate(dim_motiflets):
             if motiflet is not None:
-                # color = "black" if len(motiflet) != 3 else "red"
+                color = color_palette[1]  # if len(motiflet) != 3 else "red"
                 for aa, pos in enumerate(motiflet):
                     ratio = 0.8
                     rect = Rectangle(
                         (data_index[pos], -ii),  # (x,y)
                         data_index[pos + motif_length - 1] - data_index[pos],
                         ratio,
-                        facecolor=color_palette[dim % len(color_palette)],
-                        alpha=0.7
+                        facecolor=color,  #color_palette[dim % len(color_palette)],
+                        alpha=0.5
                     )
                     ax_bars.add_patch(rect)
                 if dimension_labels is not None:
