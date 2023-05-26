@@ -56,13 +56,14 @@ def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
     joints['root'].set_motion(motions[i])
 
     c_joints = joints['root'].to_dict()
-    xs, ys, zs = [], [], []
+    # xs, ys, zs, color = [], [], [], []
     for joint in c_joints.values():
-        xs.append(joint.coordinate[0, 0])
-        ys.append(joint.coordinate[1, 0])
-        zs.append(joint.coordinate[2, 0])
+        xs = (joint.coordinate[0, 0])
+        ys = (joint.coordinate[1, 0])
+        zs = (joint.coordinate[2, 0])
+        color = 'r.' if joint.name in joints_to_highlight else 'b.'
 
-    ax.plot(zs, xs, ys, 'b.')
+        ax.plot(zs, xs, ys, color)
 
     for joint in c_joints.values():
         child = joint
@@ -71,16 +72,16 @@ def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
             xs = [child.coordinate[0, 0], parent.coordinate[0, 0]]
             ys = [child.coordinate[1, 0], parent.coordinate[1, 0]]
             zs = [child.coordinate[2, 0], parent.coordinate[2, 0]]
-            ax.plot(zs, xs, ys, 'r')
 
+            color = 'r' if (child.name in joints_to_highlight) and (parent.name in joints_to_highlight) else 'b'
+            ax.plot(zs, xs, ys, color)
 
 
 # plot multi-variat motiflet
 def plot_multivariate_motiflet(
         data, motifset, m, d=[], names=[]
-    ):
-
-    fig, axes = plt.subplots(len(data) + 1, 1, figsize=(14, 2*len(data)))
+):
+    fig, axes = plt.subplots(len(data) + 1, 1, figsize=(14, 2 * len(data)))
 
     for i in range(len(data)):
         ax = axes[i]
@@ -91,7 +92,7 @@ def plot_multivariate_motiflet(
             ax.set_title('$T_{{{0}}}$'.format(i + 1))
 
         for idx, pos in enumerate(motifset):
-            ax.plot(range(0, m), data[i, :][pos:pos + m]) #c=color[idx])
+            ax.plot(range(0, m), data[i, :][pos:pos + m])  # c=color[idx])
 
         ax.set_xlim((0, m))
 
@@ -101,24 +102,22 @@ def plot_multivariate_motiflet(
 
 # http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
 
-# ks = 15
-# motif_length = 100
-# amc_name = "13_17" # Boxing
-# asf_path = '../datasets/motion_data/13.asf'
+#ks = 15
+#motif_length = 100
+#amc_name = "13_17" # Boxing
+#asf_path = '../datasets/motion_data/13.asf'
 
 
 ks = 15
 motif_length = 120
-amc_name = "93_08" # Fancy Charleston
+# amc_name = "93_08"  # Fancy Charleston
 # amc_name = "93_04" # Side By Side Female
-# amc_name = "93_05" # Side By Side Male
+amc_name = "93_05" # Side By Side Male
 asf_path = '../datasets/motion_data/93.asf'
 
+amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 
-
-amc_path = '../datasets/motion_data/'+amc_name+'.amc'
-
-#use_joints = np.asarray(
+# use_joints = np.asarray(
 #    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
 #     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
 #     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
@@ -128,18 +127,18 @@ amc_path = '../datasets/motion_data/'+amc_name+'.amc'
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 # Right
-#use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
-              #'rhand', 'rfingers', 'rthumb']
+# use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb']
 
-#use_joints = [  'lhand', 'lfingers', 'lthumb'
+# use_joints = [  'lhand', 'lfingers', 'lthumb'
 #               'rhand', 'rfingers', 'rthumb']
 
-use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
-                'rhand', 'rfingers', 'rthumb',
-                'rfemur', 'rtibia', 'rfoot', 'rtoes']
+# use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
+#              'rhand', 'rfingers', 'rthumb',
+#              'rfemur', 'rtibia', 'rfoot', 'rtoes']
+
 
 # footwork
-# use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
+use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 
 def test_plot_length_selection():
@@ -156,7 +155,6 @@ def test_plot_length_selection():
 
     series = df.values
 
-    ks = 15
     length_range = list(range(10, 200, 10))
     print(length_range)
 
@@ -188,10 +186,7 @@ def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     print("Used joints:", joints_to_use)
     series = df.values
 
-    ks = 15
-    motif_length = 120
-
-    #dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
+    # dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
     #    ks,
     #    series,
     #    slack=0.5,
@@ -211,24 +206,30 @@ def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     print("----")
 
     motiflets = candidates[elbow_points]
+
+    if add_xyz:
+        filtered_joints = joints_to_use
+    else:
+        filtered_joints = list(set([joint[:-2] for joint in joints_to_use]))
+
     for i, motiflet in enumerate(motiflets):
         for j, pos in enumerate(motiflet):
             fig = plt.figure()
             ax = plt.axes(projection='3d')
 
             if prefix:
-                out_path = 'video/motiflet_'+amc_name+'_'+prefix+'_'\
-                           +str(i)+'_'+str(j)+'.gif'
+                out_path = 'video/motiflet_' + amc_name + '_' + prefix + '_' \
+                           + str(i) + '_' + str(j) + '.gif'
             else:
                 out_path = 'video/motiflet_' + amc_name + '_' \
                            + str(i) + '_' + str(j) + '.gif'
 
             FuncAnimation(fig,
-                          lambda i: draw_frame(ax, motions, joints, i),
-                          range(pos, pos+motif_length, 4)).save(
-                                out_path,
-                                bitrate=1000,
-                                fps=20)
+                          lambda i: draw_frame(ax, motions, joints, i, joints_to_highlight=filtered_joints),
+                          range(pos, pos + motif_length, 4)).save(
+                out_path,
+                bitrate=1000,
+                fps=20)
 
 
 def tests():
@@ -264,9 +265,6 @@ def test_plotting():
     print("Used joints:", use_joints)
     series = df.values
 
-    ks = 15
-    motif_length = 120
-
     dists, motiflets, elbow_points = plot_elbow(
         ks, series,
         ds_name=amc_name,
@@ -294,9 +292,6 @@ def test_dimension_plotting():
     print("Used joints:", use_joints)
     series = df.values
 
-    ks = 15
-    motif_length = 120
-
     dists, motiflets, elbow_points = plot_elbow_by_dimension(
         ks, series,
         dimension_labels=joints,
@@ -309,7 +304,7 @@ def test_dimension_plotting():
     series = np.zeros((df.shape[0], df.shape[1] - motif_length), dtype=np.float32)
     for i in range(series.shape[0]):
         for pos in motiflets[i, elbow_points[i][-1]]:
-            series[i, pos:pos+motif_length] = 1
+            series[i, pos:pos + motif_length] = 1
 
     X = series  # zscore(series, axis=1)
 
@@ -320,7 +315,7 @@ def test_dimension_plotting():
 
     # creating the dendrogram
     dend = sch.dendrogram(
-        Z, labels=joints, ax = ax)
+        Z, labels=joints, ax=ax)
 
     plt.axhline(y=127.5, color='orange')
     ax.set_title('Dendrogram')
@@ -329,20 +324,19 @@ def test_dimension_plotting():
     plt.tight_layout()
     plt.show()
 
-    k = 3
+    k = 2
     y_dimensions = sch.fcluster(Z, k, criterion='maxclust')
     mapping = list(zip(y_dimensions, joints))
 
     joint_clusters = {}
-    for i in range(1,k+1):
+    for i in range(1, k + 1):
         print("Cluster", i)
         joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
         print(joint_clusters[i])
         print("----")
 
         generate_motion_capture(joint_clusters[i],
-                                prefix="Cluster"+str(i), add_xyz=False)
-
+                                prefix="Cluster" + str(i), add_xyz=False)
 
     # joint_clusters = {1: }
 
@@ -358,9 +352,3 @@ def test_filter():
 
     to_use = ['rfemur_y', 'rtibia_x', 'rtibia_y', 'rfoot_x', 'rtoes_x']
     print(include_joints(df, to_use, add_xyz=False))
-
-
-
-
-
-
