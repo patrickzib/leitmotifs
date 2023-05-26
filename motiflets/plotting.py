@@ -102,6 +102,9 @@ def plot_motifset(
         Outputs the plot
 
     """
+    # turn into 2d array
+    if data.ndim != 2:
+        raise ValueError('The input dimension must be 2d.')
 
     if motifset is not None:
         fig, axes = plt.subplots(1, 2, sharey=False,
@@ -116,54 +119,74 @@ def plot_motifset(
 
     data_index, data_raw = ml.pd_series_to_numpy(data)
 
+    offset = 0
+    tick_offsets = []
     axes[0].set_title(ds_name, fontsize=20)
-    _ = sns.lineplot(x=data_index, y=data_raw, ax=axes[0], linewidth=1,
-                     ci=None, estimator=None)
-    sns.despine()
+    for dim in range(data_raw.shape[0]):
+        dim_data_raw = zscore(data_raw[dim])
+        offset -= (np.max(dim_data_raw) - np.min(dim_data_raw))
+        tick_offsets.append(offset)
 
-    if motifset is not None:
-        for pos in motifset:
-            _ = sns.lineplot(ax=axes[0],
-                             x=data_index[np.arange(pos, pos + motif_length)],
-                             y=data_raw[pos:pos + motif_length], linewidth=5,
-                             color=sns.color_palette("tab10")[
-                                 (len(ground_truth) + 2) % 10],
-                             # alpha=0.5,
-                             ci=None, estimator=None)
+        _ = sns.lineplot(x=data_index,
+                         y=dim_data_raw+offset,
+                         ax=axes[0],
+                         linewidth=1,
+                         color=sns.color_palette("tab10")[0],
+                         ci=None,
+                         estimator=None)
+        sns.despine()
 
-    for aaa, column in enumerate(ground_truth):
-        for offsets in ground_truth[column]:
-            for pos, offset in enumerate(offsets):
-                if pos == 0:
-                    sns.lineplot(x=data_index[offset[0]: offset[1]],
-                                 y=data_raw[offset[0]:offset[1]],
-                                 label=column,
-                                 color=sns.color_palette("tab10")[(aaa + 1) % 10],
-                                 ax=axes[0],
-                                 ci=None, estimator=None
-                                 )
-                else:
-                    sns.lineplot(x=data_index[offset[0]: offset[1]],
-                                 y=data_raw[offset[0]:offset[1]],
-                                 color=sns.color_palette("tab10")[(aaa + 1) % 10],
-                                 ax=axes[0],
-                                 ci=None, estimator=None
-                                 )
+        if motifset is not None:
+            for pos in motifset:
+                _ = sns.lineplot(ax=axes[0],
+                                 x=data_index[np.arange(pos, pos + motif_length)],
+                                 y=dim_data_raw[pos:pos + motif_length] + offset,
+                                 linewidth=2,
+                                 color=sns.color_palette("tab10")[1],
+                                 # alpha=0.5,
+                                 ci=None, estimator=None)
 
-    if motifset is not None:
-        axes[1].set_title(
-            "Motif Set, k=" + str(len(motifset)) + ", d=" + str(np.round(dist, 2)),
-            fontsize=20)
+        for aaa, column in enumerate(ground_truth):
+            for offsets in ground_truth[column]:
+                for pos, offset in enumerate(offsets):
+                    if pos == 0:
+                        sns.lineplot(x=data_index[offset[0]: offset[1]],
+                                     y=dim_data_raw[offset[0]:offset[1]] + offset,
+                                     label=column,
+                                     color=sns.color_palette("tab10")[(aaa + 1) % 10],
+                                     ax=axes[0],
+                                     ci=None, estimator=None
+                                     )
+                    else:
+                        sns.lineplot(x=data_index[offset[0]: offset[1]],
+                                     y=dim_data_raw[offset[0]:offset[1]] + offset,
+                                     color=sns.color_palette("tab10")[(aaa + 1) % 10],
+                                     ax=axes[0],
+                                     ci=None, estimator=None
+                                     )
 
-        df = pd.DataFrame()
-        df["time"] = np.arange(0, motif_length)
+        if motifset is not None:
+            axes[1].set_title(
+                "Motif Set, k=" + str(len(motifset)) + ", d=" + str(np.round(dist, 2)),
+                fontsize=20)
 
-        for aa, pos in enumerate(motifset):
-            df[str(aa)] = zscore(data_raw[pos:pos + motif_length])
+            df = pd.DataFrame()
+            df["time"] = np.arange(0, motif_length)
 
-        df_melt = pd.melt(df, id_vars="time")
-        _ = sns.lineplot(ax=axes[1], data=df_melt, ci=99, n_boot=10,
-                         x="time", y="value")
+            for aa, pos in enumerate(motifset):
+                df[str(aa)] = zscore(dim_data_raw[pos:pos + motif_length]) + offset
+
+            df_melt = pd.melt(df, id_vars="time")
+            _ = sns.lineplot(ax=axes[1],
+                             data=df_melt, ci=99, n_boot=10,
+                             x="time", y="value")
+
+    if isinstance(data, pd.DataFrame):
+        axes[0].set_yticks(tick_offsets)
+        axes[0].set_yticklabels(data.index, fontsize=12)
+
+        axes[1].set_yticks(tick_offsets)
+        axes[1].set_yticklabels(data.index, fontsize=12)
 
     sns.despine()
 

@@ -158,6 +158,9 @@ def pd_series_to_numpy(data):
     if isinstance(data, pd.Series):
         data_raw = data.values
         data_index = data.index
+    elif isinstance(data, pd.DataFrame):
+        data_raw = data.values
+        data_index = data.columns
     else:
         data_raw = data
         data_index = np.arange(data.shape[-1])
