@@ -714,6 +714,7 @@ def _check_unique(motifset_1, motifset_2, motif_length):
     return True
 
 
+# @njit(fastmath=True, cache=True)
 def _filter_unique(elbow_points, candidates, motif_length):
     """Filters the list of candidate elbows for only the non-overlapping motifsets.
 
@@ -746,7 +747,7 @@ def _filter_unique(elbow_points, candidates, motif_length):
             if not unique:
                 break
         if unique:
-            filtered_ebp.append(elbow_points[i], )
+            filtered_ebp.append(elbow_points[i])
 
     # print("Elbows", filtered_ebp)
     return np.array(filtered_ebp)
@@ -1126,7 +1127,6 @@ def search_k_motiflets_elbow(
     k_max_ = max(3, min(int(data.shape[-1] / (m * slack)), k_max))
 
     k_motiflet_distances = np.zeros(k_max_)
-    # k_motiflet_dimensions = np.zeros((k_max_, use_dim))
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
     # use_dim = data.shape[0]

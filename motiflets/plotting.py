@@ -576,6 +576,7 @@ def plot_motiflets_by_dimension(
 
         for i, motiflet in enumerate(dim_motiflets):
             if motiflet is not None:
+                # color = "black" if len(motiflet) != 3 else "red"
                 for aa, pos in enumerate(motiflet):
                     ratio = 0.8
                     rect = Rectangle(

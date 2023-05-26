@@ -11,6 +11,9 @@ import amc.amc_parser as amc_parser
 
 from matplotlib.animation import FuncAnimation
 
+from sklearn.cluster import AgglomerativeClustering
+from yellowbrick.cluster import KElbowVisualizer
+import scipy.cluster.hierarchy as sch
 
 
 def get_joint_pos_dict(c_joints, c_motion):
@@ -32,14 +35,19 @@ def exclude_body_joints(df):
 
     return df[~df.index.isin(exclude_bones)]
 
-def include_joints(df, include):
+
+def include_joints(df, include, add_xyz=True):
     include_bones = []
-    include_bones.extend([x + "_" + k for x in include for k in 'xyz'])
+
+    if add_xyz:
+        include_bones.extend([x + "_" + k for x in include for k in 'xyz'])
+    else:
+        include_bones = include
 
     return df[df.index.isin(include_bones)]
 
 
-def draw_frame(ax, motions, joints, i):
+def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
     ax.cla()
     ax.set_xlim3d(-50, 10)
     ax.set_ylim3d(-20, 40)
@@ -110,8 +118,6 @@ asf_path = '../datasets/motion_data/93.asf'
 
 amc_path = '../datasets/motion_data/'+amc_name+'.amc'
 
-
-
 #use_joints = np.asarray(
 #    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
 #     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
@@ -122,15 +128,15 @@ amc_path = '../datasets/motion_data/'+amc_name+'.amc'
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 # Right
-use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
-              'rhand', 'rfingers', 'rthumb']
+#use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
+              #'rhand', 'rfingers', 'rthumb']
 
 #use_joints = [  'lhand', 'lfingers', 'lthumb'
 #               'rhand', 'rfingers', 'rthumb']
 
-#use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
-#                'rhand', 'rfingers', 'rthumb',
-#                'rfemur', 'rtibia', 'rfoot', 'rtoes']
+use_joints = [  'rclavicle', 'rhumerus', 'rradius', 'rwrist',
+                'rhand', 'rfingers', 'rthumb',
+                'rfemur', 'rtibia', 'rfoot', 'rtoes']
 
 # footwork
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
@@ -166,26 +172,36 @@ def test_plot_length_selection():
     print("----")
 
 
-
 def test_motion_capture():
+    generate_motion_capture(use_joints)
+
+
+def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
 
     df = pd.DataFrame(
         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
     df = exclude_body_joints(df)
-    df = include_joints(df, use_joints)
+    df = include_joints(df, joints_to_use, add_xyz=add_xyz)
 
-    print("Used joints:", use_joints)
+    print("Used joints:", joints_to_use)
     series = df.values
 
     ks = 15
     motif_length = 120
 
-    dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
-        ks,
-        series,
+    #dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
+    #    ks,
+    #    series,
+    #    slack=0.5,
+    #    motif_length=motif_length)
+
+    dists, candidates, elbow_points = plot_elbow(
+        ks, series,
+        ds_name=amc_name,
         slack=0.5,
+        plot_elbows=True,
         motif_length=motif_length)
 
     print("----")
@@ -200,7 +216,13 @@ def test_motion_capture():
             fig = plt.figure()
             ax = plt.axes(projection='3d')
 
-            out_path = 'video/motiflet_'+amc_name+'_'+str(i)+'_'+str(j)+'.gif'
+            if prefix:
+                out_path = 'video/motiflet_'+amc_name+'_'+prefix+'_'\
+                           +str(i)+'_'+str(j)+'.gif'
+            else:
+                out_path = 'video/motiflet_' + amc_name + '_' \
+                           + str(i) + '_' + str(j) + '.gif'
+
             FuncAnimation(fig,
                           lambda i: draw_frame(ax, motions, joints, i),
                           range(pos, pos+motif_length, 4)).save(
@@ -252,14 +274,11 @@ def test_plotting():
         plot_elbows=True,
         motif_length=motif_length)
 
-
     print("----")
     print(dists)
     print(elbow_points)
     print(list(motiflets[elbow_points]))
     print("----")
-
-
 
 
 def test_dimension_plotting():
@@ -286,8 +305,62 @@ def test_dimension_plotting():
         motif_length=motif_length)
 
     print("----")
-    # print(dists)
-    # print(elbow_points)
-    # print(list(motiflets[elbow_points]))
-    print("----")
+
+    series = np.zeros((df.shape[0], df.shape[1] - motif_length), dtype=np.float32)
+    for i in range(series.shape[0]):
+        for pos in motiflets[i, elbow_points[i][-1]]:
+            series[i, pos:pos+motif_length] = 1
+
+    X = series  # zscore(series, axis=1)
+
+    # size of image
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+    Z = sch.linkage(X, method='ward')
+
+    # creating the dendrogram
+    dend = sch.dendrogram(
+        Z, labels=joints, ax = ax)
+
+    plt.axhline(y=127.5, color='orange')
+    ax.set_title('Dendrogram')
+    ax.set_xlabel('Dimensions')
+    ax.set_ylabel('Euclidean distances')
+    plt.tight_layout()
+    plt.show()
+
+    k = 3
+    y_dimensions = sch.fcluster(Z, k, criterion='maxclust')
+    mapping = list(zip(y_dimensions, joints))
+
+    joint_clusters = {}
+    for i in range(1,k+1):
+        print("Cluster", i)
+        joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
+        print(joint_clusters[i])
+        print("----")
+
+        generate_motion_capture(joint_clusters[i],
+                                prefix="Cluster"+str(i), add_xyz=False)
+
+
+    # joint_clusters = {1: }
+
+
+def test_filter():
+    joints = amc_parser.parse_asf(asf_path)
+    motions = amc_parser.parse_amc(amc_path)
+
+    df = pd.DataFrame(
+        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+    # df = exclude_body_joints(df)
+    # df = include_joints(df, use_joints)
+
+    to_use = ['rfemur_y', 'rtibia_x', 'rtibia_y', 'rfoot_x', 'rtoes_x']
+    print(include_joints(df, to_use, add_xyz=False))
+
+
+
+
+
 
