@@ -1282,3 +1282,5 @@ def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
     motiflet_pos = motiflet_poss[min_pos]
 
     return motiflet_dist, motiflet_pos
+
+

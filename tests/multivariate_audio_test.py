@@ -1,4 +1,5 @@
 from audio.lyrics import *
+from pydub import AudioSegment
 
 path = "../../motiflets_use_cases/audio/"
 
@@ -33,7 +34,8 @@ def test_audio():
 
     index_range = np.arange(0, mfcc_f.shape[1]) * audio_length_seconds / mfcc_f.shape[1]
     df = pd.DataFrame(mfcc_f,
-                      index=["MFCC " + str(a) for a in np.arange(0, 20)],
+                      index=["MFCC " + str(a) for a in np.arange(0, mfcc_f.shape[0])],
+                      columns=index_range
                       )
     df.index.name = "MFCC"
     df = df.iloc[:channels]

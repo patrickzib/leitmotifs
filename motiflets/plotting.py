@@ -137,12 +137,13 @@ def plot_motifset(
         sns.despine()
 
         if motifset is not None:
-            for pos in motifset:
+            for a, pos in enumerate(motifset):
                 _ = sns.lineplot(ax=axes[0],
                                  x=data_index[np.arange(pos, pos + motif_length)],
                                  y=dim_data_raw[pos:pos + motif_length] + offset,
                                  linewidth=2,
-                                 color=sns.color_palette("tab10")[1],
+                                 color=sns.color_palette("tab10")[
+                                     (1+a) % len(sns.color_palette("tab10"))],
                                  # alpha=0.5,
                                  ci=None, estimator=None)
 
@@ -171,15 +172,17 @@ def plot_motifset(
                 fontsize=20)
 
             df = pd.DataFrame()
-            df["time"] = np.arange(0, motif_length)
+            df["time"] = data_index[range(0, motif_length)]
 
             for aa, pos in enumerate(motifset):
                 df[str(aa)] = zscore(dim_data_raw[pos:pos + motif_length]) + offset
 
             df_melt = pd.melt(df, id_vars="time")
             _ = sns.lineplot(ax=axes[1],
-                             data=df_melt, ci=99, n_boot=10,
-                             x="time", y="value")
+                             data=df_melt,
+                             ci=99, n_boot=10,
+                             x="time",
+                             y="value")
 
     if isinstance(data, pd.DataFrame):
         axes[0].set_yticks(tick_offsets)
@@ -189,9 +192,6 @@ def plot_motifset(
         axes[1].set_yticklabels(data.index, fontsize=12)
 
     sns.despine()
-
-    if motifset is None:
-        motifset = []
 
     fig.tight_layout()
     if show:
@@ -265,7 +265,6 @@ def _plot_elbow_points(
                 df["dim_" + str(dim)] = normed_data
 
             df_melt = pd.melt(df, id_vars="time")
-
             _ = sns.lineplot(ax=axins, data=df_melt,
                              x="time", y="value",
                              hue="variable",
@@ -466,7 +465,7 @@ def plot_motif_length_selection(
         The motif length that maximizes the AU-PDF.
 
     """
-    index, _ = ml.pd_series_to_numpy(data)
+    index, data_raw = ml.pd_series_to_numpy(data)
     header = " in " + data.index.name if isinstance(data,
                                                     pd.Series) and data.index.name != None else ""
 
@@ -476,7 +475,7 @@ def plot_motif_length_selection(
     startTime = time.perf_counter()
     best_motif_length, au_ef, elbow, top_motiflets = \
         ml.find_au_ef_motif_length(
-            data, k_max,
+            data_raw, k_max,
             motif_length_range=motif_length_range,
             elbow_deviation=elbow_deviation,
             slack=slack)
@@ -729,7 +728,7 @@ def plot_grid_motiflets(
                          y=dim_data_raw + offset,
                          ax=ax_ts,
                          linewidth=1,
-                         color=color_palette[-1] )
+                         color=color_palette[0] )
         ax_ts.set_yticklabels([], fontsize=12)
         sns.despine()
 
@@ -741,7 +740,7 @@ def plot_grid_motiflets(
                                      y=dim_data_raw[pos : pos + motif_length] + offset,
                                      ax=ax_ts,
                                      linewidth=2,
-                                     color=color_palette[i])
+                                     color=color_palette[1 + i])
 
 
     if len(candidates[elbow_points]) > 6:
