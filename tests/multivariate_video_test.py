@@ -1,6 +1,3 @@
-import matplotlib
-import motiflets.motiflets as ml
-from motiflets.competitors import *
 from motiflets.plotting import *
 
 import numpy as np
@@ -11,8 +8,8 @@ import amc.amc_parser as amc_parser
 
 from matplotlib.animation import FuncAnimation
 
-from sklearn.cluster import AgglomerativeClustering
-from yellowbrick.cluster import KElbowVisualizer
+#from sklearn.cluster import AgglomerativeClustering
+#from yellowbrick.cluster import KElbowVisualizer
 import scipy.cluster.hierarchy as sch
 
 

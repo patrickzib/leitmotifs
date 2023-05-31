@@ -1,12 +1,15 @@
-import motiflets.motiflets as ml
-from motiflets.competitors import *
-from motiflets.plotting import *
-
+import scipy.cluster.hierarchy as sch
 from audio.lyrics import *
 from pydub import AudioSegment
 
 import audioread
 import librosa
+
+#import matplotlib
+#matplotlib.use('macosx')
+
+import matplotlib as mpl
+mpl.rcParams['figure.dpi'] = 300
 
 path = "../../motiflets_use_cases/birds/"
 
@@ -22,23 +25,82 @@ audio_file_url = path + "xc27154---common-starling---sturnus-vulgaris.mp3"
 #ds_name = "House-Sparrow"
 #audio_file_url = path + "house-sparrow-passer-domesticus-audio.mp3"
 
-def test_audio():
+
+def read_bird_song():
     # Read audio from wav file
     aro = audioread.ffdec.FFmpegAudioFile(audio_file_url)
     x, sr = librosa.load(aro, mono=True)
     mfcc_f = librosa.feature.mfcc(y=x, sr=sr)
     audio_length_seconds = librosa.get_duration(filename=audio_file_url)
-
     print("Length:", sr, "in seconds", audio_length_seconds, "s")
-
     index_range = np.arange(0, mfcc_f.shape[1]) * audio_length_seconds / mfcc_f.shape[1]
     df = pd.DataFrame(mfcc_f,
                       index=["MFCC " + str(a) for a in np.arange(0, mfcc_f.shape[0])],
-                      columns = index_range)
-
+                      columns=index_range)
     df.index.name = "MFCC"
-    df = df.iloc[:channels]
+    return df, index_range
 
+
+def test_dendrogram():
+    df, index_range = read_bird_song()
+    df = df.iloc[0:channels]
+
+    # motif_length = plot_motif_length_selection(
+    #     ks,
+    #     df,
+    #     length_range,
+    #     ds_name,
+    #     slack=1.0
+    # )
+    #
+    # # motif_length = 25
+    # length_in_seconds = index_range[motif_length]
+    # print("Best length", motif_length, length_in_seconds, "s")
+    #
+    # dists, motiflets, elbow_points = plot_elbow_by_dimension(
+    #     ks,
+    #     df,
+    #     dimension_labels=df.index,
+    #     ds_name=ds_name,
+    #     slack=1.0,
+    #     motif_length=motif_length)
+    #
+    # series = np.zeros((df.shape[0], df.shape[1] - motif_length), dtype=np.float32)
+    # for i in range(series.shape[0]):
+    #     for pos in motiflets[i, elbow_points[i][-1]]:
+    #         series[i, pos:pos + motif_length] = 1
+
+    X = df
+
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    Z = sch.linkage(X, method='ward')
+
+    # creating the dendrogram
+    _ = sch.dendrogram(
+        Z, labels=df.index, ax=ax)
+
+    ax.set_title('Dendrogram')
+    ax.set_xlabel('Dimensions')
+    ax.set_ylabel('Euclidean distances')
+    plt.tight_layout()
+    plt.show()
+
+    k = 4
+    y_dimensions = sch.fcluster(Z, k, criterion='maxclust')
+    mapping = list(zip(y_dimensions, df.index))
+
+    joint_clusters = {}
+    for i in range(1, k + 1):
+        print("Cluster", i)
+        joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
+        print(joint_clusters[i])
+        print("----")
+
+
+def test_audio():
+    channels = ['MFCC 1', 'MFCC 2']
+    df, index_range = read_bird_song()
+    df = df.loc[channels]
 
     motif_length = plot_motif_length_selection(
         ks,
