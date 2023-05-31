@@ -108,7 +108,8 @@ def plot_motifset(
 
     if motifset is not None:
         fig, axes = plt.subplots(1, 2, sharey=False,
-                                 sharex=False, figsize=(20, 3),
+                                 sharex=False,
+                                 figsize=(15, 3 + data.shape[0]),
                                  gridspec_kw={'width_ratios': [4, 1]})
     else:
         fig, axes = plt.subplots(1, 1, figsize=(20, 3))
@@ -132,8 +133,9 @@ def plot_motifset(
                          ax=axes[0],
                          linewidth=1,
                          color=sns.color_palette("tab10")[0],
-                         ci=None,
-                         estimator=None)
+                         #ci=None,
+                         #estimator=None
+                         )
         sns.despine()
 
         if motifset is not None:
@@ -143,9 +145,11 @@ def plot_motifset(
                                  y=dim_data_raw[pos:pos + motif_length] + offset,
                                  linewidth=2,
                                  color=sns.color_palette("tab10")[
-                                     (1+a) % len(sns.color_palette("tab10"))],
+                                     # (1+a) % len(sns.color_palette("tab10"))
+                                     1],
                                  # alpha=0.5,
-                                 ci=None, estimator=None)
+                                 ci=None,
+                                 estimator=None)
 
         for aaa, column in enumerate(ground_truth):
             for offsets in ground_truth[column]:
@@ -230,7 +234,7 @@ def _plot_elbow_points(
     if data_raw.ndim == 1:
         data_raw = data_raw.reshape((1, -1))
 
-    fig, ax = plt.subplots(figsize=(12, 4),
+    fig, ax = plt.subplots(figsize=(10, 4),
                            constrained_layout=True)
     ax.set_title(ds_name + "\nElbow Points")
     ax.plot(range(2, len(np.sqrt(dists))), dists[2:], "b", label="Extent")

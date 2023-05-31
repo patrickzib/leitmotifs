@@ -2,35 +2,62 @@ from audio.lyrics import *
 from pydub import AudioSegment
 import scipy.cluster.hierarchy as sch
 
-#import matplotlib
-#matplotlib.use('macosx')
+# import matplotlib
+# matplotlib.use('macosx')
 
 import matplotlib as mpl
+
 mpl.rcParams['figure.dpi'] = 300
 
 path = "../../motiflets_use_cases/audio/"
 
-# channels = 3
-ks = 10
-length_in_seconds = 4
-ds_name = "Numb - Linkin Park"
-audio_file_url= path + "Numb - Linkin Park.wav"
-lrc_url = path + "Numb - Linkin Park.lrc"
+datasets = {
+    "Numb - Linkin Park": {
+        "ks": 10,
+        "channels": 3,
+        "length_in_seconds": 4,
+        "ds_name": "Numb - Linkin Park",
+        "audio_file_url": path + "Numb - Linkin Park.wav",
+        "lrc_url": path + "Numb - Linkin Park.lrc"
+    },
+    "What I've Done - Linkin Park": {
+        "ks": 10,
+        "channels": 3,
+        "length_in_seconds": 7.75,
+        "ds_name": "What I've Done - Linkin Park",
+        "audio_file_url": path + "What I've Done - Linkin Park.wav",
+        "lrc_url": path + "What I've Done - Linkin Park.lrc"
+    },
+    "The Rolling Stones - Paint It, Black": {
+        "ks": 15,
+        "channels": 3,
+        "length_in_seconds": 5.4,
+        "ds_name": "The Rolling Stones - Paint It, Black",
+        "audio_file_url": path + "The Rolling Stones - Paint It, Black.wav",
+        "lrc_url": path + "The Rolling Stones - Paint It, Black.lrc"
+    }
+}
 
-# channels = 3
-#ks = 10
-#length_in_seconds = 7.75
-#ds_name = "What I've Done - Linkin Park"
-#audio_file_url = path + "What I've Done - Linkin Park.wav"
-#lrc_url = path + "What I've Done - Linkin Park.lrc"
+dataset = datasets["Numb - Linkin Park"]
+ks = dataset["ks"]
+channels = dataset["channels"]
+length_in_seconds = dataset["length_in_seconds"]
+ds_name = dataset["ds_name"]
+audio_file_url = dataset["audio_file_url"]
+lrc_url = dataset["lrc_url"]
 
-# channels = 3
-#ks = 15
-#length_in_seconds = 5.4
-#ds_name = "The Rolling Stones - Paint It, Black"
-#audio_file_url = path + "The Rolling Stones - Paint It, Black.wav"
-#lrc_url = path + "The Rolling Stones - Paint It, Black.lrc"
 
+def read_songs():
+    # Read audio from wav file
+    x, sr, mfcc_f, audio_length_seconds = read_audio(audio_file_url, True)
+    print("Length:", audio_length_seconds)
+    index_range = np.arange(0, mfcc_f.shape[1]) * audio_length_seconds / mfcc_f.shape[1]
+    df = pd.DataFrame(mfcc_f,
+                      index=["MFCC " + str(a) for a in np.arange(0, mfcc_f.shape[0])],
+                      columns=index_range
+                      )
+    df.index.name = "MFCC"
+    return audio_length_seconds, df, index_range
 
 
 def test_dendrogram():
@@ -69,36 +96,23 @@ def test_dendrogram():
     plt.tight_layout()
     plt.show()
 
-    k = 3
-    y_dimensions = sch.fcluster(Z, k, criterion='maxclust')
+    cluster_k = 3
+    y_dimensions = sch.fcluster(Z, cluster_k, criterion='maxclust')
     mapping = list(zip(y_dimensions, df.index))
 
     joint_clusters = {}
-    for i in range(1, k + 1):
+    for i in range(1, cluster_k + 1):
         print("Cluster", i)
         joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
         print(joint_clusters[i])
         print("----")
 
+
 def test_audio():
     audio_length_seconds, df, index_range = read_songs()
 
     # df = df.iloc[:channels]
-    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2']
-    channels = ['MFCC 0', 'MFCC 2', 'MFCC 3', 'MFCC 5', 'MFCC 9']
-
-    """
-    ['MFCC 7', 'MFCC 8']
-    ----
-    Cluster
-    2
-    ['MFCC 1', 'MFCC 4', 'MFCC 6']
-    ----
-    Cluster
-    3
-    ['MFCC 0', 'MFCC 2', 'MFCC 3', 'MFCC 5', 'MFCC 9']
-    """
-
+    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2']
     df = df.loc[channels]
 
     motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
@@ -127,15 +141,15 @@ def test_audio():
 
     name = ds_name + " " + lyrics[-1] + " (" + str(len(motiflet)) + "x)"
 
-    plot_motiflet(
-        df,
-        motiflet,
-        motif_length,
-        title=lyrics[0]
-    )
-    plt.tight_layout()
-    # plt.savefig("audio/snippets/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
-    plt.show()
+    # plot_motiflet(
+    #     df,
+    #     motiflet,
+    #     motif_length,
+    #     title=lyrics[0]
+    # )
+    # plt.tight_layout()
+    # # plt.savefig("audio/snippets/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
+    # plt.show()
 
     plot_motifset(
         name,
@@ -156,16 +170,3 @@ def test_audio():
         motif_audio.export('audio/snippets/' + ds_name +
                            "_Channels_" + str(len(df.index)) +
                            "_Motif_" + str(a) + '.wav', format="wav")
-
-
-def read_songs():
-    # Read audio from wav file
-    x, sr, mfcc_f, audio_length_seconds = read_audio(audio_file_url, True)
-    print("Length:", audio_length_seconds)
-    index_range = np.arange(0, mfcc_f.shape[1]) * audio_length_seconds / mfcc_f.shape[1]
-    df = pd.DataFrame(mfcc_f,
-                      index=["MFCC " + str(a) for a in np.arange(0, mfcc_f.shape[0])],
-                      columns=index_range
-                      )
-    df.index.name = "MFCC"
-    return audio_length_seconds, df, index_range

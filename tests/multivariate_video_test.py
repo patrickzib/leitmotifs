@@ -96,22 +96,40 @@ def plot_multivariate_motiflet(
     plt.tight_layout()
     plt.show()
 
-
 # http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
 
-#ks = 15
-#motif_length = 100
-#amc_name = "13_17" # Boxing
-#asf_path = '../datasets/motion_data/13.asf'
+datasets = {
+    "Boxing": {
+        "ks": 15,
+        "motif_length" : 100,
+        "amc_name": "13_17",
+        "asf_path": '../datasets/motion_data/13.asf'
+    },
+    "Charleston-Fancy": {
+        "ks": 15,
+        "motif_length": 120,
+        "amc_name": "93_08",  # Fancy Charleston
+        "asf_path": '../datasets/motion_data/93.asf'
+    },
+    "Charleston-Side-By-Side-Female": {
+        "ks": 15,
+        "motif_length": 120,
+        "amc_name": "93_04",
+        "asf_path": '../datasets/motion_data/93.asf'
+    },
+    "Charleston-Side-By-Side-Male": {
+        "ks": 15,
+        "motif_length": 120,
+        "amc_name": "93_05",
+        "asf_path": '../datasets/motion_data/93.asf'
+    }
+}
 
-
-ks = 15
-motif_length = 120
-# amc_name = "93_08"  # Fancy Charleston
-# amc_name = "93_04" # Side By Side Female
-amc_name = "93_05" # Side By Side Male
-asf_path = '../datasets/motion_data/93.asf'
-
+dataset = datasets["Charleston-Fancy"]
+ks = dataset["ks"]
+motif_length = dataset["motif_length"]
+amc_name = dataset["amc_name"]
+asf_path = dataset["asf_path"]
 amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 
 # use_joints = np.asarray(
@@ -132,7 +150,6 @@ amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 # use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
 #              'rhand', 'rfingers', 'rthumb',
 #              'rfemur', 'rtibia', 'rfoot', 'rtoes']
-
 
 # footwork
 use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
