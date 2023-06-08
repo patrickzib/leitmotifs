@@ -1,16 +1,13 @@
-from motiflets.plotting import *
-
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-import amc.amc_parser as amc_parser
-
+# from sklearn.cluster import AgglomerativeClustering
+# from yellowbrick.cluster import KElbowVisualizer
+import scipy.cluster.hierarchy as sch
 from matplotlib.animation import FuncAnimation
 
-#from sklearn.cluster import AgglomerativeClustering
-#from yellowbrick.cluster import KElbowVisualizer
-import scipy.cluster.hierarchy as sch
+import amc.amc_parser as amc_parser
+from motiflets.plotting import *
 
 
 def get_joint_pos_dict(c_joints, c_motion):
@@ -70,7 +67,8 @@ def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
             ys = [child.coordinate[1, 0], parent.coordinate[1, 0]]
             zs = [child.coordinate[2, 0], parent.coordinate[2, 0]]
 
-            color = 'r' if (child.name in joints_to_highlight) and (parent.name in joints_to_highlight) else 'b'
+            color = 'r' if (child.name in joints_to_highlight) and (
+                        parent.name in joints_to_highlight) else 'b'
             ax.plot(zs, xs, ys, color)
 
 
@@ -96,12 +94,13 @@ def plot_multivariate_motiflet(
     plt.tight_layout()
     plt.show()
 
+
 # http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
 
 datasets = {
     "Boxing": {
         "ks": 15,
-        "motif_length" : 100,
+        "motif_length": 100,
         "amc_name": "13_17",
         "asf_path": '../datasets/motion_data/13.asf'
     },
@@ -142,14 +141,15 @@ amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 # Right
-#use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb']
+# use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb']
 
 # use_joints = [  'lhand', 'lfingers', 'lthumb'
 #               'rhand', 'rfingers', 'rthumb']
 
 use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
-             'rhand', 'rfingers', 'rthumb',
-             'rfemur', 'rtibia', 'rfoot', 'rtoes']
+              'rhand', 'rfingers', 'rthumb',
+              'rfemur', 'rtibia', 'rfoot', 'rtoes']
+
 
 # footwork
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
@@ -251,7 +251,8 @@ def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
                            + str(i) + '_' + str(j) + '.gif'
 
             FuncAnimation(fig,
-                          lambda i: draw_frame(ax, motions, joints, i, joints_to_highlight=filtered_joints),
+                          lambda i: draw_frame(ax, motions, joints, i,
+                                               joints_to_highlight=filtered_joints),
                           range(pos, pos + motif_length, 4)).save(
                 out_path,
                 bitrate=1000,
@@ -328,7 +329,6 @@ def test_dimension_plotting():
 
     print("----")
 
-
     series = np.zeros((df.shape[0], df.shape[1] - motif_length), dtype=np.float32)
     for i in range(series.shape[0]):
         for pos in motiflets[i, elbow_points[i][-1]]:
@@ -363,5 +363,5 @@ def test_dimension_plotting():
         print(joint_clusters[i])
         print("----")
 
-        #generate_motion_capture(joint_clusters[i],
+        # generate_motion_capture(joint_clusters[i],
         #                        prefix="Cluster" + str(i), add_xyz=False)

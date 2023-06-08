@@ -613,7 +613,7 @@ def plot_motiflets_by_dimension(
                         (data_index[pos], -ii),  # (x,y)
                         data_index[pos + motif_length - 1] - data_index[pos],
                         ratio,
-                        facecolor=color,  # color_palette[dim % len(color_palette)],
+                        facecolor=color_palette[i],  # color_palette[dim % len(color_palette)],
                         alpha=0.5
                     )
                     ax_bars.add_patch(rect)

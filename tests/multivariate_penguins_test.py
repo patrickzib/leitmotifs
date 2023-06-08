@@ -1,21 +1,25 @@
-from motiflets.plotting import *
-
+import matplotlib
+import scipy.cluster.hierarchy as sch
 import scipy.io as sio
 
-import matplotlib
+from motiflets.plotting import *
+
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 
 import warnings
+
 warnings.simplefilter("ignore")
 
 import matplotlib as mpl
+
 mpl.rcParams['figure.dpi'] = 300
 
 path = "../../motiflets_use_cases/chains/"
 
+
 def test_univariate():
-    test = sio.loadmat(path+'penguinshort.mat')
+    test = sio.loadmat(path + 'penguinshort.mat')
     series = pd.DataFrame(test["penguinshort"]).T
 
     ds_name = "Penguins (Snippet)"
@@ -25,23 +29,33 @@ def test_univariate():
     motif_length = 22
     dists, motiflets, elbow_points = plot_elbow(
         ks, series,
-        ds_name=ds_name, plot_elbows=True,
+        ds_name=ds_name,
+        plot_elbows=True,
         motif_length=motif_length,
-        slack=0.5, elbow_deviation=1.25
+        # slack=0.5,
+        elbow_deviation=1.25
     )
+
+    plot_motifset(
+        ds_name,
+        series,
+        motifset=motiflets[elbow_points[-1]],
+        dist=dists[elbow_points[-1]],
+        motif_length=motif_length,
+        show=True)
 
 
 def test_multivariate():
     length = 1000
-    B = pd.read_csv(path+"penguin.txt", delimiter="\t", header=None)
+    B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
     ds_name = "Penguins (Longer Snippet)"
 
     for start in [0, 2000]:
-        series = B.iloc[497699+start:497699+start+length, [0,1,2]].T
+        series = B.iloc[497699 + start:497699 + start + length, 0:4].T
         # plot_dataset(ds_name, series)
 
         ks = 60
-        motif_length = int(22)
+        motif_length = 22
         dists, motiflets, elbow_points = plot_elbow(
             ks, series,
             ds_name=ds_name,
@@ -60,3 +74,53 @@ def test_multivariate():
             motif_length=motif_length,
             show=True)
 
+
+def test_dimension_plotting():
+    length = 1000
+    B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
+    ds_name = "Penguins (Longer Snippet)"
+    df = B.iloc[497699: 497699 + length, 0:9].T
+
+    ks = 60
+    motif_length = 22
+
+    dists, motiflets, elbow_points = plot_elbow_by_dimension(
+        ks, df,
+        dimension_labels=df.index,
+        ds_name=ds_name,
+        motif_length=motif_length)
+
+    series = np.zeros((df.shape[0], df.shape[1] - motif_length),
+                      dtype=np.float32)
+    for i in range(series.shape[0]):
+        for pos in motiflets[i, elbow_points[i][-1]]:
+            series[i, pos:pos + motif_length] = 1
+
+    X = series
+
+    # size of image
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+    Z = sch.linkage(X, method='ward')
+
+    # creating the dendrogram
+    dend = sch.dendrogram(
+        Z, labels=df.index, ax=ax)
+
+    plt.axhline(y=127.5, color='orange')
+    ax.set_title('Dendrogram')
+    ax.set_xlabel('Dimensions')
+    ax.set_ylabel('Euclidean distances')
+    plt.tight_layout()
+    plt.show()
+
+    k = 2
+    y_dimensions = sch.fcluster(Z, k, criterion='maxclust')
+    mapping = list(zip(y_dimensions, df.index))
+
+    joint_clusters = {}
+    for i in range(1, k + 1):
+        print("Cluster", i)
+        joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
+        print(joint_clusters[i])
+        print("----")
