@@ -38,7 +38,7 @@ datasets = {
     }
 }
 
-dataset = datasets["Numb - Linkin Park"]
+dataset = datasets["The Rolling Stones - Paint It, Black"]
 ks = dataset["ks"]
 channels = dataset["channels"]
 length_in_seconds = dataset["length_in_seconds"]
@@ -116,18 +116,28 @@ def test_audio():
     df = df.loc[channels]
 
     motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
-    print(motif_length)
+    print(motif_length, length_in_seconds, "s")
 
     subtitles = read_lrc(lrc_url)
     df_sub = get_dataframe_from_subtitle_object(subtitles)
     df_sub.set_index("seconds", inplace=True)
 
-    dists, motiflets, elbow_points, motif_length = ml.search_k_motiflets_elbow(
+    """dists, motiflets, elbow_points, motif_length = ml.search_k_motiflets_elbow(
         ks,
         df.values,
         motif_length=motif_length,
         elbow_deviation=1.25
-    )
+    )"""
+    dists, motiflets, elbow_points = plot_elbow(
+        ks,
+        df,
+        ds_name=ds_name,
+        slack=1.0,
+        elbow_deviation=1.25,
+        plot_elbows=True,
+        plot_grid=False,
+        dimension_labels=df.index,
+        motif_length=motif_length)
 
     # best motiflet
     motiflet = np.sort(motiflets[elbow_points[-1]])
@@ -139,7 +149,7 @@ def test_audio():
         lyrics.append(l)
         print(i + 1, l)
 
-    name = ds_name + " " + lyrics[-1] + " (" + str(len(motiflet)) + "x)"
+    name = ds_name # + " " + lyrics[-1] + " (" + str(len(motiflet)) + "x)"
 
     # plot_motiflet(
     #     df,
@@ -158,8 +168,8 @@ def test_audio():
         dist=dists[elbow_points[0]],
         motif_length=motif_length, show=False)
 
-    # plt.savefig(
-    #    "audio/snippets/" + ds_name + "_Full_Channel_" + str(c) + "_Motif.pdf")
+    plt.savefig(
+        "audio/snippets/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
     plt.show()
 
     song = AudioSegment.from_wav(audio_file_url)

@@ -125,7 +125,7 @@ datasets = {
     }
 }
 
-dataset = datasets["Charleston-Fancy"]
+dataset = datasets["Boxing"]
 ks = dataset["ks"]
 motif_length = dataset["motif_length"]
 amc_name = dataset["amc_name"]
@@ -142,17 +142,17 @@ amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 # Right
-# use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb']
+#use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb']
 
 # use_joints = [  'lhand', 'lfingers', 'lthumb'
 #               'rhand', 'rfingers', 'rthumb']
 
-# use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
-#              'rhand', 'rfingers', 'rthumb',
-#              'rfemur', 'rtibia', 'rfoot', 'rtoes']
+use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
+             'rhand', 'rfingers', 'rthumb',
+             'rfemur', 'rtibia', 'rfoot', 'rtoes']
 
 # footwork
-use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
+# use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 
 def test_plot_length_selection():
@@ -219,6 +219,17 @@ def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     print(elbow_points)
     print(list(candidates[elbow_points]))
     print("----")
+
+    plot_motifset(
+        amc_name,
+        df,
+        motifset=candidates[elbow_points[0]],
+        dist=dists[elbow_points[0]],
+        motif_length=motif_length, show=False)
+
+    plt.savefig(
+        "video/motiflet_" + amc_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
+    plt.show()
 
     motiflets = candidates[elbow_points]
 
@@ -316,6 +327,7 @@ def test_dimension_plotting():
         motif_length=motif_length)
 
     print("----")
+
 
     series = np.zeros((df.shape[0], df.shape[1] - motif_length), dtype=np.float32)
     for i in range(series.shape[0]):

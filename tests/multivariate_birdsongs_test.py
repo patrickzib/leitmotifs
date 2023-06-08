@@ -140,6 +140,16 @@ def test_audio():
         dimension_labels=df.index,
         motif_length=motif_length)
 
+    plot_dataset(
+        ds_name,
+        df,
+        show=False)
+
+    plt.savefig(
+       "audio/bird_songs/" + ds_name + "_Channels_" + str(len(df.index)) + "_full.pdf")
+    plt.show()
+
+
     # dists, motiflets, elbow_points, motif_length = ml.search_k_motiflets_elbow(
     #    ks,
     #    df.values,
@@ -170,8 +180,8 @@ def test_audio():
         motif_length=motif_length,
         show=False)
 
-    # plt.savefig(
-    #    "audio/snippets/" + ds_name + "_Full_Channel_" + str(c) + "_Motif.pdf")
+    plt.savefig(
+       "audio/bird_songs/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
     plt.show()
 
     song = AudioSegment.from_mp3(audio_file_url)

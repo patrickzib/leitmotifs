@@ -24,7 +24,8 @@ matplotlib.rcParams['ps.fonttype'] = 42
 def plot_dataset(
         ds_name,
         data,
-        ground_truth=None
+        ground_truth=None,
+        show=True
     ):
     """Plots a time series.
 
@@ -36,10 +37,11 @@ def plot_dataset(
         The time series
     ground_truth: pd.Series
         Ground-truth information as pd.Series.
-    plain=False
+    show: boolean
+        Outputs the plot
 
     """
-    return plot_motifset(ds_name, data, ground_truth=ground_truth)
+    return plot_motifset(ds_name, data, ground_truth=ground_truth, show=show)
 
 
 def append_all_motif_sets(df, motif_sets, method_name, D_full):
@@ -192,8 +194,9 @@ def plot_motifset(
         axes[0].set_yticks(tick_offsets)
         axes[0].set_yticklabels(data.index, fontsize=12)
 
-        axes[1].set_yticks(tick_offsets)
-        axes[1].set_yticklabels(data.index, fontsize=12)
+        if motifset is not None:
+            axes[1].set_yticks(tick_offsets)
+            axes[1].set_yticklabels(data.index, fontsize=12)
 
     sns.despine()
 
