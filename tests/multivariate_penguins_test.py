@@ -34,28 +34,29 @@ def test_univariate():
 def test_multivariate():
     length = 1000
     B = pd.read_csv(path+"penguin.txt", delimiter="\t", header=None)
-    series = B.iloc[497699+1000:497699+2000, [0,1,2]].T
-
     ds_name = "Penguins (Longer Snippet)"
-    plot_dataset(ds_name, series)
 
-    ks = 60
-    motif_length = 22
-    dists, motiflets, elbow_points = plot_elbow(
-        ks, series,
-        ds_name=ds_name,
-        plot_elbows=True,
-        plot_grid=False,
-        motif_length=motif_length,
-        slack=0.5,
-        elbow_deviation=1.1
-    )
+    for start in [0, 2000]:
+        series = B.iloc[497699+start:497699+start+length, [0,1,2]].T
+        # plot_dataset(ds_name, series)
 
-    plot_motifset(
-        ds_name,
-        series,
-        motifset=motiflets[elbow_points[-1]],
-        dist=dists[elbow_points[-1]],
-        motif_length=motif_length,
-        show=True)
+        ks = 60
+        motif_length = int(22)
+        dists, motiflets, elbow_points = plot_elbow(
+            ks, series,
+            ds_name=ds_name,
+            plot_elbows=False,
+            plot_grid=False,
+            motif_length=motif_length,
+            # slack=0.6,
+            elbow_deviation=1.1
+        )
+
+        plot_motifset(
+            ds_name,
+            series,
+            motifset=motiflets[elbow_points[-1]],
+            dist=dists[elbow_points[-1]],
+            motif_length=motif_length,
+            show=True)
 
