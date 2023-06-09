@@ -113,6 +113,9 @@ def test_audio():
 
     # df = df.iloc[:channels]
     channels = ['MFCC 0', 'MFCC 1', 'MFCC 2']
+    # channels = ['MFCC 2', 'MFCC 3']  ## hmm
+    # channels = ['MFCC 4', 'MFCC 5']
+    # channels = ['MFCC 1', 'MFCC 5', 'MFCC 4']
     df = df.loc[channels]
 
     motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
