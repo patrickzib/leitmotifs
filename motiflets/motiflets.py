@@ -941,7 +941,7 @@ def find_au_ef_motif_length(
 
 
 # @njit(parallel=True, fastmath=True)
-def search_k_motiflets_elbow_by_dimension(
+def search_multidim_k_motiflets_elbow(
         k_max,
         data,
         motif_length,
@@ -1053,11 +1053,10 @@ def search_k_motiflets_elbow_by_dimension(
     return k_motiflet_distances, k_motiflet_candidates, elbow_points
 
 
-def search_k_motiflets_elbow(
+def search_multidim_k_motiflets_elbow_top_down(
         k_max,
         data,
-        motif_length='auto',
-        motif_length_range=None,
+        motif_length,
         approximate_motiflet_pos=None,
         elbow_deviation=1.00,
         filter=True,
@@ -1077,12 +1076,7 @@ def search_k_motiflets_elbow(
     data : array-like
         the TS
     motif_length : int
-        the length of the motif (user parameter) or
-        `motif_length == 'AU_EF'` or `motif_length == 'auto'`.
-    motif_length_range : array-like
-        Can be used to determine to length of the motif set automatically.
-        If a range is passed and `motif_length == 'auto'`, the best window length
-        is first determined, prior to computing the elbow-plot.
+        the length of the motif (user parameter)
     approximate_motiflet_pos : array-like
         An initial estimate of the positions of the k-Motiflets for each k in the
         given range [2...k_max]. Will be used for bounding distance computations.
@@ -1109,22 +1103,150 @@ def search_k_motiflets_elbow(
     # convert to numpy array
     _, data_raw = pd_series_to_numpy(data)
 
-    # auto motif size selection
-    if motif_length == 'AU_EF' or motif_length == 'auto':
-        if motif_length_range is None:
-            print("Warning: no valid motiflet range set")
-            assert False
-        m, _, _, _ = find_au_ef_motif_length(
-            data, k_max, motif_length_range,
-            elbow_deviation=elbow_deviation,
-            slack=slack)
-    elif isinstance(motif_length, int) or \
-            isinstance(motif_length, np.int32) or \
-            isinstance(motif_length, np.int64):
-        m = motif_length
-    else:
-        print("Warning: no valid motif_length set - use 'auto' for automatic selection")
-        assert False
+    # motif size
+    m = motif_length
+
+    # non-overlapping motifs only
+    k_max_ = max(3, min(int(data.shape[-1] / (m * slack)), k_max))
+
+    D_ = compute_distances_full_mv(data_raw, m, slack)
+
+    n_dims = D_.shape[0]
+    k_motiflet_distances = np.zeros((n_dims, k_max_))
+    k_motiflet_candidates = np.empty((n_dims, k_max_), dtype=object)
+    elbow_points = np.empty((n_dims), dtype=object)
+
+    use_dims = np.arange(D_.shape[0])
+    for dim in range(n_dims):
+        # current dimensions to use
+        D_full = D_[use_dims].sum(axis=0, dtype=np.float32)
+        motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
+
+        upper_bound = np.inf
+        incremental = False
+        for test_k in range(k_max_ - 1, 1, -1):
+
+            # use an approximate position as an initial estimate, if available
+            bound_set = False
+            if approximate_motiflet_pos is not None \
+                    and len(approximate_motiflet_pos) > test_k \
+                    and approximate_motiflet_pos[test_k] is not None:
+                dd = get_pairwise_extent(D_full, approximate_motiflet_pos[test_k])
+                upper_bound = min(dd, upper_bound)
+                bound_set = True
+
+            candidate, candidate_dist, all_candidates = get_approximate_k_motiflet(
+                data_raw, m, test_k, D_full,
+                upper_bound=upper_bound,
+                incremental=incremental,  # we use an incremental computation
+                all_candidates=motiflet_candidates,
+                slack=slack
+            )
+
+            if candidate is None and bound_set:
+                # If we already found the best motif in length l+1
+                candidate = approximate_motiflet_pos[test_k]
+
+            k_motiflet_distances[dim, test_k] = candidate_dist
+            k_motiflet_candidates[dim, test_k] = candidate
+            upper_bound = min(candidate_dist, upper_bound)
+
+            # compute a new upper bound
+            if candidate is not None:
+                dist_new = get_pairwise_extent(D_full, candidate[:(test_k-1)])
+                upper_bound = min(upper_bound, dist_new)
+
+            if not incremental:
+                motiflet_candidates = all_candidates
+
+            incremental = True
+
+        # smoothen the line to make it monotonically increasing
+        k_motiflet_distances[dim, 0:2] = k_motiflet_distances[dim, 2]
+        for i in range(k_motiflet_distances.shape[-1], 2):
+            k_motiflet_distances[dim, i - 1] = min(k_motiflet_distances[dim, i],
+                                                   k_motiflet_distances[dim, i - 1])
+
+        elbow_points[dim] = find_elbow_points(k_motiflet_distances[dim],
+                                         elbow_deviation=elbow_deviation)
+
+        if filter:
+            elbow_points[dim] = _filter_unique(
+                elbow_points[dim], k_motiflet_candidates[dim], motif_length)
+
+        best_motiflet = k_motiflet_candidates[dim, elbow_points[dim][-1]]
+        largest_dim_dist = 0
+        largest_dim_dist_idx = -1
+        for dim_ in use_dims:
+            dist = get_pairwise_extent(D_[dim_], best_motiflet)
+            if dist > largest_dim_dist:
+                largest_dim_dist = dist
+                largest_dim_dist_idx = dim_
+
+        print("Removing", largest_dim_dist,
+              "\t dist:", largest_dim_dist_idx,
+              "\t left:", use_dims,
+              "\n motif:", np.sort(best_motiflet))
+
+        use_dims = list(use_dims)
+        use_dims.remove(largest_dim_dist_idx)
+        use_dims = np.array(use_dims)
+
+    return k_motiflet_distances, k_motiflet_candidates, elbow_points
+
+
+def search_k_motiflets_elbow(
+        k_max,
+        data,
+        motif_length,
+        approximate_motiflet_pos=None,
+        elbow_deviation=1.00,
+        filter=True,
+        slack=0.5,
+):
+    """Computes the elbow-function.
+
+    This is the method to find the characteristic k-Motiflets within range
+    [2...k_max] for given a `motif_length` using elbow-plots.
+
+    Details are given within the paper Section 5.1 Learning meaningful k.
+
+    Parameters
+    ----------
+    k_max : int
+        use [2...k_max] to compute the elbow plot (user parameter).
+    data : array-like
+        the TS
+    motif_length : int
+        the length of the motif (user parameter)
+    approximate_motiflet_pos : array-like
+        An initial estimate of the positions of the k-Motiflets for each k in the
+        given range [2...k_max]. Will be used for bounding distance computations.
+    elbow_deviation : float, default=1.00
+        The minimal absolute deviation needed to detect an elbow.
+        It measures the absolute change in deviation from k to k+1.
+        1.05 corresponds to 5% increase in deviation.
+    filter: bool, default=True
+        filters overlapping motiflets from the result,
+
+
+    Returns
+    -------
+    Tuple
+        dists :
+            distances for each k in [2...k_max]
+        candidates :
+            motifset-candidates for each k
+        elbow_points :
+            elbow-points
+        m : int
+            best motif length
+    """
+    # convert to numpy array
+    _, data_raw = pd_series_to_numpy(data)
+
+    # motif size
+    m = motif_length
 
     # non-overlapping motifs only
     k_max_ = max(3, min(int(data.shape[-1] / (m * slack)), k_max))

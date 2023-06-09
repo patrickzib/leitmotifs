@@ -124,3 +124,16 @@ def test_dimension_plotting():
         joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
         print(joint_clusters[i])
         print("----")
+
+
+def test_dimension_plotting_top_down():
+    length = 1000
+    B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
+    ds_name = "Penguins (Longer Snippet)"
+    df = B.iloc[497699: 497699 + length, 0:9].T
+
+    ks = 60
+    motif_length = 22
+
+    dists, motiflets, elbow_points = ml.search_multidim_k_motiflets_elbow_top_down(
+        ks, df, motif_length)

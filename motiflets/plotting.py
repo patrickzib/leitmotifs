@@ -26,7 +26,7 @@ def plot_dataset(
         data,
         ground_truth=None,
         show=True
-    ):
+):
     """Plots a time series.
 
     Parameters
@@ -131,12 +131,12 @@ def plot_motifset(
         tick_offsets.append(offset)
 
         _ = sns.lineplot(x=data_index,
-                         y=dim_data_raw+offset,
+                         y=dim_data_raw + offset,
                          ax=axes[0],
                          linewidth=1,
                          color=sns.color_palette("tab10")[0],
-                         #ci=None,
-                         #estimator=None
+                         # ci=None,
+                         # estimator=None
                          )
         sns.despine()
 
@@ -372,15 +372,15 @@ def plot_elbow(k_max,
 
 
 def plot_elbow_by_dimension(k_max,
-               data,
-               ds_name,
-               motif_length,
-               ground_truth=None,
-               dimension_labels=None,
-               filter=True,
-               elbow_deviation=1.00,
-               slack=0.5):
-    """Plots the elbow-plot for k-Motiflets.
+                            data,
+                            ds_name,
+                            motif_length,
+                            ground_truth=None,
+                            dimension_labels=None,
+                            filter=True,
+                            elbow_deviation=1.00,
+                            slack=0.5):
+    """Searches and plots elbows of the k-Motiflets by dimension.
 
     This is the method to find and plot the characteristic k-Motiflets within range
     [2...k_max] for given a `motif_length` using elbow-plots.
@@ -411,16 +411,16 @@ def plot_elbow_by_dimension(k_max,
     Returns
     -------
     Tuple
-        dists:          distances for each k in [2...k_max]
-        candidates:     motifset-candidates for each k
-        elbow_points:   elbow-points
+        dists:          distances for each k in [2...k_max] and dimension
+        candidates:     motifset-candidates for each k and dimension
+        elbow_points:   elbow-points for each dimension
 
     """
     _, raw_data = ml.pd_series_to_numpy(data)
     print("Data", raw_data.shape)
 
     startTime = time.perf_counter()
-    dists, candidates, elbow_points = ml.search_k_motiflets_elbow_by_dimension(
+    dists, candidates, elbow_points = ml.search_multidim_k_motiflets_elbow(
         k_max,
         raw_data,
         motif_length,
@@ -440,6 +440,7 @@ def plot_elbow_by_dimension(k_max,
         ground_truth=ground_truth)
 
     return dists, candidates, elbow_points
+
 
 def plot_motif_length_selection(
         k_max, data, motif_length_range, ds_name,
@@ -518,7 +519,7 @@ def plot_motiflets_by_dimension(
         motif_length, font_size=20,
         ground_truth=None, dimension_labels=None,
         color_palette=sns.color_palette("tab10")
-    ):
+):
     """Plots the characteristic motifs found by dimension along the time series.
 
     Parameters
@@ -597,12 +598,11 @@ def plot_motiflets_by_dimension(
         for i, motiflet in enumerate(dim_motiflets):
             if motiflet is not None:
                 for aa, pos in enumerate(motiflet):
-                    _ = sns.lineplot(x=data_index[pos : pos + motif_length],
-                                     y=dim_data_raw[pos : pos + motif_length] + offset,
+                    _ = sns.lineplot(x=data_index[pos: pos + motif_length],
+                                     y=dim_data_raw[pos: pos + motif_length] + offset,
                                      ax=ax_ts,
                                      linewidth=2,
                                      color=color_palette[0])
-
 
         for i, motiflet in enumerate(dim_motiflets):
             if motiflet is not None:
@@ -613,7 +613,8 @@ def plot_motiflets_by_dimension(
                         (data_index[pos], -ii),  # (x,y)
                         data_index[pos + motif_length - 1] - data_index[pos],
                         ratio,
-                        facecolor=color_palette[i],  # color_palette[dim % len(color_palette)],
+                        facecolor=color_palette[i],
+                        # color_palette[dim % len(color_palette)],
                         alpha=0.5
                     )
                     ax_bars.add_patch(rect)
@@ -621,7 +622,7 @@ def plot_motiflets_by_dimension(
                     y_labels.append(str(dimension_labels[dim])
                                     + " - Motif " + str(i + 1))
                 else:
-                    y_labels.append("Dim " + str(dim+1) + " Motif " + str(i + 1))
+                    y_labels.append("Dim " + str(dim + 1) + " Motif " + str(i + 1))
                 ii -= 1
 
     if dimension_labels is not None:
@@ -735,7 +736,7 @@ def plot_grid_motiflets(
                          y=dim_data_raw + offset,
                          ax=ax_ts,
                          linewidth=1,
-                         color=color_palette[0] )
+                         color=color_palette[0])
         ax_ts.set_yticklabels([], fontsize=12)
         sns.despine()
 
@@ -743,12 +744,11 @@ def plot_grid_motiflets(
         for i, motiflet in enumerate(motiflets):
             if motiflet is not None:
                 for aa, pos in enumerate(motiflet):
-                    _ = sns.lineplot(x=data_index[pos : pos + motif_length],
-                                     y=dim_data_raw[pos : pos + motif_length] + offset,
+                    _ = sns.lineplot(x=data_index[pos: pos + motif_length],
+                                     y=dim_data_raw[pos: pos + motif_length] + offset,
                                      ax=ax_ts,
                                      linewidth=2,
                                      color=color_palette[1 + i])
-
 
     if len(candidates[elbow_points]) > 6:
         ax_bars = fig.add_subplot(gs[2:4, :], sharex=ax_ts)
@@ -810,7 +810,6 @@ def plot_grid_motiflets(
                 pos = motiflet[0]  # only take one subsequence
                 normed_data = zscore(data_raw[dim, pos:pos + motif_length])
                 df["_dim_" + str(dim)] = normed_data
-
 
             for aa, pos in enumerate(motiflet):
                 ratio = 0.8
