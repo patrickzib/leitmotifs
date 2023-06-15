@@ -135,8 +135,8 @@ def plot_motifset(
                          ax=axes[0],
                          linewidth=1,
                          color=sns.color_palette("tab10")[0],
-                         # ci=None,
-                         # estimator=None
+                         ci=None,
+                         estimator=None
                          )
         sns.despine()
 

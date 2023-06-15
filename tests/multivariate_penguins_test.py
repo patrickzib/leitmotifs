@@ -18,6 +18,14 @@ mpl.rcParams['figure.dpi'] = 300
 path = "../../motiflets_use_cases/chains/"
 
 
+def test_plot_data():
+    series = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
+    ds_name = "Penguins (Longer Snippet)"
+    series = series.iloc[497699-5000: 497699+5000, np.array([0, 7])].T
+
+    plot_dataset(ds_name, series)
+
+
 def test_univariate():
     test = sio.loadmat(path + 'penguinshort.mat')
     series = pd.DataFrame(test["penguinshort"]).T
