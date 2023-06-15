@@ -124,7 +124,7 @@ datasets = {
     }
 }
 
-dataset = datasets["Boxing"]
+dataset = datasets["Charleston-Fancy"]
 ks = dataset["ks"]
 motif_length = dataset["motif_length"]
 amc_name = dataset["amc_name"]

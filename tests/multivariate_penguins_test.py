@@ -51,7 +51,7 @@ def test_multivariate():
     ds_name = "Penguins (Longer Snippet)"
 
     for start in [0, 2000]:
-        series = B.iloc[497699 + start:497699 + start + length, 0:4].T
+        series = B.iloc[497699 + start:497699 + start + length, np.array([0, 1, 2, 3])].T
         # plot_dataset(ds_name, series)
 
         ks = 60
@@ -60,19 +60,22 @@ def test_multivariate():
             ks, series,
             ds_name=ds_name,
             plot_elbows=False,
-            plot_grid=False,
+            plot_grid=True,
             motif_length=motif_length,
             # slack=0.6,
             elbow_deviation=1.1
         )
 
-        plot_motifset(
+        fig, ax = plot_motifset(
             ds_name,
             series,
             motifset=motiflets[elbow_points[-1]],
             dist=dists[elbow_points[-1]],
             motif_length=motif_length,
             show=True)
+
+        #plt.savefig(
+        #   "penguin/" + ds_name + "_start_" + str(start) + ".pdf")
 
 
 def test_dimension_plotting():

@@ -857,6 +857,10 @@ def plot_grid_motiflets(
 
     plt.tight_layout()
     gs.tight_layout(fig)
+
+    #plt.savefig(
+    #    "video/motiflet_" + ds_name + "_Channels_" + str(len(df.index)) + "_Grid.pdf")
+
     plt.show()
 
 
