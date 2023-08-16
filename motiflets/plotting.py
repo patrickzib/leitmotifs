@@ -513,7 +513,7 @@ def plot_motif_length_selection(
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     plt.scatter(index[motif_length_range[all_minima]], au_ef[all_minima], color="red", label="Minima")
-    print("Minima", motif_length_range[all_minima], "Elbows", elbow[all_minima])
+    print("Minima", index[motif_length_range[all_minima]], "Elbows", elbow[all_minima])
 
     for item in ([ax.xaxis.label, ax.yaxis.label] +
                  ax.get_xticklabels() + ax.get_yticklabels()):
