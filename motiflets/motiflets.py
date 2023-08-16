@@ -17,6 +17,7 @@ from joblib import Parallel, delayed
 from numba import njit, prange, objmode, typed
 from scipy.stats import zscore
 from tqdm.auto import tqdm
+from scipy.signal import argrelextrema
 
 
 def as_series(data, index_range, index_name):
@@ -838,7 +839,7 @@ def _inner_au_ef(data, k_max, m,
         au_efs : float
             Area under the EF
         elbows : array-like
-            Elbows found
+            Largest k (largest elbow) found
         top_motiflet:
             Largest motiflet found (largest k), given the elbows.
         dists : array-like
@@ -859,11 +860,12 @@ def _inner_au_ef(data, k_max, m,
 
     top_motiflet = None
     if len(elbow_points > 0):
-        elbows = len(elbow_points)
+        elbows = elbow_points[-1]
         top_motiflet = candidates[elbow_points[-1]]
     else:
-        # pair motif
-        elbows = 1
+        # we found only the pair motif
+        # elbows = 1
+        elbows = 2
         top_motiflet = candidates[0]
 
     return au_efs, elbows, top_motiflet, dists, candidates
@@ -874,7 +876,8 @@ def find_au_ef_motif_length(
         k_max,
         motif_length_range,
         elbow_deviation=1.00,
-        slack=0.5):
+        slack=0.5,
+        subsample=2):
     """Computes the Area under the Elbow-Function within an of motif lengths.
 
     Parameters
@@ -893,18 +896,20 @@ def find_au_ef_motif_length(
     Returns
     -------
     Tuple
-        length : array-like
-            The range of lengths searched.
+        minimum : array-like
+            The minumum found
+        all_minima : array-like
+            All local minima found
         au_efs : array-like
             For each length in the interval, the AU_EF.
         elbows :
-            The largest k found for each length.
+            Largest k (largest elbow) found
         top_motiflets :
             The motiflet for the largest k for each length.
 
     """
     # apply sampling for speedup only
-    subsample = 2
+    # subsample = 2
     if data.ndim >= 2:
         data = data[:, ::subsample]
     else:
@@ -937,7 +942,11 @@ def find_au_ef_motif_length(
     condition = np.argwhere(elbows == 0).flatten()
     au_efs[condition] = np.inf
 
-    return motif_length_range[np.nanargmin(au_efs)], au_efs, elbows, top_motiflets
+    # Overall minimum and all minima
+    minimum = motif_length_range[np.nanargmin(au_efs)]
+    all_minima = argrelextrema(au_efs, np.less_equal, order=subsample)
+
+    return minimum, all_minima, au_efs, elbows, top_motiflets
 
 
 # @njit(parallel=True, fastmath=True)

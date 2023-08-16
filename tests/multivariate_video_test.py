@@ -172,7 +172,7 @@ def test_plot_length_selection():
     length_range = list(range(10, 200, 10))
     print(length_range)
 
-    m = plot_motif_length_selection(
+    m, all_minima = plot_motif_length_selection(
         ks,
         series,
         ds_name=amc_name,

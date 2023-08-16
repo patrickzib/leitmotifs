@@ -31,7 +31,7 @@ def test_har():
         ks = 50
 
         length_range = np.arange(40, 150, 1)
-        motif_length = plot_motif_length_selection(
+        motif_length, all_minima = plot_motif_length_selection(
            ks, series, length_range, activities[i], elbow_deviation=1.25, slack=0.6
         )
 

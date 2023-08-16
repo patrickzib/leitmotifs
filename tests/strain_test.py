@@ -20,7 +20,7 @@ def test_strain():
 
     k_max = 20
     length_range = np.arange(40, 100, 1)
-    motif_length = plot_motif_length_selection(
+    motif_length, all_minima = plot_motif_length_selection(
         k_max,
         data.values,
         length_range,

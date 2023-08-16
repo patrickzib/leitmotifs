@@ -34,23 +34,33 @@ def test_univariate():
     plot_dataset(ds_name, series)
 
     ks = 50
-    motif_length = 22
-    dists, motiflets, elbow_points = plot_elbow(
-        ks, series,
-        ds_name=ds_name,
-        plot_elbows=True,
-        motif_length=motif_length,
-        # slack=0.5,
-        elbow_deviation=1.25
-    )
+    motif_length_range = np.arange(10, 35, 1)
 
-    plot_motifset(
-        ds_name,
-        series,
-        motifset=motiflets[elbow_points[-1]],
-        dist=dists[elbow_points[-1]],
-        motif_length=motif_length,
-        show=True)
+    best_motif_length, all_minima = plot_motif_length_selection(
+        ks, series, motif_length_range, ds_name,
+        elbow_deviation=1.25,
+        subsample=1)
+
+    # motif_length = 22
+
+    for minimum in all_minima:
+        motif_length = motif_length_range[minimum]
+        dists, motiflets, elbow_points = plot_elbow(
+            ks, series,
+            ds_name=ds_name,
+            plot_elbows=False,
+            plot_grid=False,
+            motif_length=motif_length,
+            elbow_deviation=1.25
+        )
+
+        plot_motifset(
+           ds_name,
+           series,
+           motifset=motiflets[elbow_points[-1]],
+           dist=dists[elbow_points[-1]],
+           motif_length=motif_length,
+           show=True)
 
 
 def test_multivariate():
@@ -62,13 +72,22 @@ def test_multivariate():
         series = B.iloc[497699 + start:497699 + start + length, np.array([0, 1, 2, 3])].T
         # plot_dataset(ds_name, series)
 
-        ks = 60
+        ks = 50
+        motif_length_range = np.arange(10, 35, 1)
+
+        best_motif_length, all_minima = plot_motif_length_selection(
+            ks, series, motif_length_range, ds_name,
+            elbow_deviation=1.1,
+            subsample=1
+        )
+
+        # ks = 60
         motif_length = 22
         dists, motiflets, elbow_points = plot_elbow(
             ks, series,
             ds_name=ds_name,
-            plot_elbows=False,
-            plot_grid=True,
+            plot_elbows=True,
+            plot_grid=False,
             motif_length=motif_length,
             # slack=0.6,
             elbow_deviation=1.1

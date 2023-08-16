@@ -251,17 +251,18 @@ def _plot_elbow_points(
         )
     ax.set(xlabel='Size (k)', ylabel='Extent')
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt.scatter(elbow_points, dists[elbow_points], color="red", label="Minima")
 
     motiflets = motifset_candidates[elbow_points]
     for i, motiflet in enumerate(motiflets):
         if motiflet is not None:
             if elbow_points[i] - 3 < 0:
-                pos = 0
+                x_pos = 0
             else:
-                pos = elbow_points[i] - 3 / (len(motifset_candidates) - 4)
+                x_pos = (elbow_points[i] - 3) / (len(motifset_candidates) - 4)
 
             axins = ax.inset_axes(
-                [pos, 0.7, 0.2, 0.3])
+                [x_pos, 0.2, 0.2, 0.3])
 
             df = pd.DataFrame()
             df["time"] = data_index[range(0, motif_length)]
@@ -277,13 +278,16 @@ def _plot_elbow_points(
                              hue="variable",
                              style="variable",
                              ci=99,
+                             # alpha=0.8,
                              n_boot=10, color=sns.color_palette("tab10")[i % 10])
             axins.set_xlabel("")
+            axins.patch.set_alpha(0)
             axins.set_ylabel("")
             axins.xaxis.set_major_formatter(plt.NullFormatter())
             axins.yaxis.set_major_formatter(plt.NullFormatter())
             axins.legend().set_visible(False)
 
+    plt.tight_layout()
     plt.show()
 
 
@@ -444,7 +448,7 @@ def plot_elbow_by_dimension(k_max,
 
 def plot_motif_length_selection(
         k_max, data, motif_length_range, ds_name,
-        elbow_deviation=1.00, slack=0.5):
+        elbow_deviation=1.00, slack=0.5, subsample=2):
     """Computes the AU_EF plot to extract the best motif lengths
 
     This is the method to find and plot the characteristic motif-lengths, for k in
@@ -470,48 +474,91 @@ def plot_motif_length_selection(
     Returns
     -------
     best_motif_length: int
-        The motif length that maximizes the AU-PDF.
+        The motif length that maximizes the AU-EF.
+
+    all_minima: int
+        The local minima of the AU_EF
 
     """
     index, data_raw = ml.pd_series_to_numpy(data)
-    header = " in " + data.index.name if isinstance(data,
-                                                    pd.Series) and data.index.name != None else ""
+    header = " in " + data.index.name if isinstance(
+        data, pd.Series) and data.index.name != None else ""
 
     # discretizes ranges
     motif_length_range = np.int32(motif_length_range)
 
     startTime = time.perf_counter()
-    best_motif_length, au_ef, elbow, top_motiflets = \
+    best_motif_length, all_minima, au_ef, elbow, top_motiflets = \
         ml.find_au_ef_motif_length(
             data_raw, k_max,
             motif_length_range=motif_length_range,
             elbow_deviation=elbow_deviation,
-            slack=slack)
+            slack=slack,
+            subsample=subsample)
     endTime = (time.perf_counter() - startTime)
     print("\tTime", np.round(endTime, 1), "s")
 
     indices = ~np.isinf(au_ef)
-    fig, ax = plt.subplots(figsize=(5, 2))
+
+    fig, ax = plt.subplots(figsize=(10, 3),
+                           constrained_layout=True)
     ax = sns.lineplot(
         x=index[motif_length_range[indices]],
         y=au_ef[indices],
         label="AU_EF",
         ci=None, estimator=None)
     sns.despine()
-    plt.tight_layout()
-    ax.set_title("Best length on " + ds_name, size=20)
+    ax.set_title("Best lengths on " + ds_name, size=20)
     ax.set(xlabel='Motif Length' + header, ylabel='Area under EF\n(lower is better)')
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+    plt.scatter(index[motif_length_range[all_minima]], au_ef[all_minima], color="red", label="Minima")
+    print("Minima", motif_length_range[all_minima], "Elbows", elbow[all_minima])
 
     for item in ([ax.xaxis.label, ax.yaxis.label] +
                  ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(16)
 
-    # plt.legend(loc="best")
+    # turn into 2d array
+    if data_raw.ndim == 1:
+        data_raw = data_raw.reshape((1, -1))
+
+    for i, minimum in enumerate(all_minima[0]):
+        x_pos = (minimum) / len(motif_length_range)
+        scale = max(au_ef) - min(au_ef)
+        y_pos = ( au_ef[minimum] - min(au_ef) + scale * 0.15) / scale
+        axins = ax.inset_axes([x_pos, y_pos, 0.10, data_raw.shape[0]* 0.15])
+        # axins.patch.set_alpha(0)
+
+        motif_length = motif_length_range[minimum]
+        df = pd.DataFrame()
+        df["time"] = index[range(0, motif_length)]
+
+        for j, dim in enumerate(range(data_raw.shape[0])):
+            pos = top_motiflets[minimum][0]
+            normed_data = zscore(data_raw[dim, pos:pos + motif_length])
+            df["dim_" + str(dim)] = normed_data - 2 * j
+
+        df_melt = pd.melt(df, id_vars="time")
+        _ = sns.lineplot(ax=axins, data=df_melt,
+                         x="time", y="value",
+                         hue="variable",
+                         style="variable",
+                         ci=99,
+                         # alpha=0.8,
+                         n_boot=10, color=sns.color_palette("tab10")[i % 10])
+        axins.set_xlabel("")
+        axins.patch.set_alpha(0)
+        axins.set_ylabel("")
+        axins.xaxis.set_major_formatter(plt.NullFormatter())
+        axins.yaxis.set_major_formatter(plt.NullFormatter())
+        axins.legend().set_visible(False)
     fig.set_figheight(5)
-    fig.set_figwidth(5)
+    fig.set_figwidth(8)
+    plt.tight_layout()
     plt.show()
 
-    return best_motif_length
+    return best_motif_length, all_minima[0]
 
 
 def plot_motiflets_by_dimension(

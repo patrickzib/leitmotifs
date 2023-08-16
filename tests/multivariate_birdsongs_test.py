@@ -58,7 +58,7 @@ def test_dendrogram():
     df, index_range = read_bird_song()
     df = df.iloc[0:channels]
 
-    motif_length = plot_motif_length_selection(
+    motif_length, all_minima = plot_motif_length_selection(
         ks,
         df,
         length_range,
@@ -116,7 +116,7 @@ def test_audio():
     df, index_range = read_bird_song()
     df = df.loc[channels]
 
-    motif_length = plot_motif_length_selection(
+    motif_length, all_minima = plot_motif_length_selection(
         ks,
         df,
         length_range,
