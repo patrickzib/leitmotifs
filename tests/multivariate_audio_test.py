@@ -69,47 +69,13 @@ def test_dendrogram():
     motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
     print(motif_length)
 
-    dists, motiflets, elbow_points = plot_elbow_by_dimension(
-        k_max,
-        df,
-        dimension_labels=df.index,
-        ds_name=ds_name,
-        elbow_deviation=1.25,
-        slack=1.0,
-        motif_length=motif_length)
+    ml = Motiflets(ds_name, df,
+                   elbow_deviation=1.25,
+                   slack=1.0,
+                   dimension_labels=df.index
+                   )
 
-    # mode = st.mode(np.concatenate(elbow_points).ravel(), axis=None)[0][0]
-    series = np.zeros((df.shape[0], df.shape[1] - motif_length), dtype=np.float32)
-    for i in range(series.shape[0]):
-        for pos in motiflets[i, 2]:  # elbow_points[i][-1]
-            series[i, pos:pos + motif_length] = 1
-
-    X = series
-
-    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    Z = sch.linkage(X, method='single')
-
-    # creating the dendrogram
-    _ = sch.dendrogram(
-        Z, labels=df.index, ax=ax)
-
-    ax.set_title('Dendrogram')
-    ax.set_xlabel('Dimensions')
-    ax.set_ylabel('Euclidean distances')
-    plt.tight_layout()
-    plt.show()
-
-    cluster_k = 3
-    y_dimensions = sch.fcluster(Z, cluster_k, criterion='maxclust')
-    mapping = list(zip(y_dimensions, df.index))
-
-    joint_clusters = {}
-    for i in range(1, cluster_k + 1):
-        print("Cluster", i)
-        joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
-        print(joint_clusters[i])
-        print("----")
-
+    ml.fit_dendrogram(k_max, motif_length, n_clusters=3)
 
 def test_audio():
     audio_length_seconds, df, index_range = read_songs()

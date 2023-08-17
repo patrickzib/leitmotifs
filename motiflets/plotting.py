@@ -14,6 +14,7 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import zscore
+import scipy.cluster.hierarchy as sch
 
 import motiflets.motiflets as ml
 
@@ -100,6 +101,51 @@ class Motiflets:
         )
 
         return self.dists, self.motiflets, self.elbow_points
+
+    def fit_dendrogram(
+            self,
+            k_max,
+            motif_length,
+            n_clusters
+    ):
+
+        dists, motiflets, elbow_points = plot_elbow_by_dimension(
+            k_max, self.series,
+            dimension_labels=self.dimension_labels,
+            ds_name=self.ds_name,
+            motif_length=motif_length,
+            elbow_deviation=self.elbow_deviation,
+            slack=self.slack
+        )
+
+        series = np.zeros((self.series.shape[0], self.series.shape[1] - motif_length),
+                          dtype=np.float32)
+        for i in range(series.shape[0]):
+            for pos in motiflets[i, elbow_points[i][-1]]:
+                series[i, pos:pos + motif_length] = 1
+        X = series
+        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+        Z = sch.linkage(X, method='single')
+
+        # creating the dendrogram
+        _ = sch.dendrogram(Z, labels=self.dimension_labels, ax=ax)
+
+        ax.set_title('Dendrogram')
+        ax.set_xlabel('Dimensions')
+        ax.set_ylabel('Euclidean distances')
+        plt.tight_layout()
+        plt.show()
+
+        cluster_k = n_clusters
+        y_dimensions = sch.fcluster(Z, cluster_k, criterion='maxclust')
+        mapping = list(zip(y_dimensions, self.dimension_labels))
+
+        joint_clusters = {}
+        for i in range(1, cluster_k + 1):
+            print("Cluster", i)
+            joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
+            print(joint_clusters[i])
+            print("----")
 
     def plot_dataset(self, path=None):
         fig, ax = plot_dataset(self.ds_name, self.series, show=path is None)

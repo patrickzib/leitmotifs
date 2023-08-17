@@ -108,43 +108,10 @@ def test_dendrogram():
     k_max = 60
     motif_length = 22
 
-    dists, motiflets, elbow_points = plot_elbow_by_dimension(
-        k_max, df,
-        dimension_labels=df.index,
-        ds_name=ds_name,
-        motif_length=motif_length)
+    ml = Motiflets(ds_name, df,
+                   elbow_deviation=1.25,
+                   slack=1.0,
+                   dimension_labels=df.index
+                   )
 
-    series = np.zeros((df.shape[0], df.shape[1] - motif_length),
-                      dtype=np.float32)
-    for i in range(series.shape[0]):
-        for pos in motiflets[i, elbow_points[i][-1]]:
-            series[i, pos:pos + motif_length] = 1
-
-    X = series
-
-    # size of image
-    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-
-    Z = sch.linkage(X, method='ward')
-
-    # creating the dendrogram
-    dend = sch.dendrogram(
-        Z, labels=df.index, ax=ax)
-
-    plt.axhline(y=127.5, color='orange')
-    ax.set_title('Dendrogram')
-    ax.set_xlabel('Dimensions')
-    ax.set_ylabel('Euclidean distances')
-    plt.tight_layout()
-    plt.show()
-
-    k = 2
-    y_dimensions = sch.fcluster(Z, k, criterion='maxclust')
-    mapping = list(zip(y_dimensions, df.index))
-
-    joint_clusters = {}
-    for i in range(1, k + 1):
-        print("Cluster", i)
-        joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
-        print(joint_clusters[i])
-        print("----")
+    ml.fit_dendrogram(k_max, motif_length, n_clusters=2)
