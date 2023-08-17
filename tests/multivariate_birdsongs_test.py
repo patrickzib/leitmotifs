@@ -32,7 +32,7 @@ datasets = {
 }
 
 dataset = datasets["House-Sparrow"]
-ks = dataset["ks"]
+k_max = dataset["ks"]
 channels = dataset["channels"]
 length_range = dataset["length_range"]
 ds_name = dataset["ds_name"]
@@ -54,12 +54,75 @@ def read_bird_song():
     return df, index_range
 
 
+def _extract_audio_segment(channels, index_range, length_in_seconds, motiflet):
+    song = AudioSegment.from_mp3(audio_file_url)
+    for a, motif in enumerate(motiflet):
+        start = (index_range[motif]) * 1000  # ms
+        end = start + length_in_seconds * 1000  # ms
+        motif_audio = song[start:end]
+        motif_audio.export('audio/bird_songs/' + ds_name +
+                           "_Channel_" + str(channels) +
+                           "_Motif_" + str(a) + '.wav', format="wav")
+
+
+def test_audio():
+    # channels = ['MFCC 1', 'MFCC 2']
+    channels = ['MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
+    df, index_range = read_bird_song()
+    df = df.loc[channels]
+
+    ml = Motiflets(ds_name, df,
+                   slack=1.0,
+                   dimension_labels=df.index
+                   )
+
+    motif_length, all_minima = ml.fit_motif_length(k_max, length_range)
+    length_in_seconds = index_range[motif_length]
+    print("Best length", motif_length, length_in_seconds, "s")
+
+    # length_in_seconds = 2.2
+    # motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
+    # print(motif_length)
+
+    dists, motiflets, elbow_points = ml.fit_k_elbow(
+        k_max, motif_length=motif_length,
+        plot_elbows=True,
+        plot_motifs_as_grid=False
+    )
+
+    path_ = ("audio/bird_songs/" + ds_name +
+             "_Channels_" + str(len(df.index)) +
+             "_full.pdf")
+    ml.plot_dataset(path_)
+
+    # best motiflet
+    motiflet = np.sort(motiflets[elbow_points[-1]])
+    print("Positions:", index_range[motiflet])
+
+    ml.plot_motifset()
+
+    # plot_motifset(
+    #     ds_name,
+    #     df.iloc[:, : min(np.max(motiflet) + 2 * motif_length, df.shape[1])],
+    #     motifset=motiflet,
+    #     dist=dists[elbow_points[0]],
+    #     motif_length=motif_length,
+    #     show=False)
+
+    plt.savefig(
+        "audio/bird_songs/" + ds_name + "_Channels_" + str(
+            len(df.index)) + "_Motif.pdf")
+    plt.show()
+
+    _extract_audio_segment(channels, index_range, length_in_seconds, motiflet)
+
+
 def test_dendrogram():
     df, index_range = read_bird_song()
     df = df.iloc[0:channels]
 
     motif_length, all_minima = plot_motif_length_selection(
-        ks,
+        k_max,
         df,
         length_range,
         ds_name,
@@ -71,7 +134,7 @@ def test_dendrogram():
     print("Best length", motif_length, length_in_seconds, "s")
 
     dists, motiflets, elbow_points = plot_elbow_by_dimension(
-        ks,
+        k_max,
         df,
         dimension_labels=df.index,
         ds_name=ds_name,
@@ -108,87 +171,3 @@ def test_dendrogram():
         joint_clusters[i] = [x[1] for x in mapping if x[0] == i]
         print(joint_clusters[i])
         print("----")
-
-
-def test_audio():
-    # channels = ['MFCC 1', 'MFCC 2']
-    channels = ['MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
-    df, index_range = read_bird_song()
-    df = df.loc[channels]
-
-    motif_length, all_minima = plot_motif_length_selection(
-        ks,
-        df,
-        length_range,
-        ds_name,
-        slack=1.0
-    )
-    length_in_seconds = index_range[motif_length]
-    print("Best length", motif_length, length_in_seconds, "s")
-
-    # length_in_seconds = 2.2
-    # motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
-    # print(motif_length)
-
-    dists, motiflets, elbow_points = plot_elbow(
-        ks,
-        df,
-        ds_name=ds_name,
-        slack=1.0,
-        plot_elbows=True,
-        plot_grid=False,
-        dimension_labels=df.index,
-        motif_length=motif_length)
-
-    plot_dataset(
-        ds_name,
-        df,
-        show=False)
-
-    plt.savefig(
-       "audio/bird_songs/" + ds_name + "_Channels_" + str(len(df.index)) + "_full.pdf")
-    plt.show()
-
-
-    # dists, motiflets, elbow_points, motif_length = ml.search_k_motiflets_elbow(
-    #    ks,
-    #    df.values,
-    #    motif_length=motif_length,
-    #    # elbow_deviation=1.25,
-    #    slack=1.0,
-    # )
-
-    # best motiflet
-    motiflet = np.sort(motiflets[elbow_points[-1]])
-    print("Positions:", index_range[motiflet])
-
-    # plot_motiflet(
-    #    df,
-    #    motiflet,
-    #    motif_length,
-    #    title=ds_name
-    # )
-    # plt.tight_layout()
-    # plt.savefig("audio/snippets/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
-    # plt.show()
-
-    plot_motifset(
-        ds_name,
-        df.iloc[:, : min(np.max(motiflet) + 2 * motif_length, df.shape[1])],
-        motifset=motiflet,
-        dist=dists[elbow_points[0]],
-        motif_length=motif_length,
-        show=False)
-
-    plt.savefig(
-       "audio/bird_songs/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
-    plt.show()
-
-    song = AudioSegment.from_mp3(audio_file_url)
-    for a, motif in enumerate(motiflet):
-        start = (index_range[motif]) * 1000  # ms
-        end = start + length_in_seconds * 1000  # ms
-        motif_audio = song[start:end]
-        motif_audio.export('audio/bird_songs/' + ds_name +
-                           "_Channel_" + str(channels) +
-                           "_Motif_" + str(a) + '.wav', format="wav")

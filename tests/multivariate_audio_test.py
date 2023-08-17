@@ -1,6 +1,7 @@
 from audio.lyrics import *
 from pydub import AudioSegment
 import scipy.cluster.hierarchy as sch
+from scipy import stats as st
 
 # import matplotlib
 # matplotlib.use('macosx')
@@ -39,7 +40,7 @@ datasets = {
 }
 
 dataset = datasets["The Rolling Stones - Paint It, Black"]
-ks = dataset["ks"]
+k_max = dataset["ks"]
 channels = dataset["channels"]
 length_in_seconds = dataset["length_in_seconds"]
 ds_name = dataset["ds_name"]
@@ -69,22 +70,24 @@ def test_dendrogram():
     print(motif_length)
 
     dists, motiflets, elbow_points = plot_elbow_by_dimension(
-        ks,
+        k_max,
         df,
         dimension_labels=df.index,
         ds_name=ds_name,
+        elbow_deviation=1.25,
         slack=1.0,
         motif_length=motif_length)
 
+    # mode = st.mode(np.concatenate(elbow_points).ravel(), axis=None)[0][0]
     series = np.zeros((df.shape[0], df.shape[1] - motif_length), dtype=np.float32)
     for i in range(series.shape[0]):
-        for pos in motiflets[i, elbow_points[i][-1]]:
+        for pos in motiflets[i, 2]:  # elbow_points[i][-1]
             series[i, pos:pos + motif_length] = 1
 
     X = series
 
     fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    Z = sch.linkage(X, method='ward')
+    Z = sch.linkage(X, method='single')
 
     # creating the dendrogram
     _ = sch.dendrogram(
@@ -116,6 +119,7 @@ def test_audio():
     # channels = ['MFCC 2', 'MFCC 3']  ## hmm
     # channels = ['MFCC 4', 'MFCC 5']
     # channels = ['MFCC 1', 'MFCC 5', 'MFCC 4']
+    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
     df = df.loc[channels]
 
     motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
@@ -125,75 +129,56 @@ def test_audio():
     df_sub = get_dataframe_from_subtitle_object(subtitles)
     df_sub.set_index("seconds", inplace=True)
 
-    motif_length_range_in_s = np.arange(3, 6, 0.1)
+    motif_length_range_in_s = np.arange(4, 6, 0.1)
     motif_length_range = np.int32(motif_length_range_in_s /
                                   audio_length_seconds * df.shape[1])
-    best_motif_length, all_minima = plot_motif_length_selection(
-        ks, df, motif_length_range, ds_name,
-        elbow_deviation=1.25,
-        slack=1.0,
-        subsample=2)
+
+    ml = Motiflets(ds_name, df,
+                   elbow_deviation=1.25,
+                   slack=1.0,
+                   dimension_labels=df.index
+                   )
+    ml.fit_motif_length(k_max, motif_length_range, subsample=2)
 
 
-    for m in all_minima:
-        """dists, motiflets, elbow_points, motif_length = ml.search_k_motiflets_elbow(
-            ks,
-            df.values,
+    # for m in all_minima:
+    """dists, motiflets, elbow_points, motif_length = ml.fit_k_elbow(
+            k_max,            
+            motif_length=motif_length,            
+    )"""
+
+    #    motif_length = motif_length_range[m]
+    #    motif_length_in_seconds = motif_length_range_in_s[m]
+    dists, motiflets, elbow_points = ml.fit_k_elbow(
+            k_max,
             motif_length=motif_length,
-            elbow_deviation=1.25
-        )"""
-        motif_length = motif_length_range[m]
-        motif_length_in_seconds = motif_length_range_in_s[m]
-        dists, motiflets, elbow_points = plot_elbow(
-            ks,
-            df,
-            ds_name=ds_name,
-            slack=1.0,
-            elbow_deviation=1.25,
-            plot_elbows=False,
-            plot_grid=False,
-            dimension_labels=df.index,
-            motif_length=motif_length)
+            plot_elbows=True,
+            plot_motifs_as_grid=True
+        )
 
-        # best motiflet
-        motiflet = np.sort(motiflets[elbow_points[-1]])
-        print("Positions:", index_range[motiflet])
+    # best motiflet
+    motiflet = np.sort(motiflets[elbow_points[-1]])
+    print("Positions:", index_range[motiflet])
 
-        lyrics = []
-        for i, m in enumerate(motiflet):
-            l = lookup_lyrics(df_sub, index_range[m], motif_length_in_seconds)
-            lyrics.append(l)
-            print(i + 1, l)
+    lyrics = []
+    for i, m in enumerate(motiflet):
+        l = lookup_lyrics(df_sub, index_range[m], length_in_seconds)
+        lyrics.append(l)
+        print(i + 1, l)
 
-        name = ds_name # + " " + lyrics[-1] + " (" + str(len(motiflet)) + "x)"
+    path_ = "audio/snippets/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf"
+    ml.plot_motifset(path_)
 
-        # plot_motiflet(
-        #     df,
-        #     motiflet,
-        #     motif_length,
-        #     title=lyrics[0]
-        # )
-        # plt.tight_layout()
-        # # plt.savefig("audio/snippets/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
-        # plt.show()
+    _extract_audio_segment(df, index_range, motif_length, motiflet)
 
-        plot_motifset(
-            name,
-            df,
-            motifset=motiflet,
-            dist=dists[elbow_points[0]],
-            motif_length=motif_length, show=False)
 
-        plt.savefig(
-            "audio/snippets/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
-        plt.show()
-
-        song = AudioSegment.from_wav(audio_file_url)
-        for a, motif in enumerate(motiflet):
-            start = (index_range[motif]) * 1000  # ms
-            end = start + motif_length_in_seconds * 1000  # ms
-            motif_audio = song[start:end]
-            motif_audio.export('audio/snippets/' + ds_name +
-                               "_Channels_" + str(len(df.index)) +
-                               "_Length_" + str(motif_length) +
-                               "_Motif_" + str(a) + '.wav', format="wav")
+def _extract_audio_segment(df, index_range, motif_length, motiflet):
+    song = AudioSegment.from_wav(audio_file_url)
+    for a, motif in enumerate(motiflet):
+        start = (index_range[motif]) * 1000  # ms
+        end = start + length_in_seconds * 1000  # ms
+        motif_audio = song[start:end]
+        motif_audio.export('audio/snippets/' + ds_name +
+                           "_Channels_" + str(len(df.index)) +
+                           "_Length_" + str(motif_length) +
+                           "_Motif_" + str(a) + '.wav', format="wav")

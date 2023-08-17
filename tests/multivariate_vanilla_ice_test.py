@@ -21,7 +21,7 @@ B_dataset = "Vanilla_Ice-Ice_Ice_Baby"
 
 datasets = [(A_dataset, A_ds_name), (B_dataset, B_ds_name)]
 
-ks = 25
+k_max = 25
 length_in_seconds = 3.4  # in seconds
 
 
@@ -59,7 +59,7 @@ def test_dendrogram():
         print("Best length", motif_length, length_in_seconds, "s")
 
         dists, motiflets, elbow_points = plot_elbow_by_dimension(
-            ks,
+            k_max,
             df,
             dimension_labels=df.index,
             ds_name=ds_name,
@@ -99,7 +99,6 @@ def test_dendrogram():
 
 def test_audio():
     for dataset, ds_name in datasets:
-
         audio_file_url = path + dataset + ".mp3"
         audio_length_seconds, df, index_range = read_mp3(audio_file_url)
         channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3']
@@ -108,34 +107,26 @@ def test_audio():
         motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
         print(motif_length, length_in_seconds, "s")
 
-        dists, motiflets, elbow_points = plot_elbow(
-            ks,
-            df,
-            ds_name=ds_name,
-            slack=0.9,
-            # elbow_deviation=1.25,
+        ml = Motiflets(ds_name, df,
+                       # elbow_deviation=1.25,
+                       slack=0.9,
+                       dimension_labels=df.index
+                       )
+
+        dists, motiflets, elbow_points = ml.fit_k_elbow(
+            k_max,
             plot_elbows=True,
-            plot_grid=False,
-            dimension_labels=df.index,
+            plot_motifs_as_grid=False,
             motif_length=motif_length)
 
         # best motiflet
         motiflet = np.sort(motiflets[elbow_points[-1]])
         print("Positions:", index_range[motiflet])
 
-        name = ds_name
-
-        plot_motifset(
-            name,
-            df,
-            motifset=motiflet,
-            dist=dists[elbow_points[0]],
-            motif_length=motif_length, show=False)
-
-        plt.savefig(
-            "audio/snippets/" + ds_name + "_Channels_" + str(
-                len(df.index)) + "_Motif.pdf")
-        plt.show()
+        path_ = "audio/snippets/" + ds_name + \
+                "_Channels_" + str(len(df.index)) + \
+                "_Motif.pdf"
+        ml.plot_motifset(path_)
 
         song = AudioSegment.from_mp3(audio_file_url)
         for a, motif in enumerate(motiflet):
@@ -148,7 +139,7 @@ def test_audio():
 
 
 def test_consensus():
-    ks = 40
+    k_max = 40
 
     df_consensus = None
     audio_length_seconds = 0
@@ -169,30 +160,26 @@ def test_consensus():
     motif_length = 120  # int(length_in_seconds / audio_length_seconds * df.shape[1])
     print(motif_length, length_in_seconds, "s")
 
-    dists, motiflets, elbow_points = plot_elbow(
-        ks,
-        df,
-        ds_name=ds_name,
+    ml = Motiflets(ds_name, df,
+                   # elbow_deviation=1.25,
+                   slack=0.9,
+                   dimension_labels=df.index,
+                   )
+
+    dists, motiflets, elbow_points = ml.fit_k_elbow(
+        k_max,
+        motif_length=motif_length,
         slack=0.9,
         plot_elbows=True,
-        plot_grid=False,
-        dimension_labels=df.index,
-        motif_length=motif_length)
+        plot_grid=False)
 
     # best motiflet
     motiflet = np.sort(motiflets[elbow_points[-1]])
     print("Positions:", motiflet)
 
-    plot_motifset(
-        ds_name,
-        df,
-        motifset=motiflet,
-        dist=dists[elbow_points[0]],
-        motif_length=motif_length, show=False)
-
-    plt.savefig(
-        "audio/snippets/queen-vanilla-ice/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
-    plt.show()
+    path_ = "audio/snippets/queen-vanilla-ice/" + ds_name + "_Channels_" + str(
+        len(df.index)) + "_Motif.pdf"
+    ml.plot_motifset(path_)
 
     # song = AudioSegment.from_mp3(audio_file_url)
     # for a, motif in enumerate(motiflet):

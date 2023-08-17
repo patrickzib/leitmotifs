@@ -68,7 +68,7 @@ def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
             zs = [child.coordinate[2, 0], parent.coordinate[2, 0]]
 
             color = 'r' if (child.name in joints_to_highlight) and (
-                        parent.name in joints_to_highlight) else 'b'
+                    parent.name in joints_to_highlight) else 'b'
             ax.plot(zs, xs, ys, color)
 
 
@@ -125,7 +125,7 @@ datasets = {
 }
 
 dataset = datasets["Charleston-Fancy"]
-ks = dataset["ks"]
+k_max = dataset["ks"]
 motif_length = dataset["motif_length"]
 amc_name = dataset["amc_name"]
 asf_path = dataset["asf_path"]
@@ -155,7 +155,7 @@ use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist',
 # use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 
-def test_plot_length_selection():
+def test_plotting():
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
 
@@ -169,26 +169,38 @@ def test_plot_length_selection():
 
     series = df.values
 
-    length_range = list(range(10, 200, 10))
+    length_range = np.arange(10, 200, 10)
     print(length_range)
 
-    m, all_minima = plot_motif_length_selection(
-        ks,
-        series,
-        ds_name=amc_name,
-        motif_length_range=length_range,
-        slack=1.0)
+    ml = Motiflets(amc_name, series,
+                   # elbow_deviation=1.25,
+                   slack=1.0,
+                   dimension_labels=df.index
+                   )
+
+    m, all_minima = ml.fit_motif_length(k_max, length_range, subsample=1)
 
     print("----")
     print("Best length", m)
     print("----")
 
+    dists, motiflets, elbow_points = ml.fit_k_elbow(
+        k_max,
+        plot_elbows=True,
+        motif_length=motif_length)
+
+    print("----")
+    print(dists)
+    print(elbow_points)
+    print(list(motiflets[elbow_points]))
+    print("----")
+
 
 def test_motion_capture():
-    generate_motion_capture(use_joints)
+    _generate_motion_capture(use_joints)
 
 
-def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
+def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
 
@@ -200,18 +212,15 @@ def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     print("Used joints:", joints_to_use)
     series = df.values
 
-    # dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
-    #    ks,
-    #    series,
-    #    slack=0.5,
-    #    motif_length=motif_length)
+    ml = Motiflets(amc_name, series,
+                   # elbow_deviation=1.25,
+                   slack=0.5,
+                   dimension_labels=df.index
+                   )
 
-    dists, candidates, elbow_points = plot_elbow(
-        ks, series,
-        ds_name=amc_name,
-        slack=0.5,
+    dists, candidates, elbow_points = ml.fit_k_elbow(
+        k_max,
         plot_elbows=True,
-        dimension_labels=df.index,
         motif_length=motif_length)
 
     print("----")
@@ -220,19 +229,11 @@ def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     print(list(candidates[elbow_points]))
     print("----")
 
-    plot_motifset(
-        amc_name,
-        df,
-        motifset=candidates[elbow_points[0]],
-        dist=dists[elbow_points[0]],
-        motif_length=motif_length, show=False)
-
-    plt.savefig(
-        "video/motiflet_" + amc_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf")
-    plt.show()
+    path_ = "video/motiflet_" + amc_name + "_Channels_" + str(
+        len(df.index)) + "_Motif.pdf"
+    ml.plot_motifset(path_)
 
     motiflets = candidates[elbow_points]
-
     if add_xyz:
         filtered_joints = joints_to_use
     else:
@@ -259,55 +260,7 @@ def generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
                 fps=20)
 
 
-def tests():
-    joints = amc_parser.parse_asf(asf_path)
-    motions = amc_parser.parse_amc(amc_path)
-
-    df = pd.DataFrame(
-        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-    df = exclude_body_joints(df)
-    df = include_joints(df, use_joints)
-
-    print("Used joints:", use_joints)
-    series = df.values
-    D_ = ml.compute_distances_full_mv(series, m=100, slack=1.0)
-
-    dim = 12
-    best = np.argpartition(D_, dim, axis=0)[:dim]
-    D_ = np.take_along_axis(D_, best, axis=0)
-    print(best.shape)
-
-    print("done")
-
-
-def test_plotting():
-    joints = amc_parser.parse_asf(asf_path)
-    motions = amc_parser.parse_amc(amc_path)
-
-    df = pd.DataFrame(
-        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-    df = exclude_body_joints(df)
-    df = include_joints(df, use_joints)
-
-    print("Used joints:", use_joints)
-    series = df.values
-
-    dists, motiflets, elbow_points = plot_elbow(
-        ks, series,
-        ds_name=amc_name,
-        slack=0.5,
-        plot_elbows=True,
-        dimension_labels=df.index,
-        motif_length=motif_length)
-
-    print("----")
-    print(dists)
-    print(elbow_points)
-    print(list(motiflets[elbow_points]))
-    print("----")
-
-
-def test_dimension_plotting():
+def test_dendrogram():
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
 
@@ -321,7 +274,7 @@ def test_dimension_plotting():
     series = df.values
 
     dists, motiflets, elbow_points = plot_elbow_by_dimension(
-        ks, series,
+        k_max, series,
         dimension_labels=df.index,
         ds_name=amc_name,
         slack=0.5,
@@ -363,5 +316,5 @@ def test_dimension_plotting():
         print(joint_clusters[i])
         print("----")
 
-        # generate_motion_capture(joint_clusters[i],
+        # _generate_motion_capture(joint_clusters[i],
         #                        prefix="Cluster" + str(i), add_xyz=False)
