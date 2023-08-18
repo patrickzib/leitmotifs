@@ -1,12 +1,6 @@
-from audio.lyrics import *
-from pydub import AudioSegment
-import scipy.cluster.hierarchy as sch
-from scipy import stats as st
-
-# import matplotlib
-# matplotlib.use('macosx')
-
 import matplotlib as mpl
+
+from audio.lyrics import *
 
 mpl.rcParams['figure.dpi'] = 300
 
@@ -77,6 +71,7 @@ def test_dendrogram():
 
     ml.fit_dendrogram(k_max, motif_length, n_clusters=3)
 
+
 def test_audio():
     audio_length_seconds, df, index_range = read_songs()
 
@@ -106,7 +101,6 @@ def test_audio():
                    )
     ml.fit_motif_length(k_max, motif_length_range, subsample=2)
 
-
     # for m in all_minima:
     """dists, motiflets, elbow_points, motif_length = ml.fit_k_elbow(
             k_max,            
@@ -116,11 +110,11 @@ def test_audio():
     #    motif_length = motif_length_range[m]
     #    motif_length_in_seconds = motif_length_range_in_s[m]
     dists, motiflets, elbow_points = ml.fit_k_elbow(
-            k_max,
-            motif_length=motif_length,
-            plot_elbows=True,
-            plot_motifs_as_grid=True
-        )
+        k_max,
+        motif_length=motif_length,
+        plot_elbows=True,
+        plot_motifs_as_grid=False
+    )
 
     # best motiflet
     motiflet = np.sort(motiflets[elbow_points[-1]])
@@ -132,19 +126,10 @@ def test_audio():
         lyrics.append(l)
         print(i + 1, l)
 
-    path_ = "audio/snippets/" + ds_name + "_Channels_" + str(len(df.index)) + "_Motif.pdf"
+    path_ = "audio/snippets/" + ds_name + "_Channels_" + str(
+        len(df.index)) + "_Motif.pdf"
     ml.plot_motifset(path_)
 
-    _extract_audio_segment(df, index_range, motif_length, motiflet)
-
-
-def _extract_audio_segment(df, index_range, motif_length, motiflet):
-    song = AudioSegment.from_wav(audio_file_url)
-    for a, motif in enumerate(motiflet):
-        start = (index_range[motif]) * 1000  # ms
-        end = start + length_in_seconds * 1000  # ms
-        motif_audio = song[start:end]
-        motif_audio.export('audio/snippets/' + ds_name +
-                           "_Channels_" + str(len(df.index)) +
-                           "_Length_" + str(motif_length) +
-                           "_Motif_" + str(a) + '.wav', format="wav")
+    extract_audio_segment(
+        df, ds_name, audio_file_url, "snippets",
+        length_in_seconds, index_range, motif_length, motiflet)

@@ -1,7 +1,43 @@
+import audioread
 import librosa
 import pylrc
+from pydub import AudioSegment
 
 from motiflets.plotting import *
+
+
+def read_mp3(audio_file_url):
+    # Read audio from wav file
+    aro = audioread.ffdec.FFmpegAudioFile(audio_file_url)
+    x, sr = librosa.load(aro, mono=True)
+    mfcc_f = librosa.feature.mfcc(y=x, sr=sr)
+    audio_length_seconds = librosa.get_duration(filename=audio_file_url)
+    print("Length:", sr, "in seconds", audio_length_seconds, "s")
+    index_range = np.arange(0, mfcc_f.shape[1]) * audio_length_seconds / mfcc_f.shape[1]
+    df = pd.DataFrame(mfcc_f,
+                      index=["MFCC " + str(a) for a in np.arange(0, mfcc_f.shape[0])],
+                      columns=index_range)
+    df.index.name = "MFCC"
+    return audio_length_seconds, df, index_range
+
+
+def extract_audio_segment(
+        df, ds_name, audio_file_url, export_file_url,
+        length_in_seconds, index_range, motif_length, motiflet):
+    file_type = audio_file_url.split(".")[-1]
+    if file_type == "wav":
+        song = AudioSegment.from_wav(audio_file_url)
+    else:
+        song = AudioSegment.from_mp3(audio_file_url)
+
+    for a, motif in enumerate(motiflet):
+        start = (index_range[motif]) * 1000  # ms
+        end = start + length_in_seconds * 1000  # ms
+        motif_audio = song[start:end]
+        motif_audio.export('audio/' + export_file_url + '/' + ds_name +
+                           "_Channels_" + str(len(df.index)) +
+                           "_Length_" + str(motif_length) +
+                           "_Motif_" + str(a) + '.wav', format="wav")
 
 
 def plot_motiflet(series, motiflet, motif_length, title=None):

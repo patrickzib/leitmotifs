@@ -1,13 +1,6 @@
-import audioread
-import librosa
 import matplotlib as mpl
-import scipy.cluster.hierarchy as sch
-from pydub import AudioSegment
 
 from audio.lyrics import *
-
-# import matplotlib
-# matplotlib.use('macosx')
 
 mpl.rcParams['figure.dpi'] = 300
 
@@ -25,33 +18,12 @@ k_max = 25
 length_in_seconds = 3.4  # in seconds
 
 
-def read_mp3(audio_file_url):
-    # Read audio from wav file
-    aro = audioread.ffdec.FFmpegAudioFile(audio_file_url)
-    x, sr = librosa.load(aro, mono=True)
-    mfcc_f = librosa.feature.mfcc(y=x, sr=sr)
-    audio_length_seconds = librosa.get_duration(filename=audio_file_url)
-    print("Length:", sr, "in seconds", audio_length_seconds, "s")
-    index_range = np.arange(0, mfcc_f.shape[1]) * audio_length_seconds / mfcc_f.shape[1]
-    df = pd.DataFrame(mfcc_f,
-                      index=["MFCC " + str(a) for a in np.arange(0, mfcc_f.shape[0])],
-                      columns=index_range)
-    df.index.name = "MFCC"
-    return audio_length_seconds, df, index_range
-
-
 def test_dendrogram():
     for dataset, ds_name in datasets:
         audio_file_url = path + dataset + ".mp3"
         audio_length_seconds, df, index_range = read_mp3(audio_file_url)
         df = df.iloc[:10]
 
-        # motif_length = plot_motif_length_selection(
-        #    ks,
-        #    df,
-        #    np.arange(100, 200, 10),
-        #    ds_name,
-        #
         motif_length = 200
 
         length_in_seconds = index_range[motif_length]
@@ -97,14 +69,9 @@ def test_audio():
                 "_Motif.pdf"
         ml.plot_motifset(path_)
 
-        song = AudioSegment.from_mp3(audio_file_url)
-        for a, motif in enumerate(motiflet):
-            start = (index_range[motif]) * 1000  # ms
-            end = start + length_in_seconds * 1000  # ms
-            motif_audio = song[start:end]
-            motif_audio.export('audio/snippets/queen-vanilla-ice/' + ds_name +
-                               # "_Channels_" + str(len(df.index)) +
-                               "_Motif_" + str(a) + '.wav', format="wav")
+        extract_audio_segment(
+            df, ds_name, audio_file_url, "snippets/queen-vanilla-ice",
+            length_in_seconds, index_range, motif_length, motiflet)
 
 
 def test_consensus():
@@ -150,11 +117,6 @@ def test_consensus():
         len(df.index)) + "_Motif.pdf"
     ml.plot_motifset(path_)
 
-    # song = AudioSegment.from_mp3(audio_file_url)
-    # for a, motif in enumerate(motiflet):
-    #    start = (index_range[motif]) * 1000  # ms
-    #    end = start + length_in_seconds * 1000  # ms
-    #    motif_audio = song[start:end]
-    #    motif_audio.export('audio/snippets/queen-vanilla-ice/' + ds_name +
-    #                       # "_Channels_" + str(len(df.index)) +
-    #                       "_Motif_" + str(a) + '.wav', format="wav")
+    # extract_audio_segment(
+    #     df, ds_name, audio_file_url, "snippets/queen-vanilla-ice",
+    #     length_in_seconds, index_range, motif_length, motiflet)

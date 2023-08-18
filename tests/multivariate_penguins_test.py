@@ -103,7 +103,7 @@ def test_dendrogram():
     length = 1000
     B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
     ds_name = "Penguins (Longer Snippet)"
-    df = B.iloc[497699: 497699 + length, 0:9].T
+    df = B.iloc[497699: 497699 + length, 0:7].T
 
     k_max = 60
     motif_length = 22

@@ -23,6 +23,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 
 class Motiflets:
+
     def __init__(
             self,
             ds_name,
@@ -56,6 +57,7 @@ class Motiflets:
             subsample=2,
             plot=True
     ):
+
         self.motif_length_range = motif_length_range
         self.k_max = k_max
 
@@ -121,9 +123,10 @@ class Motiflets:
         series = np.zeros((self.series.shape[0], self.series.shape[1] - motif_length),
                           dtype=np.float32)
         for i in range(series.shape[0]):
-            for pos in motiflets[i, elbow_points[i][-1]]:
-                series[i, pos:pos + motif_length] = 1
+            for pos in motiflets[i, elbow_points[i][-1]]:  #
+                series[i, max(0, pos-motif_length):min(pos + 2*motif_length, series.shape[1])] = 1
         X = series
+
         fig, ax = plt.subplots(1, 1, figsize=(12, 8))
         Z = sch.linkage(X, method='single')
 
