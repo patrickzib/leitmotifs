@@ -100,7 +100,7 @@ def test_fnirs():
     df = pd.DataFrame(series).T
 
     k_max = 40
-    length_range = np.arange(20, 200, 10)
+    length_range = np.arange(20, 200, 5)
 
     ml = Motiflets(ds_name=ds_name, series=df)
     ml.plot_dataset()
@@ -114,3 +114,28 @@ def test_fnirs():
                        plot_motifs_as_grid=False)
 
         ml.plot_motifset()
+
+
+def test_insects():
+    ds_name = "Insect"
+    data = pd.read_csv("../datasets/experiments/insect.csv",
+                       squeeze=True)
+    print("Dataset Original Length n: ", len(data))
+    data, factor = mof._resample(data[:100000], sampling_factor=25000)
+    data[:] = zscore(data)
+    df = pd.DataFrame(data).T
+
+    ml = Motiflets(ds_name=ds_name, series=df)
+    ml.plot_dataset()
+
+    k_max = 10
+    length_range = np.arange(25, 125, 5)
+    best_motif_length, all_minima = ml.fit_motif_length(
+        k_max, length_range, subsample=1)
+
+    for motif_length in length_range[all_minima]:
+        ml.fit_k_elbow(k_max, motif_length,
+                       plot_elbows=False,
+                       plot_motifs_as_grid=True)
+
+        # ml.plot_motifset()
