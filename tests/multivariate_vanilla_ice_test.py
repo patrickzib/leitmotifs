@@ -45,8 +45,8 @@ def test_audio():
         channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3']
         df = df.loc[channels]
 
-        motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
-        print(motif_length, length_in_seconds, "s")
+        # motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
+        # print("Length:", motif_length, "(", length_in_seconds, "s)")
 
         ml = Motiflets(ds_name, df,
                        # elbow_deviation=1.25,
@@ -54,24 +54,31 @@ def test_audio():
                        dimension_labels=df.index
                        )
 
-        dists, motiflets, elbow_points = ml.fit_k_elbow(
-            k_max,
-            plot_elbows=True,
-            plot_motifs_as_grid=False,
-            motif_length=motif_length)
+        _, all_minima = ml.fit_motif_length(
+            k_max, np.arange(50, 200, 10), subsample=1)
 
-        # best motiflet
-        motiflet = np.sort(motiflets[elbow_points[-1]])
-        print("Positions:", index_range[motiflet])
+        for m in ml.motif_length_range[all_minima]:
+            dists, motiflets, elbow_points = ml.fit_k_elbow(
+                k_max,
+                plot_elbows=False,
+                plot_motifs_as_grid=False,
+                motif_length=m)
 
-        path_ = "audio/snippets/" + ds_name + \
-                "_Channels_" + str(len(df.index)) + \
-                "_Motif.pdf"
-        ml.plot_motifset(path_)
+            length_in_seconds = index_range[m]
 
-        extract_audio_segment(
-            df, ds_name, audio_file_url, "snippets/queen-vanilla-ice",
-            length_in_seconds, index_range, motif_length, motiflet)
+            # best motiflet
+            motiflet = np.sort(motiflets[elbow_points[-1]])
+            print("Positions:", index_range[motiflet])
+
+            path_ = "audio/snippets/" + ds_name + \
+                    "_Channels_" + str(len(df.index)) + \
+                    "_Length_" + str(m) + \
+                    "_Motif.pdf"
+            ml.plot_motifset(path_)
+
+            extract_audio_segment(
+                df, ds_name, audio_file_url, "snippets/queen-vanilla-ice",
+                length_in_seconds, index_range, m, motiflet)
 
 
 def test_consensus():

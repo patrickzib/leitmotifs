@@ -1,9 +1,5 @@
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 # from sklearn.cluster import AgglomerativeClustering
 # from yellowbrick.cluster import KElbowVisualizer
-import scipy.cluster.hierarchy as sch
 from matplotlib.animation import FuncAnimation
 
 import amc.amc_parser as amc_parser
@@ -124,7 +120,7 @@ datasets = {
     }
 }
 
-dataset = datasets["Charleston-Fancy"]
+dataset = datasets["Boxing"]
 k_max = dataset["ks"]
 motif_length = dataset["motif_length"]
 amc_name = dataset["amc_name"]
@@ -178,22 +174,32 @@ def test_plotting():
                    dimension_labels=df.index
                    )
 
-    m, all_minima = ml.fit_motif_length(k_max, length_range, subsample=1)
+    m, all_minima = ml.fit_motif_length(k_max, length_range, subsample=2)
 
-    print("----")
-    print("Best length", m)
-    print("----")
+    for motif_length in length_range[all_minima]:
+        dists, motiflets, elbow_points = ml.fit_k_elbow(
+            k_max,
+            plot_elbows=False,
+            plot_motifs_as_grid=True,
+            motif_length=motif_length)
 
-    dists, motiflets, elbow_points = ml.fit_k_elbow(
-        k_max,
-        plot_elbows=True,
-        motif_length=motif_length)
+        # ml.plot_motifset()
+        video = False
+        if video:
+            for i, pos in enumerate(motiflets[elbow_points[-1]]):
+                fig = plt.figure()
+                ax = plt.axes(projection='3d')
 
-    print("----")
-    print(dists)
-    print(elbow_points)
-    print(list(motiflets[elbow_points]))
-    print("----")
+                out_path = 'video/motiflet_' + amc_name + '_' + str(motif_length) + '_' \
+                           + str(i) + '_.gif'
+
+                FuncAnimation(fig,
+                              lambda i: draw_frame(ax, motions, joints, i,
+                                                   joints_to_highlight=use_joints),
+                              range(pos, pos + motif_length, 4)).save(
+                    out_path,
+                    bitrate=1000,
+                    fps=20)
 
 
 def test_motion_capture():

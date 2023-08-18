@@ -90,7 +90,7 @@ def test_audio():
     df_sub = get_dataframe_from_subtitle_object(subtitles)
     df_sub.set_index("seconds", inplace=True)
 
-    motif_length_range_in_s = np.arange(4, 6, 0.1)
+    motif_length_range_in_s = np.arange(4, 5.8, 0.1)
     motif_length_range = np.int32(motif_length_range_in_s /
                                   audio_length_seconds * df.shape[1])
 

@@ -37,9 +37,9 @@ def test_har():
         k_max = 50
         length_range = np.arange(40, 150, 1)
 
-        # motif_length, all_minima = ml.fit_motif_length(k_max, length_range)
+        motif_length, all_minima = ml.fit_motif_length(k_max, length_range, subsample=2)
 
-        motif_length = 50
+        # motif_length = 50
         ml.fit_k_elbow(
             k_max, motif_length=motif_length,
             plot_elbows=False, plot_motifs_as_grid=True

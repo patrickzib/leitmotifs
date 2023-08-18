@@ -53,8 +53,7 @@ def test_univariate():
         subsample=1)
 
     # motif_length = 22
-    for minimum in all_minima:
-        motif_length = motif_length_range[minimum]
+    for motif_length in motif_length_range[all_minima]:
         ml.fit_k_elbow(
             k_max,
             motif_length=motif_length,
@@ -63,6 +62,37 @@ def test_univariate():
         )
 
         ml.plot_motifset()
+
+def test_univariate_2():
+    length = 2000
+    ds_name, B = read_penguin_data()
+
+    series = B.iloc[497699:497699 + length, np.array([0])].T
+    ml = Motiflets(ds_name,
+                   series,
+                   elbow_deviation=1.1,
+                   # slack = 0.6
+                   )
+
+    k_max = 50
+    motif_length_range = np.arange(10, 60)
+
+    _, all_minima = ml.fit_motif_length(
+        k_max,
+        motif_length_range,
+        subsample=1
+    )
+
+    for motif_length in motif_length_range[all_minima]:
+        ml.fit_k_elbow(
+            k_max,
+            plot_elbows=False,
+            plot_motifs_as_grid=False,
+            motif_length=motif_length,
+        )
+
+        # path = "penguin/" + ds_name + "_start_" + str(start) + ".pdf"
+        ml.plot_motifset()  # path
 
 
 def test_multivariate():
