@@ -1,14 +1,6 @@
-import scipy.cluster.hierarchy as sch
-from audio.lyrics import *
-from pydub import AudioSegment
-
-import audioread
-import librosa
-
-# import matplotlib
-# matplotlib.use('macosx')
-
 import matplotlib as mpl
+
+from audio.lyrics import *
 
 mpl.rcParams['figure.dpi'] = 300
 

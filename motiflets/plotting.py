@@ -124,7 +124,8 @@ class Motiflets:
                           dtype=np.float32)
         for i in range(series.shape[0]):
             for pos in motiflets[i, elbow_points[i][-1]]:  #
-                series[i, max(0, pos-motif_length):min(pos + 2*motif_length, series.shape[1])] = 1
+                series[i, max(0, pos - motif_length):min(pos + 2 * motif_length,
+                                                         series.shape[1])] = 1
         X = series
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 8))
@@ -151,7 +152,11 @@ class Motiflets:
             print("----")
 
     def plot_dataset(self, path=None):
-        fig, ax = plot_dataset(self.ds_name, self.series, show=path is None)
+        fig, ax = plot_dataset(
+            self.ds_name,
+            self.series,
+            show=path is None,
+            ground_truth=self.ground_truth)
 
         if path is not None:
             plt.savefig(path)
@@ -335,18 +340,18 @@ def plot_motifset(
 
         for aaa, column in enumerate(ground_truth):
             for offsets in ground_truth[column]:
-                for pos, offset in enumerate(offsets):
+                for pos, off in enumerate(offsets):
                     if pos == 0:
-                        sns.lineplot(x=data_index[offset[0]: offset[1]],
-                                     y=dim_data_raw[offset[0]:offset[1]] + offset,
+                        sns.lineplot(x=data_index[off[0]: off[1]],
+                                     y=dim_data_raw[off[0]:off[1]] + offset,
                                      label=column,
                                      color=sns.color_palette("tab10")[(aaa + 1) % 10],
                                      ax=axes[0],
                                      ci=None, estimator=None
                                      )
                     else:
-                        sns.lineplot(x=data_index[offset[0]: offset[1]],
-                                     y=dim_data_raw[offset[0]:offset[1]] + offset,
+                        sns.lineplot(x=data_index[off[0]: off[1]],
+                                     y=dim_data_raw[off[0]:off[1]] + offset,
                                      color=sns.color_palette("tab10")[(aaa + 1) % 10],
                                      ax=axes[0],
                                      ci=None, estimator=None
@@ -692,10 +697,10 @@ def plot_motif_length_selection(
 
     # Find unique motif lengths (filters duplicates)
     # TODO best_motif_length can be missing!
-    # best = ml._filter_unique(np.arange(len(top_motiflets[all_minima])),
-    #                  top_motiflets[all_minima],
-    #                  np.max(motif_length_range[all_minima]))
-    # all_minima = all_minima[0][best]
+    best = ml._filter_unique(np.arange(len(top_motiflets[all_minima])),
+                     top_motiflets[all_minima],
+                     np.max(motif_length_range[all_minima]))
+    all_minima = [all_minima[0][best]]
 
     if plot:
         _plot_window_lengths(

@@ -1,5 +1,3 @@
-import matplotlib
-import scipy.cluster.hierarchy as sch
 import scipy.io as sio
 
 from motiflets.plotting import *

@@ -1,9 +1,6 @@
-import motiflets.motiflets as ml
-from motiflets.competitors import *
-from motiflets.plotting import *
-
-import subprocess
 import matplotlib
+
+from motiflets.plotting import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42

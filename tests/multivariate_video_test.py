@@ -1,5 +1,3 @@
-# from sklearn.cluster import AgglomerativeClustering
-# from yellowbrick.cluster import KElbowVisualizer
 from matplotlib.animation import FuncAnimation
 
 import amc.amc_parser as amc_parser

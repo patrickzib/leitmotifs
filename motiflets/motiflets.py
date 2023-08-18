@@ -890,7 +890,6 @@ def find_au_ef_motif_length(
 
     """
     # apply sampling for speedup only
-    # subsample = 2
     if data.ndim >= 2:
         data = data[:, ::subsample]
     else:
@@ -910,14 +909,14 @@ def find_au_ef_motif_length(
         if m < data.shape[-1]:
             au_efs[i], elbows[i], top_motiflets[i], _, approximate_pos \
                 = _inner_au_ef(
-                data, k_max, int(m / subsample),
+                data, k_max, m // subsample,
                 approximate_motiflet_pos=approximate_pos,
                 elbow_deviation=elbow_deviation,
                 slack=slack)
 
     au_efs = np.array(au_efs, dtype=np.float64)[::-1]
     elbows = elbows[::-1]
-    top_motiflets = top_motiflets[::-1]
+    top_motiflets = top_motiflets[::-1] * subsample
 
     # if no elbow can be found, ignore this part
     condition = np.argwhere(elbows == 0).flatten()
