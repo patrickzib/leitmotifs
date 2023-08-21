@@ -710,9 +710,12 @@ def plot_motif_length_selection(
 
     # Find unique motif lengths (filters neigboring minima)
     # TODO best_motif_length can be missing!
-    # best = ml._filter_unique(np.arange(len(top_motiflets[all_minima])),
-    #                 top_motiflets[all_minima],
-    #                 np.max(motif_length_range[all_minima]))
+    # best = ml._filter_unique(
+    #    np.arange(len(top_motiflets[all_minima])),
+    #    slope_ef[all_minima],
+    #    top_motiflets[all_minima],
+    #    np.max(motif_length_range[all_minima])
+    # )
     # all_minima = [all_minima[0][best]]
     all_minima = _filter_duplicate_window_sizes(au_ef, all_minima)
 
@@ -721,9 +724,9 @@ def plot_motif_length_selection(
             all_minima, au_ef, data_raw, ds_name, elbow, header, index,
             motif_length_range, top_motiflets)
 
-        _plot_window_lengths(
-            all_slope_maxima, slope_ef, data_raw, ds_name, elbow, header, index,
-            motif_length_range, top_motiflets)
+        #_plot_window_lengths(
+        #    all_slope_maxima, slope_ef, data_raw, ds_name, elbow, header, index,
+        #    motif_length_range, top_motiflets)
 
         for a in all_minima[0]:
             motif_length = motif_length_range[a]

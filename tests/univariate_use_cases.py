@@ -33,6 +33,22 @@ def test_ecg():
     #    # ml.plot_motifset()
 
 
+def test_vanilla_ice():
+    file = 'vanilla_ice.csv'
+    ds_name = "Vanilla Ice"
+    series, df_gt = mof.read_dataset_with_index(file)
+    df = pd.DataFrame(series).T
+
+    ml = Motiflets(ds_name=ds_name, series=df,
+                   # elbow_deviation=1.25,
+                   # slack=0.25,
+                   ground_truth=df_gt
+                   )
+    ml.plot_dataset()
+    k_max = 20
+    length_range = np.arange(50, 350, 25)
+    ml.fit_motif_length(k_max, length_range, subsample=1)
+
 
 def test_muscle_activation():
     file = 'muscle_activation.csv'
@@ -144,7 +160,7 @@ def test_insects():
     ml.plot_dataset()
 
     k_max = 10
-    length_range = np.arange(25, 125, 5)
+    length_range = np.arange(25, 125, 2)
     best_motif_length, all_minima = ml.fit_motif_length(
         k_max, length_range, subsample=2)
 
@@ -154,3 +170,21 @@ def test_insects():
     #                    plot_motifs_as_grid=True)
     #
     #     # ml.plot_motifset()
+
+
+def test_gait():
+    ds_name = "Gait"
+    data = pd.read_csv("../datasets/experiments/human_gait.txt",
+                       squeeze=True, header=None)
+    print("Dataset Original Length n: ", data.shape)
+    data[:] = zscore(data)
+    df = pd.DataFrame(data).T.iloc[[1, 2, 5]]
+
+    ml = Motiflets(ds_name=ds_name, series=df)
+    ml.plot_dataset()
+
+    k_max = 10
+    length_range = np.arange(25, 50, 1)
+    best_motif_length, all_minima = ml.fit_motif_length(
+        k_max, length_range, subsample=1)
+
