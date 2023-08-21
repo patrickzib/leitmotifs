@@ -699,7 +699,7 @@ def _check_unique(motifset_1, motifset_2, motif_length):
 
 
 # @njit(fastmath=True, cache=True)
-def _filter_unique(elbow_points, candidates, motif_length):
+def _filter_unique(elbow_points, slopes, candidates, motif_length):
     """Filters the list of candidate elbows for only the non-overlapping motifsets.
 
     This method applied a duplicate detection by filtering overlapping motif sets.
@@ -711,6 +711,8 @@ def _filter_unique(elbow_points, candidates, motif_length):
     ----------
     elbow_points : array-like
         List of possible k's for elbow-points.
+    slopes : array-like
+        Slope of each elbow_point
     candidates : 2d array-like
         List of motif sets for each k
     motif_length : int
@@ -720,9 +722,12 @@ def _filter_unique(elbow_points, candidates, motif_length):
     -------
     filtered_ebp : array-like
         The set of non-overlapping elbow points.
+    filtered_slopes : array-like
+        The corresponding slopes in the elbow-function
 
     """
     filtered_ebp = []
+    filtered_slope = []
     for i in range(len(elbow_points)):
         unique = True
         for j in range(i + 1, len(elbow_points)):
@@ -732,9 +737,10 @@ def _filter_unique(elbow_points, candidates, motif_length):
                 break
         if unique:
             filtered_ebp.append(elbow_points[i])
+            filtered_slope.append(slopes[i])
 
     # print("Elbows", filtered_ebp)
-    return np.array(filtered_ebp)
+    return np.array(filtered_ebp), np.array(filtered_slope)
 
 
 @njit(fastmath=True, cache=True)
@@ -756,6 +762,7 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
     Returns
     -------
     elbow_points : the elbow-points in the extent-function
+    slope : the slopes in the extent-function
     """
     elbow_points = set()
     elbow_points.add(2)  # required for numba to have a type
@@ -771,24 +778,28 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
             m2 = (dists[i] - dists[i - 1]) + 0.00001
 
             # avoid detecting elbows in near constant data
-            # TODO need to test this?
-            if (dists[i] > 0) and (dists[i + 1] / dists[i] > elbow_deviation):
+            if dists[i-1] == dists[i]:
+                peaks[i] = 0
+            elif (dists[i] > 0) and (dists[i + 1] / dists[i] > elbow_deviation):
                 peaks[i] = (m1 / m2)
 
     elbow_points = []
-
+    slope = []
+    peaks_copy = np.copy(peaks)
     while True:
         p = np.argmax(peaks)
         if peaks[p] > alpha:
             elbow_points.append(p)
+            slope.append(peaks[p])
             peaks[p - 1:p + 2] = 0
         else:
             break
 
     if len(elbow_points) == 0:
         elbow_points.append(2)
+        slope.append(0)
 
-    return np.sort(np.array(list(set(elbow_points))))
+    return np.sort(np.array(list(set(elbow_points)))), slope
 
 
 def _inner_au_ef(data, k_max, m,
@@ -818,6 +829,8 @@ def _inner_au_ef(data, k_max, m,
     Tuple
         au_efs : float
             Area under the EF
+        slope_efs : float
+            The slope of the EF
         elbows : array-like
             Largest k (largest elbow) found
         top_motiflet:
@@ -826,10 +839,11 @@ def _inner_au_ef(data, k_max, m,
             Distances for each k in the given interval
 
     """
-    dists, candidates, elbow_points, _ = search_k_motiflets_elbow(
+    dists, candidates, elbow_points, slope_efs, _ = search_k_motiflets_elbow(
         k_max,
         data,
         m,
+        # TODO this can cause an error with SLACK set?
         approximate_motiflet_pos=approximate_motiflet_pos,
         elbow_deviation=elbow_deviation,
         slack=slack)
@@ -837,19 +851,18 @@ def _inner_au_ef(data, k_max, m,
     dists_ = dists[(~np.isinf(dists)) & (~np.isnan(dists))]
     au_efs = ((dists_ - dists_.min()) / (dists_.max() - dists_.min())).sum() / len(
         dists_)
-    elbow_points = _filter_unique(elbow_points, candidates, m)
+    elbow_points, slope_efs = _filter_unique(elbow_points, slope_efs, candidates, m)
 
     top_motiflet = None
     if len(elbow_points > 0):
-        elbows = elbow_points[-1]
-        top_motiflet = candidates[elbow_points[-1]]
+        elbows = elbow_points
+        top_motiflet = candidates[elbow_points]
     else:
         # we found only the pair motif
-        # elbows = 1
-        elbows = 2
-        top_motiflet = candidates[0]
+        elbows = [2]
+        top_motiflet = [candidates[2]]
 
-    return au_efs, elbows, top_motiflet, dists, candidates
+    return au_efs, slope_efs, elbows, top_motiflet, dists, candidates
 
 
 def find_au_ef_motif_length(
@@ -890,16 +903,19 @@ def find_au_ef_motif_length(
 
     """
     # apply sampling for speedup only
-    if data.ndim >= 2:
-        data = data[:, ::subsample]
-    else:
-        data = data[::subsample]
+    if subsample > 1:
+        if data.ndim >= 2:
+            data = data[:, ::subsample]
+        else:
+            data = data[::subsample]
 
     # in reverse order
     au_efs = np.zeros(len(motif_length_range), dtype=object)
     au_efs.fill(np.inf)
+    slope_efs = np.zeros(len(motif_length_range), dtype=object)
     elbows = np.zeros(len(motif_length_range), dtype=object)
     top_motiflets = np.zeros(len(motif_length_range), dtype=object)
+    dists = np.zeros(len(motif_length_range), dtype=object)
 
     # stores the position of the l+1 motif set as an approximate pos for l
     approximate_pos = None
@@ -907,7 +923,7 @@ def find_au_ef_motif_length(
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m < data.shape[-1]:
-            au_efs[i], elbows[i], top_motiflets[i], _, approximate_pos \
+            au_efs[i], slope_efs[i], elbows[i], top_motiflets[i], dists[i], approximate_pos \
                 = _inner_au_ef(
                 data, k_max, m // subsample,
                 approximate_motiflet_pos=approximate_pos,
@@ -915,18 +931,26 @@ def find_au_ef_motif_length(
                 slack=slack)
 
     au_efs = np.array(au_efs, dtype=np.float64)[::-1]
+    slope_efs = slope_efs[::-1]
     elbows = elbows[::-1]
+    dists = dists[::-1]
     top_motiflets = top_motiflets[::-1] * subsample
 
     # if no elbow can be found, ignore this part
     condition = np.argwhere(elbows == 0).flatten()
     au_efs[condition] = np.inf
 
-    # Overall minimum and all minima
+    # Minima in AU_EF
     minimum = motif_length_range[np.nanargmin(au_efs)]
-    all_minima = argrelextrema(au_efs, np.less_equal, order=subsample)
+    au_ef_minima = argrelextrema(au_efs, np.less_equal, order=subsample)
 
-    return minimum, all_minima, au_efs, elbows, top_motiflets
+    # Maxima in the slope of the EF
+    best_slope_efs = np.array([np.max(max) for max in slope_efs], dtype=np.float64)
+    slope_maxima = argrelextrema(best_slope_efs, np.greater_equal, order=1)
+
+    return (minimum, au_ef_minima, au_efs,
+            slope_maxima, best_slope_efs,
+            elbows, top_motiflets, dists)
 
 
 # @njit(parallel=True, fastmath=True)
@@ -982,6 +1006,7 @@ def search_multidim_k_motiflets_elbow(
     k_motiflet_distances = np.zeros((D_.shape[0], k_max_))
     k_motiflet_candidates = np.empty((D_.shape[0], k_max_), dtype=object)
     elbow_points = np.empty((D_.shape[0]), dtype=object)
+    slopes = np.empty((D_.shape[0]), dtype=object)
 
     # computes, for each dimension, one set of motiflets
     for dim, D_full in enumerate(D_):
@@ -1032,12 +1057,13 @@ def search_multidim_k_motiflets_elbow(
             k_motiflet_distances[dim, i - 1] = min(k_motiflet_distances[dim, i],
                                                    k_motiflet_distances[dim, i - 1])
 
-        elbow_points[dim] = find_elbow_points(k_motiflet_distances[dim],
+        elbow_points[dim], slopes[dim] = find_elbow_points(k_motiflet_distances[dim],
                                               elbow_deviation=elbow_deviation)
 
         if filter:
-            elbow_points[dim] = _filter_unique(
-                elbow_points[dim], k_motiflet_candidates[dim], motif_length)
+            elbow_points[dim], slopes[dim] = _filter_unique(
+                elbow_points[dim], slopes[dim],
+                k_motiflet_candidates[dim], motif_length)
 
     return k_motiflet_distances, k_motiflet_candidates, elbow_points
 
@@ -1157,13 +1183,14 @@ def search_k_motiflets_elbow(
         k_motiflet_distances[i - 1] = min(k_motiflet_distances[i],
                                           k_motiflet_distances[i - 1])
 
-    elbow_points = find_elbow_points(k_motiflet_distances,
+    elbow_points, slopes = find_elbow_points(k_motiflet_distances,
                                      elbow_deviation=elbow_deviation)
 
     if filter:
-        elbow_points = _filter_unique(elbow_points, k_motiflet_candidates, motif_length)
+        elbow_points, slopes = _filter_unique(
+            elbow_points, slopes, k_motiflet_candidates, motif_length)
 
-    return k_motiflet_distances, k_motiflet_candidates, elbow_points, m
+    return k_motiflet_distances, k_motiflet_candidates, elbow_points, slopes, m
 
 
 @njit(fastmath=True, cache=True)
