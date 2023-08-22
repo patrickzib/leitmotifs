@@ -644,7 +644,7 @@ def plot_motif_length_selection(
         ground_truth=None,
         dimension_labels=None,
         plot=True,
-        plot_elbows=False,
+        plot_elbows=True,
         plot_grid=True,
     ):
     """Computes the AU_EF plot to extract the best motif lengths
@@ -795,7 +795,7 @@ def _plot_window_lengths(
     for i, minimum in enumerate(all_minima[0]):
         # iterate all motiflets
         for a, motiflet_pos in enumerate(top_motiflets[minimum]):
-            x_pos = (minimum) / len(motif_length_range)
+            x_pos = minimum / len(motif_length_range)
             scale = max(au_ef) - min(au_ef)
             y_pos = (au_ef[minimum] - min(au_ef) + (1.5*a+1) * scale * 0.15) / scale
             axins = ax.inset_axes([x_pos, y_pos, 0.10, 0.15])

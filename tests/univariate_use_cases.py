@@ -1,5 +1,3 @@
-import pandas as pd
-
 import motiflets.motiflets as mof
 from motiflets.plotting import *
 
@@ -72,7 +70,7 @@ def test_muscle_activation():
 
     print(all_minima, length_range[all_minima])
 
-    #for motif_length in length_range[all_minima]:
+    # for motif_length in length_range[all_minima]:
     #    ml.fit_k_elbow(k_max, motif_length,
     #                   plot_elbows=True,
     #                   plot_motifs_as_grid=True)
@@ -123,6 +121,7 @@ def test_winding():
     #                    plot_motifs_as_grid=True)
     #
     #     # ml.plot_motifset()
+
 
 def test_fnirs():
     file = "fNIRS_subLen_600.csv"
@@ -187,4 +186,3 @@ def test_gait():
     length_range = np.arange(25, 50, 1)
     best_motif_length, all_minima = ml.fit_motif_length(
         k_max, length_range, subsample=1)
-

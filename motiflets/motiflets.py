@@ -849,8 +849,12 @@ def _inner_au_ef(data, k_max, m,
         slack=slack)
 
     dists_ = dists[(~np.isinf(dists)) & (~np.isnan(dists))]
-    au_efs = ((dists_ - dists_.min()) / (dists_.max() - dists_.min())).sum() / len(
-        dists_)
+    if dists_.max() - dists_.min() == 0:
+        au_efs = 0
+    else:
+        au_efs = (((dists_ - dists_.min()) / (dists_.max() - dists_.min())).sum()
+              / len(dists_))
+
     elbow_points, slope_efs = _filter_unique(elbow_points, slope_efs, candidates, m)
 
     top_motiflet = None
