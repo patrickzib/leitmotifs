@@ -792,40 +792,42 @@ def _plot_window_lengths(
     if data_raw.ndim == 1:
         data_raw = data_raw.reshape((1, -1))
     # iterate all minima
-    for i, minimum in enumerate(all_minima[0]):
-        # iterate all motiflets
-        for a, motiflet_pos in enumerate(top_motiflets[minimum]):
-            x_pos = minimum / len(motif_length_range)
-            scale = max(au_ef) - min(au_ef)
-            y_pos = (au_ef[minimum] - min(au_ef) + (1.5*a+1) * scale * 0.15) / scale
-            axins = ax.inset_axes([x_pos, y_pos, 0.10, 0.15])
+    if False:
+        for i, minimum in enumerate(all_minima[0]):
+            # iterate all motiflets
+            for a, motiflet_pos in enumerate(top_motiflets[minimum]):
+                x_pos = minimum / len(motif_length_range)
+                scale = max(au_ef) - min(au_ef)
+                y_pos = (au_ef[minimum] - min(au_ef) + (1.5*a+1) * scale * 0.15) / scale
+                axins = ax.inset_axes([x_pos, y_pos, 0.10, 0.15])
 
-            motif_length = motif_length_range[minimum]
-            df = pd.DataFrame()
-            df["time"] = index[range(0, motif_length)]
+                motif_length = motif_length_range[minimum]
+                df = pd.DataFrame()
+                df["time"] = index[range(0, motif_length)]
 
-            for j, dim in enumerate(range(data_raw.shape[0])):
-                pos = motiflet_pos[0]
-                normed_data = zscore(data_raw[dim, pos:pos + motif_length])
-                df["dim_" + str(dim)] = normed_data  # - 2 * j
+                for j, dim in enumerate(range(data_raw.shape[0])):
+                    pos = motiflet_pos[0]
+                    normed_data = zscore(data_raw[dim, pos:pos + motif_length])
+                    df["dim_" + str(dim)] = normed_data  # - 2 * j
 
-            df_melt = pd.melt(df, id_vars="time")
-            _ = sns.lineplot(ax=axins, data=df_melt,
-                             x="time", y="value",
-                             hue="variable",
-                             style="variable",
-                             ci=99,
-                             # alpha=0.8,
-                             n_boot=10, color=sns.color_palette("tab10")[i % 10])
-            axins.set_xlabel("")
-            axins.patch.set_alpha(0)
-            axins.set_ylabel("")
-            axins.xaxis.set_major_formatter(plt.NullFormatter())
-            axins.yaxis.set_major_formatter(plt.NullFormatter())
-            axins.legend().set_visible(False)
+                df_melt = pd.melt(df, id_vars="time")
+                _ = sns.lineplot(ax=axins, data=df_melt,
+                                 x="time", y="value",
+                                 hue="variable",
+                                 style="variable",
+                                 ci=99,
+                                 # alpha=0.8,
+                                 n_boot=10, color=sns.color_palette("tab10")[i % 10])
+                axins.set_xlabel("")
+                axins.patch.set_alpha(0)
+                axins.set_ylabel("")
+                axins.xaxis.set_major_formatter(plt.NullFormatter())
+                axins.yaxis.set_major_formatter(plt.NullFormatter())
+                axins.legend().set_visible(False)
     fig.set_figheight(5)
     fig.set_figwidth(8)
     plt.tight_layout()
+    # plt.savefig("window_length.pdf")
     plt.show()
 
 

@@ -133,3 +133,33 @@ def test_audio():
     extract_audio_segment(
         df, ds_name, audio_file_url, "snippets",
         length_in_seconds, index_range, motif_length, motiflet)
+
+
+
+def test_audio_window_length():
+    audio_length_seconds, df, index_range = read_songs()
+
+    # df = df.iloc[:channels]
+    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2']
+    df = df.loc[channels]
+
+    motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
+    print(motif_length, length_in_seconds, "s")
+
+    subtitles = read_lrc(lrc_url)
+    df_sub = get_dataframe_from_subtitle_object(subtitles)
+    df_sub.set_index("seconds", inplace=True)
+
+    motif_length_range_in_s = np.arange(4, 5.8, 0.1)
+    motif_length_range = np.int32(motif_length_range_in_s /
+                                  audio_length_seconds * df.shape[1])
+
+    ml = Motiflets(ds_name, df,
+                   elbow_deviation=1.25,
+                   slack=1.0,
+                   dimension_labels=df.index
+                   )
+    ml.fit_motif_length(k_max, motif_length_range, subsample=1,
+                        plot_elbows=True,
+                        plot_motifs_as_grid=False
+                        )
