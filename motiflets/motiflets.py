@@ -1196,10 +1196,10 @@ def search_k_motiflets_elbow(
     D_full = D_.sum(axis=0, dtype=np.float32)
 
     if exclusion is not None:
-        for pos in np.concatenate(exclusion).tolist():
+        for pos in exclusion:
             if pos is not None:
-                trivialMatchRange = (max(0, pos),
-                                     min(pos + exclusion_length, len(D_full)))
+                trivialMatchRange = (max(0, pos - exclusion_length),
+                                     min(pos + 2*exclusion_length, len(D_full)))
                 D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
 
     motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
