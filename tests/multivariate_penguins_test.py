@@ -102,7 +102,7 @@ def test_univariate_2():
     #     plot=True,
     #     plot_elbows=True,
     #     plot_motifs_as_grid=True
-    )
+    #)
 
     print("Best found length", best_length)
 
