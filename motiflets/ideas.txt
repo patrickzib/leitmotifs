@@ -1,0 +1,13 @@
+Done
+- Multivariate Motifs
+- Use Cases
+
+To Do
+- Variable Length Motif Search
+    -Top-2 Motif Search ?
+
+- Subdimensional Motifs
+    - Modify Distance Measure for clustering using Covering Score
+
+- Modify Distance Matrix to store only k-NNs : will not give optimal results
+
