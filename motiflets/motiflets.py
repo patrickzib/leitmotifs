@@ -275,7 +275,10 @@ def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.
         exclude_trivial_match : bool
             Trivial matches will be excluded if this parameter is set
         n_jobs : int
-            Number of jobs to used
+            Number of jobs to be used.
+        slack: float
+            Defines an exclusion zone around each subsequence to avoid trivial matches.
+            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
         Returns
         -------
@@ -317,7 +320,9 @@ def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.
 
 @njit(fastmath=True, cache=True, parallel=True)
 def compute_distances_full_mv(time_series, m,
-                              exclude_trivial_match=True, n_jobs=4, slack=0.5):
+                              exclude_trivial_match=True,
+                              n_jobs=4,
+                              slack=0.5):
     """ Compute the full Distance Matrix between all pairs of subsequences of a
         multivariate time series.
 
@@ -337,7 +342,10 @@ def compute_distances_full_mv(time_series, m,
         exclude_trivial_match : bool
             Trivial matches will be excluded if this parameter is set
         n_jobs : int
-            Number of jobs to used
+            Number of jobs to be used.
+        slack: float
+            Defines an exclusion zone around each subsequence to avoid trivial matches.
+            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
         Returns
         -------
@@ -515,6 +523,9 @@ def _get_top_k_non_trivial_matches(
         time series length
     lowest_dist : float
         Used for admissible pruning
+    slack: float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
     Returns
     -------
@@ -557,6 +568,9 @@ def _get_top_k_non_trivial_matches_new(
         time series length
     lowest_dist : float
         Used for admissible pruning
+    slack: float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
     Returns
     -------
@@ -623,6 +637,9 @@ def get_approximate_k_motiflet(
     all_candidates : 2d array-like
         We can reduce a set of k'-Motiflets, with k'>k, to a k-Motiflet. Used for
         efficient computation of elbows from large to small.
+    slack: float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
     Returns
     -------
@@ -658,7 +675,7 @@ def get_approximate_k_motiflet(
         motiflet_all_candidates[i, len(idx):] = -1
 
         if len(idx) >= k and idx[-1] >= 0 and dist[idx[-1]] <= motiflet_dist:
-            # get_pairwise_extent requires the full matrix
+            # get_pairwise_extent() requires the full distance matrix
             motiflet_extent = get_pairwise_extent(D, idx[:k], motiflet_dist)
             if motiflet_extent <= motiflet_dist:
                 motiflet_dist = motiflet_extent
@@ -778,7 +795,7 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
             m2 = (dists[i] - dists[i - 1]) + 0.00001
 
             # avoid detecting elbows in near constant data
-            if dists[i-1] == dists[i]:
+            if dists[i - 1] == dists[i]:
                 peaks[i] = 0
             elif (dists[i] > 0) and (dists[i + 1] / dists[i] > elbow_deviation):
                 peaks[i] = (m1 / m2)
@@ -803,6 +820,8 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
 
 
 def _inner_au_ef(data, k_max, m,
+                 exclusion=None,
+                 exclusion_length=None,
                  approximate_motiflet_pos=None,
                  elbow_deviation=1.00,
                  slack=0.5):
@@ -816,6 +835,8 @@ def _inner_au_ef(data, k_max, m,
         Largest k. All k's within [2...k_max] are computed.
     m : int
         Motif length
+    exclusion : 2d-array
+        exclusion zone - use when searching for the TOP-2 motiflets
     approximate_motiflet_pos : array-like
         An initial estimate of the positions of the k-Motiflets for each k in the
         given range [2...k_max]. Will be used for bounding distance computations.
@@ -823,6 +844,9 @@ def _inner_au_ef(data, k_max, m,
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
+    slack: float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
     Returns
     -------
@@ -843,6 +867,8 @@ def _inner_au_ef(data, k_max, m,
         k_max,
         data,
         m,
+        exclusion=exclusion,
+        exclusion_length=exclusion_length,
         # TODO this can cause an error with SLACK set?
         approximate_motiflet_pos=approximate_motiflet_pos,
         elbow_deviation=elbow_deviation,
@@ -853,7 +879,7 @@ def _inner_au_ef(data, k_max, m,
         au_efs = 0
     else:
         au_efs = (((dists_ - dists_.min()) / (dists_.max() - dists_.min())).sum()
-              / len(dists_))
+                  / len(dists_))
 
     elbow_points, slope_efs = _filter_unique(elbow_points, slope_efs, candidates, m)
 
@@ -873,6 +899,8 @@ def find_au_ef_motif_length(
         data,
         k_max,
         motif_length_range,
+        exclusion=None,
+        exclusion_length=None,
         elbow_deviation=1.00,
         slack=0.5,
         subsample=2):
@@ -886,10 +914,15 @@ def find_au_ef_motif_length(
         The interval of k's to compute the area of a single AU_EF.
     motif_length_range : array-like
         The range of lengths to compute the AU-EF.
+    exclusion : 2d-array
+        exclusion zone - use when searching for the TOP-2 motiflets
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
+    slack: float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
     Returns
     -------
@@ -927,9 +960,12 @@ def find_au_ef_motif_length(
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m < data.shape[-1]:
-            au_efs[i], slope_efs[i], elbows[i], top_motiflets[i], dists[i], approximate_pos \
+            (au_efs[i], slope_efs[i], elbows[i],
+             top_motiflets[i], dists[i], approximate_pos) \
                 = _inner_au_ef(
                 data, k_max, m // subsample,
+                exclusion=exclusion,
+                exclusion_length=exclusion_length,
                 approximate_motiflet_pos=approximate_pos,
                 elbow_deviation=elbow_deviation,
                 slack=slack)
@@ -962,6 +998,7 @@ def search_multidim_k_motiflets_elbow(
         k_max,
         data,
         motif_length,
+        exclusion=None,
         approximate_motiflet_pos=None,
         elbow_deviation=1.00,
         filter=True,
@@ -982,6 +1019,8 @@ def search_multidim_k_motiflets_elbow(
         the TS
     motif_length : int
         the length of the motif (user parameter)
+    exclusion : 2d-array
+        exclusion zone - use when searching for the TOP-2 motiflets
     approximate_motiflet_pos : array-like
         An initial estimate of the positions of the k-Motiflets for each k in the
         given range [2...k_max]. Will be used for bounding distance computations.
@@ -991,6 +1030,9 @@ def search_multidim_k_motiflets_elbow(
         1.05 corresponds to 5% increase in deviation.
     filter: bool, default=True
         filters overlapping motiflets from the result,
+    slack: float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
 
     Returns
@@ -1014,11 +1056,19 @@ def search_multidim_k_motiflets_elbow(
 
     # computes, for each dimension, one set of motiflets
     for dim, D_full in enumerate(D_):
+        exclusion_m = int(m * slack)
         motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
 
         upper_bound = np.inf
         incremental = False
         for test_k in range(k_max_ - 1, 1, -1):
+            # Top-N retrieval
+            if exclusion is not None and exclusion[test_k] is not None:
+                for pos in exclusion.flatten():
+                    if pos is not None:
+                        trivialMatchRange = (max(0, pos - exclusion_m),
+                                             min(pos + exclusion_m, len(D_full)))
+                        D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
 
             # use an approximate position as an initial estimate, if available
             bound_set = False
@@ -1062,7 +1112,7 @@ def search_multidim_k_motiflets_elbow(
                                                    k_motiflet_distances[dim, i - 1])
 
         elbow_points[dim], slopes[dim] = find_elbow_points(k_motiflet_distances[dim],
-                                              elbow_deviation=elbow_deviation)
+                                                           elbow_deviation=elbow_deviation)
 
         if filter:
             elbow_points[dim], slopes[dim] = _filter_unique(
@@ -1076,10 +1126,12 @@ def search_k_motiflets_elbow(
         k_max,
         data,
         motif_length,
+        exclusion=None,
+        exclusion_length=None,
         approximate_motiflet_pos=None,
         elbow_deviation=1.00,
         filter=True,
-        slack=0.5,
+        slack=0.5
 ):
     """Computes the elbow-function.
 
@@ -1096,6 +1148,8 @@ def search_k_motiflets_elbow(
         the TS
     motif_length : int
         the length of the motif (user parameter)
+    exclusion : 2d-array
+        exclusion zone - use when searching for the TOP-2 motiflets
     approximate_motiflet_pos : array-like
         An initial estimate of the positions of the k-Motiflets for each k in the
         given range [2...k_max]. Will be used for bounding distance computations.
@@ -1105,6 +1159,9 @@ def search_k_motiflets_elbow(
         1.05 corresponds to 5% increase in deviation.
     filter: bool, default=True
         filters overlapping motiflets from the result,
+    slack: float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
 
     Returns
@@ -1137,6 +1194,13 @@ def search_k_motiflets_elbow(
     # D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
     # D_ = np.take_along_axis(D_, D_index, axis=0)
     D_full = D_.sum(axis=0, dtype=np.float32)
+
+    if exclusion is not None:
+        for pos in np.concatenate(exclusion).tolist():
+            if pos is not None:
+                trivialMatchRange = (max(0, pos),
+                                     min(pos + exclusion_length, len(D_full)))
+                D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
 
     motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
 
@@ -1188,7 +1252,7 @@ def search_k_motiflets_elbow(
                                           k_motiflet_distances[i - 1])
 
     elbow_points, slopes = find_elbow_points(k_motiflet_distances,
-                                     elbow_deviation=elbow_deviation)
+                                             elbow_deviation=elbow_deviation)
 
     if filter:
         elbow_points, slopes = _filter_unique(
@@ -1232,6 +1296,9 @@ def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
         k-Motiflet size
     upperbound : float
         Admissible pruning on distance computations.
+    slack: float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
     Returns
     -------

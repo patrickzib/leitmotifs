@@ -83,7 +83,7 @@ def test_dendrogram():
     seconds, df, index_range = read_mp3(audio_file_url)
     df = df.iloc[0:channels]
 
-    motif_length, all_minima = plot_motif_length_selection(
+    motif_length, _, _, _, all_minima = plot_motif_length_selection(
         k_max,
         df,
         length_range,
