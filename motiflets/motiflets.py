@@ -1069,6 +1069,7 @@ def search_multidim_k_motiflets_elbow(
                         trivialMatchRange = (max(0, pos - exclusion_m),
                                              min(pos + exclusion_m, len(D_full)))
                         D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
+                        D_full[trivialMatchRange[0]:trivialMatchRange[1], :] = np.inf
 
             # use an approximate position as an initial estimate, if available
             bound_set = False
@@ -1196,11 +1197,14 @@ def search_k_motiflets_elbow(
     D_full = D_.sum(axis=0, dtype=np.float32)
 
     if exclusion is not None:
-        for pos in exclusion:
+        if len(exclusion) == 1:
+            exclusion = exclusion[-1]  # TODO: what happens with two elbows found?
+        for pos in exclusion.flatten():
             if pos is not None:
                 trivialMatchRange = (max(0, pos - exclusion_length),
-                                     min(pos + 2*exclusion_length, len(D_full)))
+                                     min(pos + exclusion_length, D_full.shape[-1]))
                 D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
+                D_full[trivialMatchRange[0]:trivialMatchRange[1], :] = np.inf
 
     motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
 

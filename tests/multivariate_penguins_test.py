@@ -62,7 +62,7 @@ def test_univariate_2():
 
     ml = Motiflets(ds_name,
                    series,
-                   elbow_deviation=1.1,
+                   # elbow_deviation=1.1,
                    # slack = 0.6
                    )
 
@@ -91,18 +91,18 @@ def test_univariate_2():
         plot_motifs_as_grid=True
     )
 
-    # print("Best found length", best_length)
-    # exclusion = np.concatenate([exclusion, ml.motiflets[ml.elbow_points[-1]]])
-    # best_length, _ = ml.fit_motif_length(
-    #     k_max,
-    #     motif_length_range,
-    #     exclusion=exclusion,
-    #     exclusion_length=best_length,
-    #     subsample=1,
-    #     plot=True,
-    #     plot_elbows=True,
-    #     plot_motifs_as_grid=True
-    #)
+    print("Best found length", best_length)
+    exclusion = np.concatenate([exclusion, ml.motiflets[ml.elbow_points[-1]]])
+    best_length, _ = ml.fit_motif_length(
+        k_max,
+        motif_length_range,
+        exclusion=exclusion,
+        exclusion_length=best_length,
+        subsample=1,
+        plot=True,
+        plot_elbows=True,
+        plot_motifs_as_grid=True
+    )
 
     print("Best found length", best_length)
 

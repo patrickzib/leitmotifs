@@ -159,7 +159,40 @@ def test_audio_window_length():
                    slack=1.0,
                    dimension_labels=df.index
                    )
-    ml.fit_motif_length(k_max, motif_length_range, subsample=1,
-                        plot_elbows=True,
-                        plot_motifs_as_grid=False
-                        )
+
+    best_length, _ = ml.fit_motif_length(
+            k_max, motif_length_range,
+            subsample=1,
+            plot_elbows=True,
+            plot_motifs_as_grid=False
+            )
+
+    ml.plot_motifset()
+    print("Best found length", best_length)
+
+    exclusion = ml.motiflets[ml.elbow_points]
+    best_length, all_extrema = ml.fit_motif_length(
+        k_max,
+        motif_length_range,
+        subsample=1,
+        plot_elbows=True,
+        plot_motifs_as_grid=False,
+        exclusion=exclusion,
+        exclusion_length=best_length
+    )
+
+    print("Best found length", best_length)
+
+    motiflet = np.sort(ml.motiflets[ml.elbow_points[-1]])
+
+    lyrics = []
+    for i, m in enumerate(motiflet):
+        l = lookup_lyrics(df_sub, index_range[m], length_in_seconds)
+        lyrics.append(l)
+        print(i + 1, l)
+
+    ml.plot_motifset()
+
+    extract_audio_segment(
+        df, ds_name, audio_file_url, "snippets",
+        length_in_seconds, index_range, motif_length, motiflet)
