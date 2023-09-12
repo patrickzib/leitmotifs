@@ -994,42 +994,30 @@ def find_au_ef_motif_length(
 
 
 # @njit(parallel=True, fastmath=True)
-def search_multidim_k_motiflets_elbow(
+def search_multidim_k_motiflets(
         k_max,
         data,
         motif_length,
         exclusion=None,
-        approximate_motiflet_pos=None,
-        elbow_deviation=1.00,
-        filter=True,
         slack=0.5,
 ):
     """Computes the elbow-function for each single dimension.
 
-    This is the method to find the characteristic k-Motiflets within range
-    [2...k_max] for given a `motif_length` using elbow-plots.
+    This is the method to find the characteristic k-Motiflets
+    for given a `motif_length`.
 
     Details are given within the paper Section 5.1 Learning meaningful k.
 
     Parameters
     ----------
     k_max : int
-        use [2...k_max] to compute the elbow plot (user parameter).
+        repetitions of the k-Motiflet.
     data : array-like
         the TS
     motif_length : int
         the length of the motif (user parameter)
     exclusion : 2d-array
         exclusion zone - use when searching for the TOP-2 motiflets
-    approximate_motiflet_pos : array-like
-        An initial estimate of the positions of the k-Motiflets for each k in the
-        given range [2...k_max]. Will be used for bounding distance computations.
-    elbow_deviation : float, default=1.00
-        The minimal absolute deviation needed to detect an elbow.
-        It measures the absolute change in deviation from k to k+1.
-        1.05 corresponds to 5% increase in deviation.
-    filter: bool, default=True
-        filters overlapping motiflets from the result,
     slack: float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
@@ -1039,72 +1027,38 @@ def search_multidim_k_motiflets_elbow(
     -------
     Tuple
         dists :
-            distances for each k in [2...k_max] and dimension
+            distances for each dimension
         candidates :
-            motifset-candidates for each k and dimension
-        elbow_points :
-            elbow-points and dimension
+            motifset-candidates for dimension
     """
     m = motif_length
     k_max_ = max(3, min(int(data.shape[-1] / (m * slack)), k_max))
     D_ = compute_distances_full_mv(data, m, slack)
 
-    k_motiflet_distances = np.zeros((D_.shape[0], k_max_))
-    k_motiflet_candidates = np.empty((D_.shape[0], k_max_), dtype=object)
-    elbow_points = np.empty((D_.shape[0]), dtype=object)
-    slopes = np.empty((D_.shape[0]), dtype=object)
+    k_motiflet_distances = np.zeros(D_.shape[0])
+    k_motiflet_candidates = np.empty(D_.shape[0], dtype=object)
 
     # computes, for each dimension, one set of motiflets
     for dim, D_full in enumerate(D_):
         exclusion_m = int(m * slack)
         motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
+        test_k = k_max_
+        if exclusion is not None and exclusion[test_k] is not None:
+            for pos in exclusion.flatten():
+                if pos is not None:
+                    trivialMatchRange = (max(0, pos - exclusion_m),
+                                         min(pos + exclusion_m, len(D_full)))
+                    D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
+                    D_full[trivialMatchRange[0]:trivialMatchRange[1], :] = np.inf
 
-        upper_bound = np.inf
-        incremental = False
-        for test_k in range(k_max_ - 1, 1, -1):
-            # Top-N retrieval
-            if exclusion is not None and exclusion[test_k] is not None:
-                for pos in exclusion.flatten():
-                    if pos is not None:
-                        trivialMatchRange = (max(0, pos - exclusion_m),
-                                             min(pos + exclusion_m, len(D_full)))
-                        D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
-                        D_full[trivialMatchRange[0]:trivialMatchRange[1], :] = np.inf
+        candidate, candidate_dist, all_candidates = get_approximate_k_motiflet(
+            data, m, test_k, D_full,
+            all_candidates=motiflet_candidates,
+            slack=slack
+        )
 
-            # use an approximate position as an initial estimate, if available
-            bound_set = False
-            if approximate_motiflet_pos is not None \
-                    and len(approximate_motiflet_pos) > test_k \
-                    and approximate_motiflet_pos[test_k] is not None:
-                dd = get_pairwise_extent(D_full, approximate_motiflet_pos[test_k])
-                upper_bound = min(dd, upper_bound)
-                bound_set = True
-
-            candidate, candidate_dist, all_candidates = get_approximate_k_motiflet(
-                data, m, test_k, D_full,
-                upper_bound=upper_bound,
-                incremental=incremental,  # we use an incremental computation
-                all_candidates=motiflet_candidates,
-                slack=slack
-            )
-
-            if candidate is None and bound_set:
-                # If we already found the best motif in length l+1
-                candidate = approximate_motiflet_pos[test_k]
-
-            k_motiflet_distances[dim, test_k] = candidate_dist
-            k_motiflet_candidates[dim, test_k] = candidate
-            upper_bound = min(candidate_dist, upper_bound)
-
-            # compute a new upper bound
-            if candidate is not None:
-                dist_new = get_pairwise_extent(D_full, candidate[:(test_k - 1)])
-                upper_bound = min(upper_bound, dist_new)
-
-            if not incremental:
-                motiflet_candidates = all_candidates
-
-            incremental = True
+        k_motiflet_distances[dim] = candidate_dist
+        k_motiflet_candidates[dim] = candidate
 
         # smoothen the line to make it monotonically increasing
         k_motiflet_distances[dim, 0:2] = k_motiflet_distances[dim, 2]
@@ -1112,15 +1066,7 @@ def search_multidim_k_motiflets_elbow(
             k_motiflet_distances[dim, i - 1] = min(k_motiflet_distances[dim, i],
                                                    k_motiflet_distances[dim, i - 1])
 
-        elbow_points[dim], slopes[dim] = find_elbow_points(k_motiflet_distances[dim],
-                                                           elbow_deviation=elbow_deviation)
-
-        if filter:
-            elbow_points[dim], slopes[dim] = _filter_unique(
-                elbow_points[dim], slopes[dim],
-                k_motiflet_candidates[dim], motif_length)
-
-    return k_motiflet_distances, k_motiflet_candidates, elbow_points
+    return k_motiflet_distances, k_motiflet_candidates
 
 
 def search_k_motiflets_elbow(

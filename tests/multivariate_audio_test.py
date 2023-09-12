@@ -72,15 +72,39 @@ def test_dendrogram():
     ml.fit_dendrogram(k_max, motif_length, n_clusters=3)
 
 
+def test_dendrogram_2():
+    channels = 10
+    audio_length_seconds, df, index_range = read_songs()
+    df = df.iloc[0:channels]
+
+    motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
+    print(motif_length)
+
+    ml = Motiflets(ds_name, df,
+                   # elbow_deviation=1.25,
+                   # slack=1.0,
+                   dimension_labels=df.index
+                   )
+
+    ml.fit_dendrogram(k_max, motif_length, n_clusters=2)
+
+
 def test_audio():
     audio_length_seconds, df, index_range = read_songs()
 
     # df = df.iloc[:channels]
-    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2']
+    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2']
+    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3']
     # channels = ['MFCC 2', 'MFCC 3']  ## hmm
     # channels = ['MFCC 4', 'MFCC 5']
+    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 5']
     # channels = ['MFCC 1', 'MFCC 5', 'MFCC 4']
-    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
+    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4',
+    #             'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
+
+    channels = ['MFCC 1', 'MFCC 2' , 'MFCC 3', 'MFCC 7']  # 2 Motifs, hmm
+    # channels = ['MFCC 4', 'MFCC 8', 'MFCC 6', 'MFCC 9']    # hmmm
+
     df = df.loc[channels]
 
     motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
@@ -95,24 +119,19 @@ def test_audio():
                                   audio_length_seconds * df.shape[1])
 
     ml = Motiflets(ds_name, df,
-                   elbow_deviation=1.25,
-                   slack=1.0,
+                   #elbow_deviation=1.25,
+                   #slack=1.0,
                    dimension_labels=df.index
                    )
-    ml.fit_motif_length(k_max, motif_length_range, subsample=2)
-
-    # for m in all_minima:
-    """dists, motiflets, elbow_points, motif_length = ml.fit_k_elbow(
-            k_max,            
-            motif_length=motif_length,            
-    )"""
+    motif_length, _ = ml.fit_motif_length(
+        k_max, motif_length_range, subsample=1)
 
     #    motif_length = motif_length_range[m]
     #    motif_length_in_seconds = motif_length_range_in_s[m]
     dists, motiflets, elbow_points = ml.fit_k_elbow(
         k_max,
         motif_length=motif_length,
-        plot_elbows=True,
+        plot_elbows=False,
         plot_motifs_as_grid=False
     )
 

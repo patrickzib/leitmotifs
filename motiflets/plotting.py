@@ -15,6 +15,8 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import zscore
 import scipy.cluster.hierarchy as sch
+from itertools import combinations
+from scipy.spatial.distance import squareform
 
 import motiflets.motiflets as ml
 
@@ -56,13 +58,13 @@ class Motiflets:
             motif_length_range,
             exclusion=None,
             exclusion_length=None,
-            subsample=2,
+            subsample=1,
             plot=True,
             plot_elbows=False,
             plot_motifs_as_grid=True
     ):
 
-        if exclusion is None and not(exclusion_length is None):
+        if exclusion is None and not (exclusion_length is None):
             raise Exception("Please set both exclusion and exclusion_length.")
 
         self.motif_length_range = motif_length_range
@@ -126,27 +128,30 @@ class Motiflets:
             n_clusters
     ):
 
-        dists, motiflets, elbow_points = plot_elbow_by_dimension(
+        dists, motiflets = plot_elbow_by_dimension(
             k_max, self.series,
             dimension_labels=self.dimension_labels,
             ds_name=self.ds_name,
             motif_length=motif_length,
             elbow_deviation=self.elbow_deviation,
-            slack=self.slack
+            slack=self.slack,
+            filter=False
         )
 
-        series = np.zeros((self.series.shape[0], self.series.shape[1] - motif_length),
-                          dtype=np.float32)
-        for i in range(series.shape[0]):
-            for pos in motiflets[i, elbow_points[i][-1]]:  #
-                series[i, max(0, pos - motif_length):min(pos + 2 * motif_length,
-                                                         series.shape[1])] = 1
-        X = series
+        intervals = []
+        for i in range(self.series.shape[0]):
+            intervals.append([])
+            for pos in np.sort(motiflets[i]):
+                intervals[i].append(pos)
+                intervals[i].append(pos + motif_length)
+        X = intervals
 
-        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-        Z = sch.linkage(X, method='single')
+        dists = [intersection_dist(a, b) for a, b in combinations(X, r=2)]
+        distance_matrix = squareform(dists)
+        Z = sch.linkage(distance_matrix, method='single')
 
         # creating the dendrogram
+        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
         _ = sch.dendrogram(Z, labels=self.dimension_labels, ax=ax)
 
         ax.set_title('Dendrogram')
@@ -197,6 +202,27 @@ class Motiflets:
             plt.show()
 
         return fig, ax
+
+
+def intersection_dist(p1, p2):
+    i = 0
+    j = 0
+    matches = 0
+    while i < len(p1) and j < len(p2):
+        if p1[i + 1] < p2[j]:
+            i += 2
+        elif p2[j + 1] < p1[i]:
+            j += 2
+        else:
+            if p1[i] <= p2[j + 1] and p2[j] <= p1[i + 1]:
+                matches += 1
+            else:
+                raise Exception("WHY???")
+            i += 2
+            j += 2
+
+    no_matches = max(len(p1), len(p2))
+    return 1 / (1e-8 + matches / no_matches)
 
 
 def as_series(data, index_range, index_name):
@@ -634,25 +660,23 @@ def plot_elbow_by_dimension(k_max,
     print("Data", raw_data.shape)
 
     startTime = time.perf_counter()
-    dists, candidates, elbow_points = ml.search_multidim_k_motiflets_elbow(
+    dists, candidates = ml.search_multidim_k_motiflets(
         k_max,
         raw_data,
         motif_length,
-        elbow_deviation=elbow_deviation,
-        filter=filter,
         slack=slack)
     endTime = (time.perf_counter() - startTime)
 
     print("Compute elbows in", np.round(endTime, 1), "s")
 
     plot_motiflets_by_dimension(
-        ds_name, data, candidates, elbow_points,
+        ds_name, data, candidates, [0],
         dists, motif_length,
         dimension_labels=dimension_labels,
         font_size=24,
         ground_truth=ground_truth)
 
-    return dists, candidates, elbow_points
+    return dists, candidates
 
 
 def plot_motif_length_selection(
@@ -807,21 +831,26 @@ def _filter_duplicate_window_sizes(au_ef, minima):
 def _plot_window_lengths(
         all_minima, au_ef, data_raw, ds_name,
         elbow, header, index,
-        motif_length_range, top_motiflets):
+        motif_length_range, top_motiflets,
+        font_size=20):
+    set_sns_style(font_size)
+
     indices = ~np.isinf(au_ef)
     fig, ax = plt.subplots(figsize=(10, 3),
-                           constrained_layout=True)
-    ax = sns.lineplot(
+                           constrained_layout=True
+                           )
+    sns.lineplot(
         # x=index[motif_length_range[indices]],  # TODO!!!
         x=motif_length_range[indices],
         y=au_ef[indices],
         label="AU_EF",
-        ci=None, estimator=None)
+        ci=None, estimator=None,
+        ax=ax)
     sns.despine()
     ax.set_title("Best lengths on " + ds_name, size=20)
     ax.set(xlabel='Motif Length' + header, ylabel='Area under EF\n(lower is better)')
-    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.scatter(  # index[motif_length_range[all_minima]],   # TODO!!!
+    # ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.scatter(  # index[motif_length_range[all_minima]],   # TODO!!!
         motif_length_range[all_minima],
         au_ef[all_minima], color="red",
         label="Minima")
@@ -909,14 +938,7 @@ def plot_motiflets_by_dimension(
 
     data_index, data_raw = ml.pd_series_to_numpy(data)
 
-    sns.set(font_scale=2)
-    sns.set_style("white")
-    sns.set_context("paper",
-                    rc={"font.size": font_size,
-                        "axes.titlesize": font_size - 8,
-                        "axes.labelsize": font_size - 8,
-                        "xtick.labelsize": font_size - 10,
-                        "ytick.labelsize": font_size - 10, })
+    set_sns_style(font_size)
 
     if ground_truth is None:
         ground_truth = []
@@ -937,7 +959,8 @@ def plot_motiflets_by_dimension(
     ii = -1
     y_labels = []
     for dim in range(data_raw.shape[0]):
-        dim_motiflets = candidates[dim, elbow_points[dim]]
+        # TODO: Remove -1 to show all elbows again?
+        dim_motiflets = candidates[dim, [elbow_points[dim][-1]]]
         dim_data_raw = zscore(data_raw[dim, :])
         offset -= (np.max(dim_data_raw) - np.min(dim_data_raw))
         tick_offsets.append(offset)
@@ -963,7 +986,7 @@ def plot_motiflets_by_dimension(
 
         for i, motiflet in enumerate(dim_motiflets):
             if motiflet is not None:
-                color = color_palette[i]
+                # color = color_palette[i]
                 for aa, pos in enumerate(motiflet):
                     ratio = 0.8
                     rect = Rectangle(
@@ -1040,14 +1063,7 @@ def plot_grid_motiflets(
 
     """
 
-    sns.set(font_scale=2)
-    sns.set_style("white")
-    sns.set_context("paper",
-                    rc={"font.size": font_size,
-                        "axes.titlesize": font_size - 8,
-                        "axes.labelsize": font_size - 8,
-                        "xtick.labelsize": font_size - 10,
-                        "ytick.labelsize": font_size - 10, })
+    set_sns_style(font_size)
 
     label_cols = 2
 
@@ -1220,6 +1236,17 @@ def plot_grid_motiflets(
     #    "video/motiflet_" + ds_name + "_Channels_" + str(len(df.index)) + "_Grid.pdf")
 
     plt.show()
+
+
+def set_sns_style(font_size):
+    sns.set(font_scale=2)
+    sns.set_style("white")
+    sns.set_context("paper",
+                    rc={"font.size": font_size,
+                        "axes.titlesize": font_size - 8,
+                        "axes.labelsize": font_size - 8,
+                        "xtick.labelsize": font_size - 10,
+                        "ytick.labelsize": font_size - 10, })
 
 
 def plot_all_competitors(
