@@ -14,10 +14,10 @@ import numpy as np
 import numpy.fft as fft
 import pandas as pd
 from joblib import Parallel, delayed
-from numba import njit, prange, objmode, typed
+from numba import njit, prange, objmode
+from scipy.signal import argrelextrema
 from scipy.stats import zscore
 from tqdm.auto import tqdm
-from scipy.signal import argrelextrema
 
 
 def _resample(data, sampling_factor=10000):
@@ -993,7 +993,7 @@ def find_au_ef_motif_length(
             elbows, top_motiflets, dists)
 
 
-# @njit(parallel=True, fastmath=True)
+@njit(cache=True, fastmath=True, parallel=True)
 def search_multidim_k_motiflets(
         k_max,
         data,
@@ -1030,14 +1030,15 @@ def search_multidim_k_motiflets(
     """
     m = motif_length
     D_ = compute_distances_full_mv(data, m, slack)
-    # TODO ??? !!!
+    # TODO why * 1.5 ??? !!!
     k_max_ = max(3, min(int(D_.shape[-1] // int(m * slack * 1.5)), k_max))
 
     k_motiflet_distances = np.zeros(D_.shape[0])
-    k_motiflet_candidates = np.empty(D_.shape[0], dtype=object)
+    k_motiflet_candidates = np.zeros((D_.shape[0], k_max_), dtype=np.int32)
 
     # computes, for each dimension, one set of motiflets
-    for dim, D_full in enumerate(D_):
+    for dim in range(D_.shape[0]):  # TODO prange causes error in pycharm?
+        D_full = D_[dim]
         motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
         candidate, candidate_dist, all_candidates = get_approximate_k_motiflet(
             data, m, k_max_, D_full,
