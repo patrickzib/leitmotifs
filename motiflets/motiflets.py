@@ -322,7 +322,8 @@ def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.
 def compute_distances_full_mv(time_series, m,
                               exclude_trivial_match=True,
                               n_jobs=4,
-                              slack=0.5):
+                              slack=0.5,
+                              sum_dims=True):
     """ Compute the full Distance Matrix between all pairs of subsequences of a
         multivariate time series.
 
@@ -359,7 +360,12 @@ def compute_distances_full_mv(time_series, m,
     if exclude_trivial_match:
         halve_m = int(m * slack)
 
-    D_all = np.zeros((dims, n, n), dtype=np.float32)
+    # Sum all dimensions into one row
+    if sum_dims:
+        D_all = np.zeros((1, n, n), dtype=np.float32)
+    else:
+        D_all = np.zeros((dims, n, n), dtype=np.float32)
+
     for d in prange(dims):
         ts = time_series[d, :]
         means, stds = _sliding_mean_std(ts, m)
@@ -382,8 +388,11 @@ def compute_distances_full_mv(time_series, m,
                                  - ts[order - 1] * np.roll(ts[:n], 1)
                     dot_rolled[0] = dot_first[order]
 
-                D_all[d, order, :] = distance(dot_rolled, n, m, means, stds, order,
-                                              halve_m)
+                dist = distance(dot_rolled, n, m, means, stds, order, halve_m)
+                if sum_dims:
+                    D_all[0, order, :] += dist
+                else:
+                    D_all[d, order, :] = dist
                 dot_prev = dot_rolled
 
     return D_all
@@ -1029,7 +1038,7 @@ def search_multidim_k_motiflets(
             motifset-candidates for dimension
     """
     m = motif_length
-    D_ = compute_distances_full_mv(data, m, slack)
+    D_ = compute_distances_full_mv(data, m, slack, sum_dims=False)
     # TODO why * 1.5 ??? !!!
     k_max_ = max(3, min(int(D_.shape[-1] // int(m * slack * 1.5)), k_max))
 
@@ -1112,16 +1121,16 @@ def search_k_motiflets_elbow(
     # motif size
     m = motif_length
 
-    D_ = compute_distances_full_mv(data_raw, m, slack)
+    D_full = compute_distances_full_mv(data_raw, m, slack, sum_dims=True)[0]
 
     # non-overlapping motifs only
-    k_max_ = max(3, min(int(D_.shape[-1] // (m * slack)), k_max))
+    k_max_ = max(3, min(int(D_full.shape[-1] // (m * slack)), k_max))
     k_motiflet_distances = np.zeros(k_max_)
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
     # D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
     # D_ = np.take_along_axis(D_, D_index, axis=0)
-    D_full = D_.sum(axis=0, dtype=np.float32)
+    # D_full = D_.sum(axis=0, dtype=np.float32)
 
     if exclusion is not None:
         if len(exclusion) == 1:
