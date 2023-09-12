@@ -118,7 +118,7 @@ datasets = {
     }
 }
 
-dataset = datasets["Boxing"]
+dataset = datasets["Charleston-Fancy"]
 k_max = dataset["ks"]
 motif_length = dataset["motif_length"]
 amc_name = dataset["amc_name"]
@@ -273,10 +273,7 @@ def test_dendrogram():
     df = exclude_body_joints(df)
     df = include_joints(df, use_joints)
 
-    joints = df.index
     print("Used joints:", use_joints)
-    series = df.values
-
     ml = Motiflets(amc_name, df,
                    elbow_deviation=1.25,
                    slack=1.0,

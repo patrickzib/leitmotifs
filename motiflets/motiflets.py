@@ -998,7 +998,6 @@ def search_multidim_k_motiflets(
         k_max,
         data,
         motif_length,
-        exclusion=None,
         slack=0.5,
 ):
     """Computes the elbow-function for each single dimension.
@@ -1016,8 +1015,6 @@ def search_multidim_k_motiflets(
         the TS
     motif_length : int
         the length of the motif (user parameter)
-    exclusion : 2d-array
-        exclusion zone - use when searching for the TOP-2 motiflets
     slack: float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
@@ -1032,39 +1029,24 @@ def search_multidim_k_motiflets(
             motifset-candidates for dimension
     """
     m = motif_length
-    k_max_ = max(3, min(int(data.shape[-1] / (m * slack)), k_max))
     D_ = compute_distances_full_mv(data, m, slack)
+    # TODO ??? !!!
+    k_max_ = max(3, min(int(D_.shape[-1] // int(m * slack * 1.5)), k_max))
 
     k_motiflet_distances = np.zeros(D_.shape[0])
     k_motiflet_candidates = np.empty(D_.shape[0], dtype=object)
 
     # computes, for each dimension, one set of motiflets
     for dim, D_full in enumerate(D_):
-        exclusion_m = int(m * slack)
         motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
-        test_k = k_max_
-        if exclusion is not None and exclusion[test_k] is not None:
-            for pos in exclusion.flatten():
-                if pos is not None:
-                    trivialMatchRange = (max(0, pos - exclusion_m),
-                                         min(pos + exclusion_m, len(D_full)))
-                    D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
-                    D_full[trivialMatchRange[0]:trivialMatchRange[1], :] = np.inf
-
         candidate, candidate_dist, all_candidates = get_approximate_k_motiflet(
-            data, m, test_k, D_full,
+            data, m, k_max_, D_full,
             all_candidates=motiflet_candidates,
             slack=slack
         )
 
         k_motiflet_distances[dim] = candidate_dist
         k_motiflet_candidates[dim] = candidate
-
-        # smoothen the line to make it monotonically increasing
-        k_motiflet_distances[dim, 0:2] = k_motiflet_distances[dim, 2]
-        for i in range(k_motiflet_distances.shape[-1], 2):
-            k_motiflet_distances[dim, i - 1] = min(k_motiflet_distances[dim, i],
-                                                   k_motiflet_distances[dim, i - 1])
 
     return k_motiflet_distances, k_motiflet_candidates
 
@@ -1129,14 +1111,13 @@ def search_k_motiflets_elbow(
     # motif size
     m = motif_length
 
-    # non-overlapping motifs only
-    k_max_ = max(3, min(int(data.shape[-1] / (m * slack)), k_max))
-
-    k_motiflet_distances = np.zeros(k_max_)
-    k_motiflet_candidates = np.empty(k_max_, dtype=object)
-
     # use_dim = 3  # data.shape[0]
     D_ = compute_distances_full_mv(data_raw, m, slack)
+
+    # non-overlapping motifs only
+    k_max_ = max(3, min(int(D_.shape[-1] // (m * slack)), k_max))
+    k_motiflet_distances = np.zeros(k_max_)
+    k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
     # D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
     # D_ = np.take_along_axis(D_, D_index, axis=0)

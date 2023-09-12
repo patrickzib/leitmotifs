@@ -33,12 +33,17 @@ audio_file_url = dataset["audio_file_url"]
 
 def test_audio():
     # channels = ['MFCC 1', 'MFCC 2']
-    channels = ['MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
+    # channels = ['MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
+
+    # channels = ['MFCC 3', 'MFCC 5']
+    channels = ['MFCC 1', 'MFCC 4']
+    # channels = ['MFCC 1', 'MFCC 4', 'MFCC 0', 'MFCC 9', 'MFCC 6']
+
     seconds, df, index_range = read_mp3(audio_file_url)
     df = df.loc[channels]
 
     ml = Motiflets(ds_name, df,
-                   slack=1.0,
+                   # slack=1.0,
                    dimension_labels=df.index
                    )
 
@@ -59,7 +64,7 @@ def test_audio():
     path_ = ("audio/bird_songs/" + ds_name +
              "_Channels_" + str(len(df.index)) +
              "_full.pdf")
-    ml.plot_dataset(path_)
+    # ml.plot_dataset(path_)
 
     # best motiflet
     motiflet = np.sort(motiflets[elbow_points[-1]])
@@ -71,8 +76,6 @@ def test_audio():
         "audio/bird_songs/" + ds_name + "_Channels_" + str(
             len(df.index)) + "_Motif.pdf")
     plt.show()
-
-    # _extract_audio_segment(df, index_range, length_in_seconds, motiflet)
 
     extract_audio_segment(
         df, ds_name, audio_file_url, "bird_songs",

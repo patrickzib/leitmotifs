@@ -148,10 +148,10 @@ def test_multivariate_2():
     ds_name, B = read_penguin_data()
 
     series = B.iloc[497699:497699 + length,
-             np.array([0, 2, 3])].T
+             np.array([0, 2])].T
     ml = Motiflets(ds_name, series,
-                   # elbow_deviation=1.1,
-                   # slack = 0.6
+                   elbow_deviation=1.1,
+                   slack = 0.6
                    )
 
     k_max = 50
@@ -183,7 +183,7 @@ def test_dendrogram():
     length = 1000
     B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
     ds_name = "Penguins (Longer Snippet)"
-    df = B.iloc[497699: 497699 + length, 0:9].T
+    df = B.iloc[497699: 497699 + length, 0:7].T
 
     k_max = 20
     motif_length = 22

@@ -19,6 +19,7 @@ from itertools import combinations
 from scipy.spatial.distance import squareform
 
 import motiflets.motiflets as ml
+from numba import njit
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -204,6 +205,7 @@ class Motiflets:
         return fig, ax
 
 
+# @njit(fastmath=True, cache=True)
 def intersection_dist(p1, p2):
     i = 0
     j = 0
@@ -960,7 +962,7 @@ def plot_motiflets_by_dimension(
     y_labels = []
     for dim in range(data_raw.shape[0]):
         # TODO: Remove -1 to show all elbows again?
-        dim_motiflets = candidates[dim, [elbow_points[dim][-1]]]
+        dim_motiflets = candidates[dim]
         dim_data_raw = zscore(data_raw[dim, :])
         offset -= (np.max(dim_data_raw) - np.min(dim_data_raw))
         tick_offsets.append(offset)
@@ -975,35 +977,30 @@ def plot_motiflets_by_dimension(
         sns.despine()
 
         #  Plot the motiflet within the TS
-        for i, motiflet in enumerate(dim_motiflets):
-            if motiflet is not None:
-                for aa, pos in enumerate(motiflet):
-                    _ = sns.lineplot(x=data_index[pos: pos + motif_length],
-                                     y=dim_data_raw[pos: pos + motif_length] + offset,
-                                     ax=ax_ts,
-                                     linewidth=2,
-                                     color=color_palette[0])
+        for aa, pos in enumerate(dim_motiflets):
+            _ = sns.lineplot(x=data_index[pos: pos + motif_length],
+                             y=dim_data_raw[pos: pos + motif_length] + offset,
+                             ax=ax_ts,
+                             linewidth=2,
+                             color=color_palette[0])
 
-        for i, motiflet in enumerate(dim_motiflets):
-            if motiflet is not None:
-                # color = color_palette[i]
-                for aa, pos in enumerate(motiflet):
-                    ratio = 0.8
-                    rect = Rectangle(
-                        (data_index[pos], -ii),  # (x,y)
-                        data_index[pos + motif_length - 1] - data_index[pos],
-                        ratio,
-                        facecolor=color_palette[i],
-                        # color_palette[dim % len(color_palette)],
-                        alpha=0.5
-                    )
-                    ax_bars.add_patch(rect)
-                if dimension_labels is not None:
-                    y_labels.append(str(dimension_labels[dim])
-                                    + " - Motif " + str(i + 1))
-                else:
-                    y_labels.append("Dim " + str(dim + 1) + " Motif " + str(i + 1))
-                ii -= 1
+        for aa, pos in enumerate(dim_motiflets):
+            ratio = 0.8
+            rect = Rectangle(
+                (data_index[pos], -ii),  # (x,y)
+                data_index[pos + motif_length - 1] - data_index[pos],
+                ratio,
+                facecolor=color_palette[0],
+                # color_palette[dim % len(color_palette)],
+                alpha=0.5
+            )
+            ax_bars.add_patch(rect)
+        if dimension_labels is not None:
+            y_labels.append(str(dimension_labels[dim])
+                            + " - Motif " + str(1))
+        else:
+            y_labels.append("Dim " + str(dim + 1) + " Motif " + str(1))
+        ii -= 1
 
     if dimension_labels is not None:
         ax_ts.set_yticks(tick_offsets)
