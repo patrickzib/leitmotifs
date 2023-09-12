@@ -1112,7 +1112,6 @@ def search_k_motiflets_elbow(
     # motif size
     m = motif_length
 
-    # use_dim = 3  # data.shape[0]
     D_ = compute_distances_full_mv(data_raw, m, slack)
 
     # non-overlapping motifs only
