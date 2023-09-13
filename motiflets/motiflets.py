@@ -561,63 +561,6 @@ def _get_top_k_non_trivial_matches(
 
 
 @njit(fastmath=True, cache=True)
-def _get_top_k_non_trivial_matches_new(
-        dist, k, m, n, lowest_dist=np.inf, slack=0.5):
-    """Finds the closest k-NN non-overlapping subsequences in candidates.
-
-    Parameters
-    ----------
-    dist : array-like
-        the distances
-    k : int
-        The k in k-NN
-    m : int
-        The window-length
-    n : int
-        time series length
-    lowest_dist : float
-        Used for admissible pruning
-    slack: float
-        Defines an exclusion zone around each subsequence to avoid trivial matches.
-        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-
-    Returns
-    -------
-    idx : the <= k subsequences within `lowest_dist`
-
-    """
-    dist_idx = np.argwhere(dist <= lowest_dist).flatten().astype(np.int32)
-    halve_m = int(m * slack)
-
-    idx = []  # there may be less than k, thus use a list
-    for i in range(k):
-        current_min = lowest_dist
-        current_pos = -1
-
-        for pos in dist_idx:
-            if dist[pos] <= current_min \
-                    and (not np.isnan(dist[pos])) \
-                    and (not np.isinf(dist[pos])):
-                overlap = False
-                for ks in idx:
-                    # exclude all trivial matches
-                    if max(-1, ks - halve_m) < pos < min(ks + halve_m, n):
-                        overlap = True
-                        break
-
-                if not overlap:
-                    current_min = dist[pos]
-                    current_pos = pos
-
-        if current_pos >= 0:
-            idx.append(current_pos)
-        else:  # nothing left
-            break
-
-    return np.array(idx, dtype=np.int32)
-
-
-@njit(fastmath=True, cache=True)
 def get_approximate_k_motiflet(
         ts, m, k, D,
         upper_bound=np.inf,
@@ -805,13 +748,13 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
 
             # avoid detecting elbows in near constant data
             if dists[i - 1] == dists[i]:
-                peaks[i] = 0
-            elif (dists[i] > 0) and (dists[i + 1] / dists[i] > elbow_deviation):
+                m2 = 1.0  # peaks[i] = 0
+
+            if (dists[i] > 0) and (dists[i + 1] / dists[i] > elbow_deviation):
                 peaks[i] = (m1 / m2)
 
     elbow_points = []
     slope = []
-    peaks_copy = np.copy(peaks)
     while True:
         p = np.argmax(peaks)
         if peaks[p] > alpha:
