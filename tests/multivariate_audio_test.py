@@ -93,7 +93,7 @@ def test_audio():
     audio_length_seconds, df, index_range = read_songs()
 
     # df = df.iloc[:channels]
-    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2']
+    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2']
     # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3']
     # channels = ['MFCC 2', 'MFCC 3']  ## hmm
     # channels = ['MFCC 4', 'MFCC 5']
@@ -102,7 +102,7 @@ def test_audio():
     # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4',
     #             'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
 
-    channels = ['MFCC 1', 'MFCC 2' , 'MFCC 3', 'MFCC 7']  # 2 Motifs, hmm
+    # channels = ['MFCC 1', 'MFCC 2' , 'MFCC 3', 'MFCC 7']  # 2 Motifs, hmm
     # channels = ['MFCC 4', 'MFCC 8', 'MFCC 6', 'MFCC 9']    # hmmm
 
     df = df.loc[channels]
@@ -119,8 +119,8 @@ def test_audio():
                                   audio_length_seconds * df.shape[1])
 
     ml = Motiflets(ds_name, df,
-                   #elbow_deviation=1.25,
-                   #slack=1.0,
+                   elbow_deviation=1.25,
+                   slack=1.0,
                    dimension_labels=df.index
                    )
     motif_length, _ = ml.fit_motif_length(

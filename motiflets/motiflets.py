@@ -319,7 +319,9 @@ def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.
 
 
 @njit(fastmath=True, cache=True, parallel=True)
-def compute_distances_full_mv(time_series, m,
+def compute_distances_full_mv(time_series,
+                              m,
+                              k,
                               exclude_trivial_match=True,
                               n_jobs=4,
                               slack=0.5,
@@ -340,6 +342,8 @@ def compute_distances_full_mv(time_series, m,
             The time series
         m : int
             The window length
+        k : int
+            Number of nearest neighbors
         exclude_trivial_match : bool
             Trivial matches will be excluded if this parameter is set
         n_jobs : int
@@ -363,8 +367,10 @@ def compute_distances_full_mv(time_series, m,
     # Sum all dimensions into one row
     if sum_dims:
         D_all = np.zeros((1, n, n), dtype=np.float32)
+        knns = np.zeros((1, n, k), dtype=np.int32)
     else:
         D_all = np.zeros((dims, n, n), dtype=np.float32)
+        knns = np.zeros((dims, n, k), dtype=np.int32)
 
     for d in prange(dims):
         ts = time_series[d, :]
@@ -395,7 +401,13 @@ def compute_distances_full_mv(time_series, m,
                     D_all[d, order, :] = dist
                 dot_prev = dot_rolled
 
-    return D_all
+    for d in prange(D_all.shape[0]):
+        for order in prange(D_all.shape[1]):
+            knn = _argknn(D_all[d, order], k, m, n, slack=slack)
+            knns[d, order, :len(knn)] = knn
+            knns[d, order, len(knn):] = -1
+
+    return D_all, knns
 
 
 @njit(fastmath=True, cache=True)
@@ -484,39 +496,7 @@ def get_pairwise_extent(D_full, motifset_pos, upperbound=np.inf):
 
 
 @njit(fastmath=True, cache=True)
-def _get_top_k_non_trivial_matches_inner(
-        dist, k, candidates, lowest_dist=np.inf):
-    """Filters a list of potential non-overlapping k'-NNs for the closest k ones.
-
-    Parameters
-    ----------
-    dist : array-like
-        the distances
-    k : int
-        The k in k-NN
-    candidates:
-        The list of k'>k potential candidate subsequences, must be non-overlapping
-    lowest_dist:
-        The best known lowest_dist. Only those subsequences lower than `lowest_dist`
-        are returned
-
-    Returns
-    -------
-    idx : the <= k subsequences within `lowest_dist`
-
-    """
-    # admissible pruning: are there enough offsets within range?
-    p = 0
-    for i in range(len(candidates), 0, -1):
-        if (candidates[i - 1] >= 0) \
-                and (dist[candidates[i - 1]] <= lowest_dist):
-            p = i
-            break
-    return candidates[:min(k, p)]
-
-
-@njit(fastmath=True, cache=True)
-def _get_top_k_non_trivial_matches(
+def _argknn(
         dist, k, m, n, lowest_dist=np.inf, slack=0.5):
     """Finds the closest k-NN non-overlapping subsequences in candidates.
 
@@ -562,11 +542,7 @@ def _get_top_k_non_trivial_matches(
 
 @njit(fastmath=True, cache=True)
 def get_approximate_k_motiflet(
-        ts, m, k, D,
-        upper_bound=np.inf,
-        incremental=False,
-        all_candidates=np.zeros((1, 1), dtype=np.int32),  # Empty type to fool numba
-        slack=0.5
+        ts, m, k, D, knns, upper_bound=np.inf
 ):
     """Compute the approximate k-Motiflets.
 
@@ -582,16 +558,11 @@ def get_approximate_k_motiflet(
         The k in k-Motiflets
     D : 2d array-like
         The distance matrix
-    upper_bound : float
-        Used for admissible pruning
-    incremental : bool, default: False
-        When set to True, must also provide `all_candidates`
-    all_candidates : 2d array-like
+    knns : 2d array-like
         We can reduce a set of k'-Motiflets, with k'>k, to a k-Motiflet. Used for
         efficient computation of elbows from large to small.
-    slack: float
-        Defines an exclusion zone around each subsequence to avoid trivial matches.
-        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+    upper_bound : float
+        Used for admissible pruning
 
     Returns
     -------
@@ -600,15 +571,10 @@ def get_approximate_k_motiflet(
             The (approximate) best motiflet found
         motiflet_dist:
             The extent of the motiflet found
-        motiflet_all_candidates : 2d array-like
-            For each subsequence, a motifset, with minimal extent, found containing it.
-            Used for refinement in incremental computation `incremental=True`.
     """
     n = ts.shape[-1] - m + 1
     motiflet_dist = upper_bound
     motiflet_candidate = None
-
-    motiflet_all_candidates = np.zeros((n, k), dtype=np.int32)
 
     # allow subsequence itself
     np.fill_diagonal(D, 0)
@@ -616,24 +582,16 @@ def get_approximate_k_motiflet(
     # TODO: parallelize??
     for i, order in enumerate(np.arange(n)):
         dist = D[order]
+        idx = knns[order]
 
-        if incremental:
-            idx = _get_top_k_non_trivial_matches_inner(
-                dist, k, all_candidates[order], motiflet_dist)
-        else:
-            idx = _get_top_k_non_trivial_matches(dist, k, m, n, motiflet_dist, slack)
-
-        motiflet_all_candidates[i, :len(idx)] = idx
-        motiflet_all_candidates[i, len(idx):] = -1
-
-        if len(idx) >= k and idx[-1] >= 0 and dist[idx[-1]] <= motiflet_dist:
+        if len(idx) >= k and idx[k-1] >= 0 and dist[idx[k-1]] <= motiflet_dist:
             # get_pairwise_extent() requires the full distance matrix
             motiflet_extent = get_pairwise_extent(D, idx[:k], motiflet_dist)
             if motiflet_extent <= motiflet_dist:
                 motiflet_dist = motiflet_extent
                 motiflet_candidate = idx[:k]
 
-    return motiflet_candidate, motiflet_dist, motiflet_all_candidates
+    return motiflet_candidate, motiflet_dist
 
 
 @njit(fastmath=True, cache=True)
@@ -981,21 +939,18 @@ def search_multidim_k_motiflets(
             motifset-candidates for dimension
     """
     m = motif_length
-    D_ = compute_distances_full_mv(data, m, slack, sum_dims=False)
+
     # TODO why * 1.5 ??? !!!
-    k_max_ = max(3, min(int(D_.shape[-1] // int(m * slack * 1.5)), k_max))
+    k_max_ = max(3, min(int((data.shape[-1]-m+1) // int(m * slack * 1.5)), k_max))
+    D_, knns = compute_distances_full_mv(data, m, k_max_, slack, sum_dims=False)
 
     k_motiflet_distances = np.zeros(D_.shape[0])
     k_motiflet_candidates = np.zeros((D_.shape[0], k_max_), dtype=np.int32)
 
     # computes, for each dimension, one set of motiflets
-    for dim in range(D_.shape[0]):  # TODO prange causes error in pycharm?
-        D_full = D_[dim]
-        motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
-        candidate, candidate_dist, all_candidates = get_approximate_k_motiflet(
-            data, m, k_max_, D_full,
-            all_candidates=motiflet_candidates,
-            slack=slack
+    for dim in prange(D_.shape[0]):
+        candidate, candidate_dist = get_approximate_k_motiflet(
+            data, m, k_max_, D_[dim], knns[dim]
         )
 
         k_motiflet_distances[dim] = candidate_dist
@@ -1064,10 +1019,12 @@ def search_k_motiflets_elbow(
     # motif size
     m = motif_length
 
-    D_full = compute_distances_full_mv(data_raw, m, slack, sum_dims=True)[0]
+    k_max_ = max(3, min(int((data_raw.shape[-1]-m+1) // (m * slack)), k_max))
+    D_full, knns = compute_distances_full_mv(data_raw, m, k_max_, slack, sum_dims=True)
+    D_full = D_full[0]
+    knns = knns[0]
 
     # non-overlapping motifs only
-    k_max_ = max(3, min(int(D_full.shape[-1] // (m * slack)), k_max))
     k_motiflet_distances = np.zeros(k_max_)
     k_motiflet_candidates = np.empty(k_max_, dtype=object)
 
@@ -1085,10 +1042,7 @@ def search_k_motiflets_elbow(
                 D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
                 D_full[trivialMatchRange[0]:trivialMatchRange[1], :] = np.inf
 
-    motiflet_candidates = np.zeros((D_full.shape[0], 1), dtype=np.int32)
-
     upper_bound = np.inf
-    incremental = False
     for test_k in tqdm(range(k_max_ - 1, 1, -1),
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
@@ -1102,12 +1056,9 @@ def search_k_motiflets_elbow(
             upper_bound = min(dd, upper_bound)
             bound_set = True
 
-        candidate, candidate_dist, all_candidates = get_approximate_k_motiflet(
-            data_raw, m, test_k, D_full,
+        candidate, candidate_dist = get_approximate_k_motiflet(
+            data_raw, m, test_k, D_full, knns,
             upper_bound=upper_bound,
-            incremental=incremental,  # we use an incremental computation
-            all_candidates=motiflet_candidates,
-            slack=slack
         )
 
         if candidate is None and bound_set:
@@ -1122,9 +1073,6 @@ def search_k_motiflets_elbow(
         if candidate is not None:
             dist_new = get_pairwise_extent(D_full, candidate[:(test_k - 1)])
             upper_bound = min(upper_bound, dist_new)
-
-        if not incremental:
-            motiflet_candidates = all_candidates
 
         incremental = True
 
@@ -1191,8 +1139,9 @@ def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
 
     motiflet_dist = upperbound
     if upperbound is None:
-        motiflet_candidate, motiflet_dist, _ = get_approximate_k_motiflet(
-            ts, m, k, D_full, upper_bound=np.inf, slack=slack)
+        # FIXME ???!!
+        motiflet_candidate, motiflet_dist = get_approximate_k_motiflet(
+            ts, m, k, D_full, upper_bound=np.inf)
 
         motiflet_pos = motiflet_candidate
 

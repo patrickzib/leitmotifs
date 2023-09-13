@@ -41,13 +41,14 @@ def test_univariate():
     ds_name, series = read_penguin_data_short()
 
     ml = Motiflets(ds_name, series, elbow_deviation=1.25, slack=0.3)
-    ml.plot_dataset()
+    # ml.plot_dataset()
 
-    k_max = 50
-    motif_length_range = np.arange(10, 35, 1)
+    k_max = 40
+    motif_length_range = np.arange(10, 30, 1)
 
     _, all_minima = ml.fit_motif_length(
         k_max, motif_length_range,
+        plot_elbows=True, plot_motifs_as_grid=False,
         subsample=1)
 
     ml.plot_motifset()
