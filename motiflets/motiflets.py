@@ -579,17 +579,26 @@ def get_approximate_k_motiflet(
     # allow subsequence itself
     np.fill_diagonal(D, 0)
 
+    # order by increasing k-nn distance
+    knn_distances = np.zeros(n, dtype=np.float32)
+    for i in np.arange(n):
+        knn_distances[i] = D[i, knns[i, k - 1]]
+    best_order = np.argsort(knn_distances)
+
     # TODO: parallelize??
-    for i, order in enumerate(np.arange(n)):
+    for i, order in enumerate(best_order):
         dist = D[order]
         idx = knns[order]
 
-        if len(idx) >= k and idx[k-1] >= 0 and dist[idx[k-1]] <= motiflet_dist:
-            # get_pairwise_extent() requires the full distance matrix
-            motiflet_extent = get_pairwise_extent(D, idx[:k], motiflet_dist)
-            if motiflet_extent <= motiflet_dist:
-                motiflet_dist = motiflet_extent
-                motiflet_candidate = idx[:k]
+        if len(idx) >= k and idx[k - 1] >= 0:
+            if dist[idx[k - 1]] <= motiflet_dist:
+                # get_pairwise_extent() requires the full distance matrix
+                motiflet_extent = get_pairwise_extent(D, idx[:k], motiflet_dist)
+                if motiflet_extent <= motiflet_dist:
+                    motiflet_dist = motiflet_extent
+                    motiflet_candidate = idx[:k]
+            else:
+                break
 
     return motiflet_candidate, motiflet_dist
 
@@ -941,8 +950,8 @@ def search_multidim_k_motiflets(
     m = motif_length
 
     # TODO why * 1.5 ??? !!!
-    k_max_ = max(3, min(int((data.shape[-1]-m+1) // int(m * slack * 1.5)), k_max))
-    D_, knns = compute_distances_full_mv(data, m, k_max_, slack, sum_dims=False)
+    k_max_ = max(3, min(int((data.shape[-1] - m + 1) // int(m * slack * 1.5)), k_max))
+    D_, knns = compute_distances_full_mv(data, m, k_max_, slack=slack, sum_dims=False)
 
     k_motiflet_distances = np.zeros(D_.shape[0])
     k_motiflet_candidates = np.zeros((D_.shape[0], k_max_), dtype=np.int32)
@@ -1019,14 +1028,15 @@ def search_k_motiflets_elbow(
     # motif size
     m = motif_length
 
-    k_max_ = max(3, min(int((data_raw.shape[-1]-m+1) // (m * slack)), k_max))
-    D_full, knns = compute_distances_full_mv(data_raw, m, k_max_, slack, sum_dims=True)
+    k_max_ = max(3, min(int((data_raw.shape[-1] - m + 1) // (m * slack)), k_max))
+    D_full, knns = compute_distances_full_mv(data_raw, m, k_max_, slack=slack,
+                                             sum_dims=True)
     D_full = D_full[0]
     knns = knns[0]
 
     # non-overlapping motifs only
-    k_motiflet_distances = np.zeros(k_max_)
-    k_motiflet_candidates = np.empty(k_max_, dtype=object)
+    k_motiflet_distances = np.zeros(k_max_+1)
+    k_motiflet_candidates = np.empty(k_max_+1, dtype=object)
 
     # D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
     # D_ = np.take_along_axis(D_, D_index, axis=0)
@@ -1043,7 +1053,7 @@ def search_k_motiflets_elbow(
                 D_full[trivialMatchRange[0]:trivialMatchRange[1], :] = np.inf
 
     upper_bound = np.inf
-    for test_k in tqdm(range(k_max_ - 1, 1, -1),
+    for test_k in tqdm(range(k_max_, 1, -1),
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
 
@@ -1071,7 +1081,7 @@ def search_k_motiflets_elbow(
 
         # compute a new upper bound
         if candidate is not None:
-            dist_new = get_pairwise_extent(D_full, candidate[:(test_k - 1)])
+            dist_new = get_pairwise_extent(D_full, candidate[:test_k])
             upper_bound = min(upper_bound, dist_new)
 
         incremental = True

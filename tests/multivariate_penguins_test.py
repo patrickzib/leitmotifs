@@ -43,7 +43,7 @@ def test_univariate():
     ml = Motiflets(ds_name, series, elbow_deviation=1.25, slack=0.3)
     # ml.plot_dataset()
 
-    k_max = 40
+    k_max = 50
     motif_length_range = np.arange(10, 30, 1)
 
     _, all_minima = ml.fit_motif_length(
@@ -196,3 +196,26 @@ def test_dendrogram():
                    )
 
     ml.fit_dendrogram(k_max, motif_length, n_clusters=2)
+
+
+
+def test_univariate_profile():
+    # ds_name, series = read_penguin_data_short()
+    length = 10000
+    B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
+    ds_name = "Penguins (Longer Snippet)"
+    df = B.iloc[497699: 497699 + length, 0:7].T
+
+
+    ml = Motiflets(ds_name, df, elbow_deviation=1.25, slack=0.3)
+    # ml.plot_dataset()
+
+    k_max = 50
+    motif_length_range = np.arange(10, 30, 1)
+
+    _, all_minima = ml.fit_motif_length(
+        k_max, motif_length_range,
+        plot=False, plot_elbows=False, plot_motifs_as_grid=False,
+        subsample=1)
+
+    ml.plot_motifset()
