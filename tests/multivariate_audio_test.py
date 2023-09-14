@@ -76,9 +76,9 @@ def test_audio():
     audio_length_seconds, df, index_range = read_songs()
 
     # df = df.iloc[:channels]
-    channels = ['MFCC 1', 'MFCC 2']
-    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3']
-    # channels = ['MFCC 2', 'MFCC 3']  ## hmm
+    # channels = ['MFCC 1', 'MFCC 2']
+    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3']
+    # channels = ['MFCC 2', 'MFCC 3']
     # channels = ['MFCC 4', 'MFCC 5']
     # channels = ['MFCC 0', 'MFCC 1', 'MFCC 5']
     # channels = ['MFCC 1', 'MFCC 5', 'MFCC 4']
@@ -86,7 +86,7 @@ def test_audio():
     #             'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
 
     # channels = ['MFCC 1', 'MFCC 2' , 'MFCC 3', 'MFCC 7']  # 2 Motifs, hmm
-    # channels = ['MFCC 4', 'MFCC 8', 'MFCC 6', 'MFCC 9']    # hmmm
+    # channels = ['MFCC 4', 'MFCC 8', 'MFCC 6', 'MFCC 9']   # hmmm
 
     df = df.loc[channels]
 

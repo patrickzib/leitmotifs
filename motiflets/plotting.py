@@ -46,6 +46,10 @@ class Motiflets:
         self.motif_length_range = None
         self.motif_length = 0
         self.all_extrema = []
+        self.all_elbows = []
+        self.all_top_motiflets = []
+        self.all_dists = []
+
 
         self.motif_length = 0
         self.k_max = 0
@@ -76,6 +80,9 @@ class Motiflets:
          self.dists,
          self.motiflets,
          self.elbow_points,
+         self.all_elbows,
+         self.all_top_motiflets,
+         self.all_dists,
          self.all_extrema) = plot_motif_length_selection(
             k_max,
             self.series,
@@ -187,16 +194,19 @@ class Motiflets:
 
         return fig, ax
 
-    def plot_motifset(self, path=None):
+    def plot_motifset(self, elbow_point=None, path=None):
 
         if self.dists is None or self.motiflets is None or self.elbow_points is None:
             raise Exception("Please call fit_k_elbow first.")
 
+        if elbow_point is None:
+            elbow_point = self.elbow_points[-1]
+
         fig, ax = plot_motifset(
             self.ds_name,
             self.series,
-            motifset=self.motiflets[self.elbow_points[-1]],
-            dist=self.dists[self.elbow_points[-1]],
+            motifset=self.motiflets[elbow_point],
+            dist=self.dists[elbow_point],
             motif_length=self.motif_length,
             show=path is None)
 
@@ -784,11 +794,10 @@ def plot_motif_length_selection(
                 candidates = np.zeros(len(dists[a]), dtype=np.object)
                 candidates[elbow[a]] = top_motiflets[a]  # need to unpack
                 elbow_points = elbow[a]
-                dist = dists[a]
 
                 if plot_elbows:
                     _plot_elbow_points(
-                        ds_name, data, motif_length, elbow_points, candidates, dist)
+                        ds_name, data, motif_length, elbow_points, candidates, dists[a])
 
                 if plot_grid:
                     plot_grid_motiflets(
@@ -805,7 +814,14 @@ def plot_motif_length_selection(
     best_motiflets[elbow[best_pos]] = top_motiflets[best_pos]  # need to unpack
 
     return (best_motif_length,
-            best_dist, best_motiflets, best_elbows,
+            best_dist,
+            best_motiflets,
+            best_elbows,
+
+            elbow,
+            top_motiflets,
+            dists,
+
             all_minima[0])
 
 
@@ -851,7 +867,7 @@ def _plot_window_lengths(
         motif_length_range[all_minima],
         au_ef[all_minima], color="red",
         label="Minima")
-    print("Minima", index[motif_length_range[all_minima]], "Elbows", elbow[all_minima])
+    # print("Minima", index[motif_length_range[all_minima]], "Elbows", elbow[all_minima])
     for item in ([ax.xaxis.label, ax.yaxis.label] +
                  ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(16)
