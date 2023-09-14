@@ -201,7 +201,7 @@ def test_dendrogram():
 
 def test_univariate_profile():
     # ds_name, series = read_penguin_data_short()
-    length = 10000
+    length = 5000
     B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
     ds_name = "Penguins (Longer Snippet)"
     df = B.iloc[497699: 497699 + length, 0:7].T
@@ -218,4 +218,4 @@ def test_univariate_profile():
         plot=False, plot_elbows=False, plot_motifs_as_grid=False,
         subsample=1)
 
-    ml.plot_motifset()
+    # ml.plot_motifset()

@@ -521,13 +521,13 @@ def _argknn(
     idx : the <= k subsequences within `lowest_dist`
 
     """
-    dist_idx = np.argwhere(dist <= lowest_dist).flatten().astype(np.int32)
+    # dist_idx = np.argwhere(dist <= lowest_dist).flatten().astype(np.int32)
     halve_m = int(m * slack)
 
     dists = np.copy(dist)
     idx = []  # there may be less than k, thus use a list
     for i in range(k):
-        pos = dist_idx[np.argmin(dists[dist_idx])]
+        pos = np.argmin(dists)
         if (not np.isnan(dists[pos])) \
                 and (not np.isinf(dists[pos])) \
                 and (dists[pos] <= lowest_dist):
