@@ -194,7 +194,7 @@ class Motiflets:
 
         return fig, ax
 
-    def plot_motifset(self, elbow_point=None, path=None):
+    def plot_motifset(self, path=None, elbow_point=None):
 
         if self.dists is None or self.motiflets is None or self.elbow_points is None:
             raise Exception("Please call fit_k_elbow first.")

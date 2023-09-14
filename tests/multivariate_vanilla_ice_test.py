@@ -74,7 +74,7 @@ def test_audio():
                     "_Channels_" + str(len(df.index)) + \
                     "_Length_" + str(m) + \
                     "_Motif.pdf"
-            ml.plot_motifset(path_)
+            ml.plot_motifset(path=path_)
 
             extract_audio_segment(
                 df, ds_name, audio_file_url, "snippets/queen-vanilla-ice",
@@ -122,7 +122,7 @@ def test_consensus():
 
     path_ = "audio/snippets/queen-vanilla-ice/" + ds_name + "_Channels_" + str(
         len(df.index)) + "_Motif.pdf"
-    ml.plot_motifset(path_)
+    ml.plot_motifset(path=path_)
 
     # extract_audio_segment(
     #     df, ds_name, audio_file_url, "snippets/queen-vanilla-ice",

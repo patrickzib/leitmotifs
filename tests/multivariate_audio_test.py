@@ -126,7 +126,7 @@ def test_audio():
 
     path_ = "audio/snippets/" + ds_name + "_Channels_" + str(
         len(df.index)) + "_Motif.pdf"
-    ml.plot_motifset(path_)
+    ml.plot_motifset(path=path_)
 
     extract_audio_segment(
         df, ds_name, audio_file_url, "snippets",

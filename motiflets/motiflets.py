@@ -670,81 +670,6 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
     return np.sort(np.array(list(set(elbow_points))))
 
 
-def _inner_au_ef(data, k_max, m,
-                 exclusion=None,
-                 exclusion_length=None,
-                 approximate_motiflet_pos=None,
-                 elbow_deviation=1.00,
-                 slack=0.5):
-    """Computes the Area under the Elbow-Function within an interval [2...k_max].
-
-    Parameters
-    ----------
-    data : array-like
-        The raw time series data.
-    k_max : int
-        Largest k. All k's within [2...k_max] are computed.
-    m : int
-        Motif length
-    exclusion : 2d-array
-        exclusion zone - use when searching for the TOP-2 motiflets
-    approximate_motiflet_pos : array-like
-        An initial estimate of the positions of the k-Motiflets for each k in the
-        given range [2...k_max]. Will be used for bounding distance computations.
-    elbow_deviation : float, default=1.00
-        The minimal absolute deviation needed to detect an elbow.
-        It measures the absolute change in deviation from k to k+1.
-        1.05 corresponds to 5% increase in deviation.
-    slack: float
-        Defines an exclusion zone around each subsequence to avoid trivial matches.
-        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-
-    Returns
-    -------
-    Tuple
-        au_efs : float
-            Area under the EF
-        elbows : array-like
-            Largest k (largest elbow) found
-        top_motiflet:
-            Largest motiflet found (largest k), given the elbows.
-        dists : array-like
-            Distances for each k in the given interval
-
-    """
-    dists, candidates, elbow_points, _ = search_k_motiflets_elbow(
-        k_max,
-        data,
-        m,
-        exclusion=exclusion,
-        exclusion_length=exclusion_length,
-        # TODO this can cause an error with SLACK set?
-        approximate_motiflet_pos=approximate_motiflet_pos,
-        elbow_deviation=elbow_deviation,
-        slack=slack)
-
-    dists_ = dists[(~np.isinf(dists)) & (~np.isnan(dists))]
-    # dists_ = dists_[:min(elbow_points[-1] + 1, len(dists_))]
-    if dists_.max() - dists_.min() == 0:
-        au_efs = 0
-    else:
-        au_efs = (((dists_ - dists_.min()) / (dists_.max() - dists_.min())).sum()
-                  / len(dists_))
-
-    elbow_points = _filter_unique(elbow_points, candidates, m)
-
-    top_motiflet = None
-    if len(elbow_points > 0):
-        elbows = elbow_points
-        top_motiflet = candidates[elbow_points]
-    else:
-        # we found only the pair motif
-        elbows = [2]
-        top_motiflet = [candidates[2]]
-
-    return au_efs, elbows, top_motiflet, dists, candidates
-
-
 def find_au_ef_motif_length(
         data,
         k_max,
@@ -809,16 +734,41 @@ def find_au_ef_motif_length(
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m < data.shape[-1]:
-            (au_efs[i], elbows[i],
-             top_motiflets[i], dists[i], approximate_pos) \
-                = _inner_au_ef(
-                data, k_max, m // subsample,
+            dist, candidates, elbow_points, _ = search_k_motiflets_elbow(
+                k_max,
+                data,
+                m // subsample,
                 exclusion=exclusion,
                 exclusion_length=exclusion_length,
+                # TODO this can cause an error with SLACK set?
                 approximate_motiflet_pos=approximate_pos,
                 elbow_deviation=elbow_deviation,
                 slack=slack)
 
+            dists_ = dist[(~np.isinf(dist)) & (~np.isnan(dist))]
+            # dists_ = dists_[:min(elbow_points[-1] + 1, len(dists_))]
+            if dists_.max() - dists_.min() == 0:
+                au_efs[i] = 0
+            else:
+                au_efs[i] = (((dists_ - dists_.min()) / (
+                            dists_.max() - dists_.min())).sum()
+                          / len(dists_))
+
+            elbow_points = _filter_unique(elbow_points, candidates, m)
+
+            top_motiflet = None
+            if len(elbow_points > 0):
+                elbows[i] = elbow_points
+                top_motiflets[i] = candidates[elbow_points]
+            else:
+                # we found only the pair motif
+                elbows[i] = [2]
+                top_motiflets[i] = [candidates[2]]
+
+            dists[i] = dist
+            approximate_pos = candidates
+
+    # reverse order
     au_efs = np.array(au_efs, dtype=np.float64)[::-1]
     elbows = elbows[::-1]
     dists = dists[::-1]

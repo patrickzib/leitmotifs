@@ -235,7 +235,7 @@ def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
 
     path_ = "video/motiflet_" + amc_name + "_Channels_" + str(
         len(df.index)) + "_Motif.pdf"
-    ml.plot_motifset(path_)
+    ml.plot_motifset(path=path_)
 
     motiflets = candidates[elbow_points]
     if add_xyz:
