@@ -314,7 +314,8 @@ def compute_distance_matrix(time_series,
         D_all = np.zeros((dims, n, n), dtype=np.float32)
         knns = np.zeros((dims, n, k), dtype=np.int32)
 
-    for d in prange(dims):
+    # prange does not work here! causes inconsistent results - why?
+    for d in range(dims):
         ts = time_series[d, :]
         means, stds = _sliding_mean_std(ts, m)
 
