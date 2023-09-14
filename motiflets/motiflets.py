@@ -256,69 +256,6 @@ def _sliding_mean_std(ts, m):
 
 
 @njit(fastmath=True, cache=True, parallel=True)
-def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
-    """Compute the full Distance Matrix between all pairs of subsequences.
-
-        Computes pairwise distances between n-m+1 subsequences, of length, extracted
-        from the time series, of length n.
-
-        Z-normed ED is used for distances.
-
-        This implementation is in O(n^2) by using the sliding dot-product.
-
-        Parameters
-        ----------
-        ts : array-like
-            The time series
-        m : int
-            The window length
-        exclude_trivial_match : bool
-            Trivial matches will be excluded if this parameter is set
-        n_jobs : int
-            Number of jobs to be used.
-        slack: float
-            Defines an exclusion zone around each subsequence to avoid trivial matches.
-            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-
-        Returns
-        -------
-        D : 2d array-like
-            The O(n^2) z-normed ED distances between all pairs of subsequences
-
-    """
-    n = np.int32(ts.shape[0] - m + 1)
-    halve_m = 0
-    if exclude_trivial_match:
-        halve_m = int(m * slack)
-
-    D = np.zeros((n, n), dtype=np.float32)
-    means, stds = _sliding_mean_std(ts, m)
-
-    dot_first = _sliding_dot_product(ts[:m], ts)
-    bin_size = ts.shape[0] // n_jobs
-    for idx in prange(n_jobs):
-        start = idx * bin_size
-        end = min((idx + 1) * bin_size, ts.shape[0] - m + 1)
-
-        dot_prev = None
-        for order in np.arange(start, end):
-            if order == start:
-                # O(n log n) operation
-                dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
-            else:
-                # constant time O(1) operations
-                dot_rolled = np.roll(dot_prev, 1) \
-                             + ts[order + m - 1] * ts[m - 1:n + m] \
-                             - ts[order - 1] * np.roll(ts[:n], 1)
-                dot_rolled[0] = dot_first[order]
-
-            D[order, :] = distance(dot_rolled, n, m, means, stds, order, halve_m)
-            dot_prev = dot_rolled
-
-    return D
-
-
-@njit(fastmath=True, cache=True, parallel=True)
 def compute_distances_full_mv(time_series,
                               m,
                               k,
@@ -635,7 +572,7 @@ def _check_unique(motifset_1, motifset_2, motif_length):
 
 
 # @njit(fastmath=True, cache=True)
-def _filter_unique(elbow_points, slopes, candidates, motif_length):
+def _filter_unique(elbow_points, candidates, motif_length):
     """Filters the list of candidate elbows for only the non-overlapping motifsets.
 
     This method applied a duplicate detection by filtering overlapping motif sets.
@@ -647,8 +584,6 @@ def _filter_unique(elbow_points, slopes, candidates, motif_length):
     ----------
     elbow_points : array-like
         List of possible k's for elbow-points.
-    slopes : array-like
-        Slope of each elbow_point
     candidates : 2d array-like
         List of motif sets for each k
     motif_length : int
@@ -658,12 +593,9 @@ def _filter_unique(elbow_points, slopes, candidates, motif_length):
     -------
     filtered_ebp : array-like
         The set of non-overlapping elbow points.
-    filtered_slopes : array-like
-        The corresponding slopes in the elbow-function
 
     """
     filtered_ebp = []
-    filtered_slope = []
     for i in range(len(elbow_points)):
         unique = True
         for j in range(i + 1, len(elbow_points)):
@@ -673,10 +605,8 @@ def _filter_unique(elbow_points, slopes, candidates, motif_length):
                 break
         if unique:
             filtered_ebp.append(elbow_points[i])
-            filtered_slope.append(slopes[i])
 
-    # print("Elbows", filtered_ebp)
-    return np.array(filtered_ebp), np.array(filtered_slope)
+    return np.array(filtered_ebp)
 
 
 @njit(fastmath=True, cache=True)
@@ -698,7 +628,6 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
     Returns
     -------
     elbow_points : the elbow-points in the extent-function
-    slope : the slopes in the extent-function
     """
     elbow_points = set()
     elbow_points.add(2)  # required for numba to have a type
@@ -721,21 +650,18 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
                 peaks[i] = (m1 / m2)
 
     elbow_points = []
-    slope = []
     while True:
         p = np.argmax(peaks)
         if peaks[p] > alpha:
             elbow_points.append(p)
-            slope.append(peaks[p])
             peaks[p - 1:p + 2] = 0
         else:
             break
 
     if len(elbow_points) == 0:
         elbow_points.append(2)
-        slope.append(0)
 
-    return np.sort(np.array(list(set(elbow_points)))), slope
+    return np.sort(np.array(list(set(elbow_points))))
 
 
 def _inner_au_ef(data, k_max, m,
@@ -772,8 +698,6 @@ def _inner_au_ef(data, k_max, m,
     Tuple
         au_efs : float
             Area under the EF
-        slope_efs : float
-            The slope of the EF
         elbows : array-like
             Largest k (largest elbow) found
         top_motiflet:
@@ -782,7 +706,7 @@ def _inner_au_ef(data, k_max, m,
             Distances for each k in the given interval
 
     """
-    dists, candidates, elbow_points, slope_efs, _ = search_k_motiflets_elbow(
+    dists, candidates, elbow_points, _ = search_k_motiflets_elbow(
         k_max,
         data,
         m,
@@ -800,7 +724,7 @@ def _inner_au_ef(data, k_max, m,
         au_efs = (((dists_ - dists_.min()) / (dists_.max() - dists_.min())).sum()
                   / len(dists_))
 
-    elbow_points, slope_efs = _filter_unique(elbow_points, slope_efs, candidates, m)
+    elbow_points = _filter_unique(elbow_points, candidates, m)
 
     top_motiflet = None
     if len(elbow_points > 0):
@@ -811,7 +735,7 @@ def _inner_au_ef(data, k_max, m,
         elbows = [2]
         top_motiflet = [candidates[2]]
 
-    return au_efs, slope_efs, elbows, top_motiflet, dists, candidates
+    return au_efs, elbows, top_motiflet, dists, candidates
 
 
 def find_au_ef_motif_length(
@@ -868,7 +792,6 @@ def find_au_ef_motif_length(
     # in reverse order
     au_efs = np.zeros(len(motif_length_range), dtype=object)
     au_efs.fill(np.inf)
-    slope_efs = np.zeros(len(motif_length_range), dtype=object)
     elbows = np.zeros(len(motif_length_range), dtype=object)
     top_motiflets = np.zeros(len(motif_length_range), dtype=object)
     dists = np.zeros(len(motif_length_range), dtype=object)
@@ -879,7 +802,7 @@ def find_au_ef_motif_length(
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m < data.shape[-1]:
-            (au_efs[i], slope_efs[i], elbows[i],
+            (au_efs[i], elbows[i],
              top_motiflets[i], dists[i], approximate_pos) \
                 = _inner_au_ef(
                 data, k_max, m // subsample,
@@ -890,7 +813,6 @@ def find_au_ef_motif_length(
                 slack=slack)
 
     au_efs = np.array(au_efs, dtype=np.float64)[::-1]
-    slope_efs = slope_efs[::-1]
     elbows = elbows[::-1]
     dists = dists[::-1]
     top_motiflets = top_motiflets[::-1] * subsample
@@ -903,12 +825,8 @@ def find_au_ef_motif_length(
     minimum = motif_length_range[np.nanargmin(au_efs)]
     au_ef_minima = argrelextrema(au_efs, np.less_equal, order=subsample)
 
-    # Maxima in the slope of the EF
-    best_slope_efs = np.array([np.max(max) for max in slope_efs], dtype=np.float64)
-    slope_maxima = argrelextrema(best_slope_efs, np.greater_equal, order=1)
-
+    # Maxima in the EF
     return (minimum, au_ef_minima, au_efs,
-            slope_maxima, best_slope_efs,
             elbows, top_motiflets, dists)
 
 
@@ -1092,14 +1010,14 @@ def search_k_motiflets_elbow(
         k_motiflet_distances[i - 1] = min(k_motiflet_distances[i],
                                           k_motiflet_distances[i - 1])
 
-    elbow_points, slopes = find_elbow_points(k_motiflet_distances,
+    elbow_points = find_elbow_points(k_motiflet_distances,
                                              elbow_deviation=elbow_deviation)
 
     if filter:
-        elbow_points, slopes = _filter_unique(
-            elbow_points, slopes, k_motiflet_candidates, motif_length)
+        elbow_points = _filter_unique(
+            elbow_points, k_motiflet_candidates, motif_length)
 
-    return k_motiflet_distances, k_motiflet_candidates, elbow_points, slopes, m
+    return k_motiflet_distances, k_motiflet_candidates, elbow_points, m
 
 
 @njit(fastmath=True, cache=True)
@@ -1191,3 +1109,69 @@ def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
     motiflet_pos = motiflet_poss[min_pos]
 
     return motiflet_dist, motiflet_pos
+
+
+
+@njit(fastmath=True, cache=True, parallel=True)
+def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
+    """Compute the full Distance Matrix between all pairs of subsequences.
+
+        # TODO only used for backwards compability
+
+        Computes pairwise distances between n-m+1 subsequences, of length, extracted
+        from the time series, of length n.
+
+        Z-normed ED is used for distances.
+
+        This implementation is in O(n^2) by using the sliding dot-product.
+
+        Parameters
+        ----------
+        ts : array-like
+            The time series
+        m : int
+            The window length
+        exclude_trivial_match : bool
+            Trivial matches will be excluded if this parameter is set
+        n_jobs : int
+            Number of jobs to be used.
+        slack: float
+            Defines an exclusion zone around each subsequence to avoid trivial matches.
+            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+
+        Returns
+        -------
+        D : 2d array-like
+            The O(n^2) z-normed ED distances between all pairs of subsequences
+
+    """
+    n = np.int32(ts.shape[0] - m + 1)
+    halve_m = 0
+    if exclude_trivial_match:
+        halve_m = int(m * slack)
+
+    D = np.zeros((n, n), dtype=np.float32)
+    means, stds = _sliding_mean_std(ts, m)
+
+    dot_first = _sliding_dot_product(ts[:m], ts)
+    bin_size = ts.shape[0] // n_jobs
+    for idx in prange(n_jobs):
+        start = idx * bin_size
+        end = min((idx + 1) * bin_size, ts.shape[0] - m + 1)
+
+        dot_prev = None
+        for order in np.arange(start, end):
+            if order == start:
+                # O(n log n) operation
+                dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
+            else:
+                # constant time O(1) operations
+                dot_rolled = np.roll(dot_prev, 1) \
+                             + ts[order + m - 1] * ts[m - 1:n + m] \
+                             - ts[order - 1] * np.roll(ts[:n], 1)
+                dot_rolled[0] = dot_first[order]
+
+            D[order, :] = distance(dot_rolled, n, m, means, stds, order, halve_m)
+            dot_prev = dot_rolled
+
+    return D

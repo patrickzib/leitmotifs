@@ -585,7 +585,7 @@ def plot_elbow(k_max,
         raw_data = raw_data.reshape((1, -1))
 
     startTime = time.perf_counter()
-    dists, candidates, elbow_points, slopes, m = ml.search_k_motiflets_elbow(
+    dists, candidates, elbow_points, m = ml.search_k_motiflets_elbow(
         k_max,
         raw_data,
         motif_length,
@@ -745,7 +745,6 @@ def plot_motif_length_selection(
     startTime = time.perf_counter()
     (best_motif_length,
      all_minima, au_ef,
-     all_slope_maxima, slope_ef,
      elbow, top_motiflets, dists) = \
         ml.find_au_ef_motif_length(
             data_raw, k_max,
@@ -762,7 +761,6 @@ def plot_motif_length_selection(
     # TODO best_motif_length may be missing?
     # best = ml._filter_unique(
     #    np.arange(len(top_motiflets[all_minima])),
-    #    slope_ef[all_minima],
     #    top_motiflets[all_minima],
     #    np.max(motif_length_range[all_minima])
     # )
@@ -773,11 +771,6 @@ def plot_motif_length_selection(
         _plot_window_lengths(
             all_minima, au_ef, data_raw, ds_name, elbow, header, index,
             motif_length_range, top_motiflets)
-
-        # Using the slope
-        # _plot_window_lengths(
-        #    all_slope_maxima, slope_ef, data_raw, ds_name, elbow, header, index,
-        #    motif_length_range, top_motiflets)
 
         if plot_elbows or plot_grid:
             to_plot = all_minima[0]
