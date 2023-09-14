@@ -64,7 +64,7 @@ def test_parallel_distances():
         seq_end = time.time() - start
 
         start = time.time()
-        D2 = ml.compute_distances_full(series, 100, n_jobs=4)
+        D2 = ml.compute_distances_full_univ(series, 100, n_jobs=4)
         par_end = time.time() - start
 
         # start = time.time()

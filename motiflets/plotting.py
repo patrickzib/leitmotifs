@@ -62,7 +62,8 @@ class Motiflets:
             subsample=1,
             plot=True,
             plot_elbows=False,
-            plot_motifs_as_grid=True
+            plot_motifs_as_grid=True,
+            plot_best_only=True
     ):
 
         if exclusion is None and not (exclusion_length is None):
@@ -87,7 +88,8 @@ class Motiflets:
             subsample=subsample,
             plot_elbows=plot_elbows,
             plot_grid=plot_motifs_as_grid,
-            plot=plot)
+            plot=plot,
+            plot_best_only=plot_best_only)
 
         return self.motif_length, self.all_extrema
 
@@ -157,7 +159,7 @@ class Motiflets:
 
         ax.set_title('Dendrogram')
         ax.set_xlabel('Dimensions')
-        ax.set_ylabel('Euclidean distances')
+        ax.set_ylabel('Intersection distance')
         plt.tight_layout()
         plt.show()
 
@@ -219,12 +221,12 @@ def intersection_dist(p1, p2):
             if p1[i] <= p2[j + 1] and p2[j] <= p1[i + 1]:
                 matches += 1
             else:
-                raise Exception("WHY???")
+                raise Exception("Why???")
             i += 2
             j += 2
 
     no_matches = max(len(p1), len(p2))
-    return 1 / (1e-8 + matches / no_matches)
+    return 1 / (1 + matches / no_matches)
 
 
 def as_series(data, index_range, index_name):
@@ -1276,7 +1278,7 @@ def plot_all_competitors(
 
     # convert to numpy array
     _, data_raw = ml.pd_series_to_numpy(data)
-    D_full = ml.compute_distances_full(data_raw, motif_length, slack=slack)
+    D_full = ml.compute_distances_full_univ(data_raw, motif_length, slack=slack)
     indices = np.arange(len(motifsets))
 
     dists = [ml.get_pairwise_extent(D_full, motiflet_pos, upperbound=np.inf)
@@ -1329,7 +1331,7 @@ def plot_competitors(
     # convert to numpy array
     _, data_raw = ml.pd_series_to_numpy(data)
 
-    D_full = ml.compute_distances_full(data_raw, motif_length, slack=slack)
+    D_full = ml.compute_distances_full_univ(data_raw, motif_length, slack=slack)
 
     last = -1
     motifsets_filtered = []

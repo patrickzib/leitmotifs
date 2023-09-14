@@ -256,13 +256,13 @@ def _sliding_mean_std(ts, m):
 
 
 @njit(fastmath=True, cache=True, parallel=True)
-def compute_distances_full_mv(time_series,
-                              m,
-                              k,
-                              exclude_trivial_match=True,
-                              n_jobs=4,
-                              slack=0.5,
-                              sum_dims=True):
+def compute_distance_matrix(time_series,
+                            m,
+                            k,
+                            exclude_trivial_match=True,
+                            n_jobs=4,
+                            slack=0.5,
+                            sum_dims=True):
     """ Compute the full Distance Matrix between all pairs of subsequences of a
         multivariate time series.
 
@@ -288,11 +288,16 @@ def compute_distances_full_mv(time_series,
         slack: float
             Defines an exclusion zone around each subsequence to avoid trivial matches.
             Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+        sum_dims : bool
+            Sum distances overa ll dimensions into one row for
+            multidimensional time series
 
         Returns
         -------
         D : 2d array-like
             The O(n^2) z-normed ED distances between all pairs of subsequences
+        knns : 2d array-like
+            The k-nns for each subsequence
 
     """
     dims = time_series.shape[0]
@@ -718,6 +723,7 @@ def _inner_au_ef(data, k_max, m,
         slack=slack)
 
     dists_ = dists[(~np.isinf(dists)) & (~np.isnan(dists))]
+    # dists_ = dists_[:min(elbow_points[-1] + 1, len(dists_))]
     if dists_.max() - dists_.min() == 0:
         au_efs = 0
     else:
@@ -866,10 +872,11 @@ def search_multidim_k_motiflets(
             motifset-candidates for dimension
     """
     m = motif_length
+    n = data.shape[-1] - m + 1
 
     # TODO why * 1.5 ??? !!!
-    k_max_ = max(3, min(int((data.shape[-1] - m + 1) // int(m * slack * 1.5)), k_max))
-    D_, knns = compute_distances_full_mv(data, m, k_max_, slack=slack, sum_dims=False)
+    k_max_ = max(3, min(int(n // int(m * slack * 1.5)), k_max))
+    D_, knns = compute_distance_matrix(data, m, k_max_, slack=slack, sum_dims=False)
 
     k_motiflet_distances = np.zeros(D_.shape[0])
     k_motiflet_candidates = np.zeros((D_.shape[0], k_max_), dtype=np.int32)
@@ -945,16 +952,17 @@ def search_k_motiflets_elbow(
 
     # motif size
     m = motif_length
+    n = data_raw.shape[-1] - m + 1
 
-    k_max_ = max(3, min(int((data_raw.shape[-1] - m + 1) // (m * slack)), k_max))
-    D_full, knns = compute_distances_full_mv(data_raw, m, k_max_, slack=slack,
-                                             sum_dims=True)
+    k_max_ = max(3, min(int(n // (m * slack)), k_max))
+    D_full, knns = compute_distance_matrix(data_raw, m, k_max_, slack=slack,
+                                           sum_dims=True)
     D_full = D_full[0]
     knns = knns[0]
 
     # non-overlapping motifs only
-    k_motiflet_distances = np.zeros(k_max_+1)
-    k_motiflet_candidates = np.empty(k_max_+1, dtype=object)
+    k_motiflet_distances = np.zeros(k_max_ + 1)
+    k_motiflet_candidates = np.empty(k_max_ + 1, dtype=object)
 
     # D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
     # D_ = np.take_along_axis(D_, D_index, axis=0)
@@ -1011,7 +1019,7 @@ def search_k_motiflets_elbow(
                                           k_motiflet_distances[i - 1])
 
     elbow_points = find_elbow_points(k_motiflet_distances,
-                                             elbow_deviation=elbow_deviation)
+                                     elbow_deviation=elbow_deviation)
 
     if filter:
         elbow_points = _filter_unique(
@@ -1111,9 +1119,8 @@ def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
     return motiflet_dist, motiflet_pos
 
 
-
 @njit(fastmath=True, cache=True, parallel=True)
-def compute_distances_full(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
+def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
     """Compute the full Distance Matrix between all pairs of subsequences.
 
         # TODO only used for backwards compability

@@ -40,21 +40,27 @@ def test_plot_data():
 def test_univariate():
     ds_name, series = read_penguin_data_short()
 
-    ml = Motiflets(ds_name, series, elbow_deviation=1.25, slack=0.3)
+    ml = Motiflets(
+        ds_name, series,
+        elbow_deviation=1,
+        slack=0.8
+    )
     # ml.plot_dataset()
 
     k_max = 50
-    motif_length_range = np.arange(10, 30, 1)
+    motif_length_range = np.arange(15, 50, 1)
 
     _, all_minima = ml.fit_motif_length(
         k_max, motif_length_range,
-        plot_elbows=True, plot_motifs_as_grid=False,
+        plot_elbows=False,
+        plot_motifs_as_grid=False,
+        plot_best_only=True,
         subsample=1)
 
     ml.plot_motifset()
 
 
-def test_univariate_2():
+def test_univariate_top2():
     length = 4000
     ds_name, B = read_penguin_data()
 
@@ -63,21 +69,21 @@ def test_univariate_2():
 
     ml = Motiflets(ds_name,
                    series,
-                   # elbow_deviation=1.1,
-                   # slack = 0.6
+                   elbow_deviation=1,
+                   slack=0.8
                    )
 
-    k_max = 40
-    motif_length_range = np.arange(20, 30)
+    k_max = 50
+    motif_length_range = np.arange(20, 45)
 
     best_length, _ = ml.fit_motif_length(
         k_max,
         motif_length_range,
-        subsample=1,
         plot=True,
         plot_elbows=False,
-        plot_motifs_as_grid=True
+        plot_motifs_as_grid=False
     )
+    ml.plot_motifset()
     print("Best found length", best_length)
 
     exclusion = ml.motiflets[ml.elbow_points[-1]]
@@ -86,83 +92,58 @@ def test_univariate_2():
         motif_length_range,
         exclusion=exclusion,  # TODO: refactor?
         exclusion_length=best_length,
-        subsample=1,
         plot=True,
-        plot_elbows=True,
-        plot_motifs_as_grid=True
+        plot_elbows=False,
+        plot_motifs_as_grid=False
     )
+    ml.plot_motifset()
 
-    print("Best found length", best_length)
-    exclusion = np.concatenate([exclusion, ml.motiflets[ml.elbow_points[-1]]])
-    best_length, _ = ml.fit_motif_length(
-        k_max,
-        motif_length_range,
-        exclusion=exclusion,
-        exclusion_length=best_length,
-        subsample=1,
-        plot=True,
-        plot_elbows=True,
-        plot_motifs_as_grid=True
-    )
-
-    print("Best found length", best_length)
 
 def test_multivariate():
-    length = 1000
+    length = 2000
     ds_name, B = read_penguin_data()
 
     for start in [0, 2000]:
         series = B.iloc[497699 + start:497699 + start + length,
-                 np.array([0, 1, 2])].T
+                 np.array([0, 2])].T
         ml = Motiflets(ds_name, series,
-                       elbow_deviation=1.1,
-                       # slack = 0.6
+                       # elbow_deviation=1.1,
+                       slack=0.8
                        )
-        # ml.plot_dataset()
 
         k_max = 50
-        motif_length_range = np.arange(20, 30, 1)
+        motif_length_range = np.arange(20, 35, 1)
 
         best_length, _ = ml.fit_motif_length(
             k_max,
             motif_length_range,
-            plot_elbows=True,
-            subsample=1
+            plot_elbows=False,
+            plot_motifs_as_grid=False,
         )
+        ml.plot_motifset()
 
         print("Best found length", best_length)
 
-        # motif_length = 22
-        # ml.fit_k_elbow(
-        #    k_max,
-        #    plot_elbows=True,
-        #    plot_motifs_as_grid=False,
-        #    motif_length=motif_length,
-        # )
 
-        # path = "penguin/" + ds_name + "_start_" + str(start) + ".pdf"
-        # ml.plot_motifset()  # path
-
-
-def test_multivariate_2():
+def test_multivariate_top2():
     length = 2000
     ds_name, B = read_penguin_data()
 
     series = B.iloc[497699:497699 + length,
              np.array([0, 2])].T
     ml = Motiflets(ds_name, series,
-                   elbow_deviation=1.1,
-                   slack = 0.6
+                   slack=0.8
                    )
 
     k_max = 50
-    motif_length_range = np.arange(20, 45, 1)
+    motif_length_range = np.arange(20, 35, 1)
 
     best_length, _ = ml.fit_motif_length(
         k_max,
         motif_length_range,
-        subsample=1
+        plot_motifs_as_grid=False,
     )
+    ml.plot_motifset()
 
     print("Best found length", best_length)
 
@@ -172,10 +153,11 @@ def test_multivariate_2():
         k_max,
         motif_length_range,
         plot_elbows=True,
+        plot_motifs_as_grid=False,
         exclusion=exclusion,
         exclusion_length=best_length,
-        subsample=1
     )
+    ml.plot_motifset()
 
     print("Best found length", best_length)
 
@@ -190,13 +172,11 @@ def test_dendrogram():
     motif_length = 22
 
     ml = Motiflets(ds_name, df,
-                   elbow_deviation=1.25,
-                   slack=1.0,
+                   slack=0.8,
                    dimension_labels=df.index
                    )
 
     ml.fit_dendrogram(k_max, motif_length, n_clusters=2)
-
 
 
 def test_univariate_profile():
@@ -205,7 +185,6 @@ def test_univariate_profile():
     B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
     ds_name = "Penguins (Longer Snippet)"
     df = B.iloc[497699: 497699 + length, 0:7].T
-
 
     ml = Motiflets(ds_name, df, elbow_deviation=1.25, slack=0.3)
     # ml.plot_dataset()

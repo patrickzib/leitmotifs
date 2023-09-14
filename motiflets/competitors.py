@@ -43,7 +43,7 @@ def get_valmod_motif_set_ranged(
         max_r=10,
         steps=10
 ):
-    D_full = ml.compute_distances_full(data, motif_length)
+    D_full = ml.compute_distances_full_univ(data, motif_length)
     m_half = motif_length // 2
 
     # get pair motif
@@ -74,7 +74,7 @@ def get_valmod_motif_set(
         r,
         D_full=None):
     if D_full is None:
-        D_full = ml.compute_distances_full(data, motif_length)
+        D_full = ml.compute_distances_full_univ(data, motif_length)
 
     # get pair motif
     pair_motif, pair_motif_dist, D_full = get_pair_motif(D_full)
@@ -93,7 +93,7 @@ def get_k_motifs_ranged(
         data,
         motif_length,
         max_r=10):
-    D_full = ml.compute_distances_full(data, motif_length)
+    D_full = ml.compute_distances_full_univ(data, motif_length)
 
     # get pair motif
     pair_motif, pair_motif_dist, _ = get_pair_motif(D_full)
@@ -117,7 +117,7 @@ def get_k_motifs(
         r,
         D_full=None):
     if D_full is None:
-        D_full = ml.compute_distances_full(data, motif_length)
+        D_full = ml.compute_distances_full_univ(data, motif_length)
 
     # allow subsequence itself
     np.fill_diagonal(D_full, 0)
