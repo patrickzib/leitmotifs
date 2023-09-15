@@ -501,9 +501,6 @@ def get_approximate_k_motiflet(
         The k in k-Motiflets
     D : 2d array-like
         The distance matrix
-    knns : 2d array-like
-        We can reduce a set of k'-Motiflets, with k'>k, to a k-Motiflet. Used for
-        efficient computation of elbows from large to small.
     upper_bound : float
         Used for admissible pruning
 
@@ -649,6 +646,7 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
             m2 = (dists[i] - dists[i - 1]) + 0.00001
 
             # avoid detecting elbows in near constant data
+            # TODO adding this removes reproducability
             if dists[i - 1] == dists[i]:
                 m2 = 1.0  # peaks[i] = 0
 
@@ -733,7 +731,7 @@ def find_au_ef_motif_length(
 
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
-        if m < data.shape[-1]:
+        if m // subsample < data.shape[-1]:
             dist, candidates, elbow_points, _ = search_k_motiflets_elbow(
                 k_max,
                 data,
@@ -754,7 +752,7 @@ def find_au_ef_motif_length(
                         dists_.max() - dists_.min())).sum()
                              / len(dists_))
 
-            elbow_points = _filter_unique(elbow_points, candidates, m)
+            elbow_points = _filter_unique(elbow_points, candidates, m // subsample)
 
             top_motiflet = None
             if len(elbow_points > 0):
@@ -934,22 +932,23 @@ def search_k_motiflets_elbow(
                        position=0, leave=False):
 
         # use an approximate position as an initial estimate, if available
-        bound_set = False
-        if approximate_motiflet_pos is not None \
-                and len(approximate_motiflet_pos) > test_k \
-                and approximate_motiflet_pos[test_k] is not None:
-            dd = get_pairwise_extent(D_full, approximate_motiflet_pos[test_k])
-            upper_bound = min(dd, upper_bound)
-            bound_set = True
+        # bound_set = False
+        # if approximate_motiflet_pos is not None \
+        #         and len(approximate_motiflet_pos) > test_k \
+        #         and approximate_motiflet_pos[test_k] is not None:
+        #     dd = get_pairwise_extent(D_full, approximate_motiflet_pos[test_k])
+        #     upper_bound = min(dd, upper_bound)
+        #     bound_set = True
 
         candidate, candidate_dist = get_approximate_k_motiflet(
             data_raw, m, test_k, D_full, knns,
             upper_bound=upper_bound,
         )
 
-        if candidate is None and bound_set:
-            # If we already found the best motif in length l+1
-            candidate = approximate_motiflet_pos[test_k]
+        # if candidate is None and bound_set:
+        #     # If we already found the best motif in length l+1
+        #     candidate = approximate_motiflet_pos[test_k]
+        #     candidate_dist = dd
 
         k_motiflet_distances[test_k] = candidate_dist
         k_motiflet_candidates[test_k] = candidate
