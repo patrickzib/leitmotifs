@@ -748,11 +748,11 @@ def find_au_ef_motif_length(
             dists_ = dist[(~np.isinf(dist)) & (~np.isnan(dist))]
             # dists_ = dists_[:min(elbow_points[-1] + 1, len(dists_))]
             if dists_.max() - dists_.min() == 0:
-                au_efs[i] = 0
+                au_efs[i] = 1.0
             else:
                 au_efs[i] = (((dists_ - dists_.min()) / (
-                            dists_.max() - dists_.min())).sum()
-                          / len(dists_))
+                        dists_.max() - dists_.min())).sum()
+                             / len(dists_))
 
             elbow_points = _filter_unique(elbow_points, candidates, m)
 
@@ -765,6 +765,9 @@ def find_au_ef_motif_length(
                 elbows[i] = [2]
                 top_motiflets[i] = [candidates[2]]
 
+                # no elbow can be found, ignore this part
+                au_efs[i] = 1.0
+
             dists[i] = dist
             approximate_pos = candidates
 
@@ -773,10 +776,6 @@ def find_au_ef_motif_length(
     elbows = elbows[::-1]
     dists = dists[::-1]
     top_motiflets = top_motiflets[::-1] * subsample
-
-    # if no elbow can be found, ignore this part
-    condition = np.argwhere(elbows == 0).flatten()
-    au_efs[condition] = np.inf
 
     # Minima in AU_EF
     minimum = motif_length_range[np.nanargmin(au_efs)]
@@ -996,80 +995,6 @@ def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
     return motiflet_candidate_dist
 
 
-@njit(fastmath=True, cache=True)
-def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
-    """Exact algorithm to compute k-Motiflets
-
-    Warning: The algorithm has exponential runtime complexity.
-
-    Parameters
-    ----------
-    ts : array-like
-        The time series
-    D_full : 2d array-like
-        The pairwise distance matrix
-    m : int
-        Length of the motif
-    k : int
-        k-Motiflet size
-    upperbound : float
-        Admissible pruning on distance computations.
-    slack: float
-        Defines an exclusion zone around each subsequence to avoid trivial matches.
-        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-
-    Returns
-    -------
-    best found motiflet and its extent.
-    """
-    n = ts.shape[-1] - m + 1
-
-    motiflet_dist = upperbound
-    if upperbound is None:
-        # FIXME ???!!
-        motiflet_candidate, motiflet_dist = get_approximate_k_motiflet(
-            ts, m, k, D_full, upper_bound=np.inf)
-
-        motiflet_pos = motiflet_candidate
-
-    # allow subsequence itself
-    np.fill_diagonal(D_full, 0)
-    k_halve_m = k * int(m * slack)
-
-    def exact_inner(ii, k_halve_m, D_full,
-                    motiflet_dist, motiflet_pos, m):
-
-        for i in np.arange(ii, min(n, ii + m)):  # in runs of m
-            D_candidates = np.argwhere(D_full[i] <= motiflet_dist).flatten()
-            if (len(D_candidates) >= k and
-                    np.ptp(D_candidates) > k_halve_m):
-                # exhaustive search over all subsets
-                for permutation in itertools.combinations(D_candidates, k):
-                    if np.ptp(permutation) > k_halve_m:
-                        dist = candidate_dist(D_full, permutation, motiflet_dist, m,
-                                              slack)
-                        if dist < motiflet_dist:
-                            motiflet_dist = dist
-                            motiflet_pos = np.copy(permutation)
-        return motiflet_dist, motiflet_pos
-
-    motiflet_dists, motiflet_poss = zip(*Parallel(n_jobs=-1)(
-        delayed(exact_inner)(
-            i,
-            k_halve_m,
-            D_full,
-            motiflet_dist,
-            motiflet_pos,
-            m
-        ) for i in range(0, n, m)))
-
-    min_pos = np.nanargmin(motiflet_dists)
-    motiflet_dist = motiflet_dists[min_pos]
-    motiflet_pos = motiflet_poss[min_pos]
-
-    return motiflet_dist, motiflet_pos
-
-
 @njit(fastmath=True, cache=True, parallel=True)
 def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
     """Compute the full Distance Matrix between all pairs of subsequences.
@@ -1133,3 +1058,77 @@ def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, sla
             dot_prev = dot_rolled
 
     return D
+
+# Exact algorithm, but too slow
+# @njit(fastmath=True, cache=True)
+# def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
+#     """Exact algorithm to compute k-Motiflets
+#
+#     Warning: The algorithm has exponential runtime complexity.
+#
+#     Parameters
+#     ----------
+#     ts : array-like
+#         The time series
+#     D_full : 2d array-like
+#         The pairwise distance matrix
+#     m : int
+#         Length of the motif
+#     k : int
+#         k-Motiflet size
+#     upperbound : float
+#         Admissible pruning on distance computations.
+#     slack: float
+#         Defines an exclusion zone around each subsequence to avoid trivial matches.
+#         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+#
+#     Returns
+#     -------
+#     best found motiflet and its extent.
+#     """
+#     n = ts.shape[-1] - m + 1
+#
+#     motiflet_dist = upperbound
+#     if upperbound is None:
+#         # FIXME ???!!
+#         motiflet_candidate, motiflet_dist = get_approximate_k_motiflet(
+#             ts, m, k, D_full, upper_bound=np.inf)
+#
+#         motiflet_pos = motiflet_candidate
+#
+#     # allow subsequence itself
+#     np.fill_diagonal(D_full, 0)
+#     k_halve_m = k * int(m * slack)
+#
+#     def exact_inner(ii, k_halve_m, D_full,
+#                     motiflet_dist, motiflet_pos, m):
+#
+#         for i in np.arange(ii, min(n, ii + m)):  # in runs of m
+#             D_candidates = np.argwhere(D_full[i] <= motiflet_dist).flatten()
+#             if (len(D_candidates) >= k and
+#                     np.ptp(D_candidates) > k_halve_m):
+#                 # exhaustive search over all subsets
+#                 for permutation in itertools.combinations(D_candidates, k):
+#                     if np.ptp(permutation) > k_halve_m:
+#                         dist = candidate_dist(D_full, permutation, motiflet_dist, m,
+#                                               slack)
+#                         if dist < motiflet_dist:
+#                             motiflet_dist = dist
+#                             motiflet_pos = np.copy(permutation)
+#         return motiflet_dist, motiflet_pos
+#
+#     motiflet_dists, motiflet_poss = zip(*Parallel(n_jobs=-1)(
+#         delayed(exact_inner)(
+#             i,
+#             k_halve_m,
+#             D_full,
+#             motiflet_dist,
+#             motiflet_pos,
+#             m
+#         ) for i in range(0, n, m)))
+#
+#     min_pos = np.nanargmin(motiflet_dists)
+#     motiflet_dist = motiflet_dists[min_pos]
+#     motiflet_pos = motiflet_poss[min_pos]
+#
+#     return motiflet_dist, motiflet_pos
