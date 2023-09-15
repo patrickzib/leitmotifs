@@ -997,7 +997,6 @@ def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
 @njit(fastmath=True, cache=True, parallel=True)
 def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
     """Compute the full Distance Matrix between all pairs of subsequences.
-
         # TODO only used for backwards compability
 
         Computes pairwise distances between n-m+1 subsequences, of length, extracted
@@ -1027,36 +1026,14 @@ def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, sla
             The O(n^2) z-normed ED distances between all pairs of subsequences
 
     """
-    n = np.int32(ts.shape[0] - m + 1)
-    halve_m = 0
-    if exclude_trivial_match:
-        halve_m = int(m * slack)
-
-    D = np.zeros((n, n), dtype=np.float32)
-    means, stds = _sliding_mean_std(ts, m)
-
-    dot_first = _sliding_dot_product(ts[:m], ts)
-    bin_size = ts.shape[0] // n_jobs
-    for idx in prange(n_jobs):
-        start = idx * bin_size
-        end = min((idx + 1) * bin_size, ts.shape[0] - m + 1)
-
-        dot_prev = None
-        for order in np.arange(start, end):
-            if order == start:
-                # O(n log n) operation
-                dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
-            else:
-                # constant time O(1) operations
-                dot_rolled = np.roll(dot_prev, 1) \
-                             + ts[order + m - 1] * ts[m - 1:n + m] \
-                             - ts[order - 1] * np.roll(ts[:n], 1)
-                dot_rolled[0] = dot_first[order]
-
-            D[order, :] = distance(dot_rolled, n, m, means, stds, order, halve_m)
-            dot_prev = dot_rolled
-
-    return D
+    D, _ = compute_distance_matrix(ts,
+                            m,
+                            1,
+                            exclude_trivial_match=exclude_trivial_match,
+                            n_jobs=n_jobs,
+                            slack=slack,
+                            sum_dims=True)
+    return D[0]
 
 # Exact algorithm, but too slow
 # @njit(fastmath=True, cache=True)
