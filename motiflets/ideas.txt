@@ -3,10 +3,6 @@ Done
 - Use Cases
 - Variable Length Motif Search
     - Top-2 Motif Search tested with Penguin
-
-
-To Do
-- Variable Length Motif Search
     - Test more use cases
     - Exclusion around found motifs?
     - Refactor
@@ -14,9 +10,16 @@ To Do
 - Sub-dimensional Motifs
     - Modify Distance Measure for clustering using Covering Score
 
-- Streaming Motifs?
 
-- Modify Distance Matrix to store only k-NNs : will not give optimal results
+To Do
+
+- Sub-dimensional Motifs
+    - Sort by distance
+
+- Sparse Matrix?
+    - Use Sparse Matrix for Distance Matrix
+
+- Streaming Motifs?
 
 - Test motiflets/segmentation with Log-File-Data
 
