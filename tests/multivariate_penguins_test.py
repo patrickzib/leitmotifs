@@ -117,7 +117,7 @@ def test_multivariate():
             k_max,
             motif_length_range,
             plot_elbows=True,
-            plot_motifs_as_grid=False,
+            plot_motifs_as_grid=True,
         )
         ml.plot_motifset()
 

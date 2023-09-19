@@ -385,8 +385,8 @@ def plot_motifset(
                          )
         sns.despine()
 
-        if motifset is not None:
-            if motiflet_dims is None or dim in motiflet_dims:
+        if motiflet_dims is None or dim in motiflet_dims:
+            if motifset is not None:
                 for a, pos in enumerate(motifset):
                     _ = sns.lineplot(ax=axes[0],
                                      x=data_index[np.arange(pos, pos + motif_length)],
@@ -416,23 +416,24 @@ def plot_motifset(
                                      ci=None, estimator=None
                                      )
 
-        if motifset is not None:
-            axes[1].set_title(
-                "Motif Set, k=" + str(len(motifset)) + ", d=" + str(np.round(dist, 2)),
-                fontsize=20)
+        if motiflet_dims is None or dim in motiflet_dims:
+            if motifset is not None:
+                axes[1].set_title(
+                    "Motif Set, k=" + str(len(motifset)) + ", d=" + str(np.round(dist, 2)),
+                    fontsize=20)
 
-            df = pd.DataFrame()
-            df["time"] = data_index[range(0, motif_length)]
+                df = pd.DataFrame()
+                df["time"] = data_index[range(0, motif_length)]
 
-            for aa, pos in enumerate(motifset):
-                df[str(aa)] = zscore(dim_data_raw[pos:pos + motif_length]) + offset
+                for aa, pos in enumerate(motifset):
+                    df[str(aa)] = zscore(dim_data_raw[pos:pos + motif_length]) + offset
 
-            df_melt = pd.melt(df, id_vars="time")
-            _ = sns.lineplot(ax=axes[1],
-                             data=df_melt,
-                             ci=99, n_boot=10,
-                             x="time",
-                             y="value")
+                df_melt = pd.melt(df, id_vars="time")
+                _ = sns.lineplot(ax=axes[1],
+                                 data=df_melt,
+                                 ci=99, n_boot=10,
+                                 x="time",
+                                 y="value")
 
     if isinstance(data, pd.DataFrame):
         axes[0].set_yticks(tick_offsets)
@@ -1216,7 +1217,9 @@ def plot_grid_motiflets(
                     data_index[pos + motif_length - 1] - data_index[pos],
                     ratio,
                     facecolor=color_palette[
-                        (len(ground_truth) + ii % grid_dim) % len(color_palette)],
+                        # (len(ground_truth) + ii % grid_dim) % len(color_palette)
+                        1 + i
+                        ],
                     alpha=0.7
                 )
                 ax_bars.add_patch(rect)
@@ -1230,7 +1233,7 @@ def plot_grid_motiflets(
                                  # hue="variable",
                                  ci=99, n_boot=10,
                                  # ci=None, estimator=None,
-                                 color=color_palette[0],
+                                 color=color_palette[1+i],
                                  )
                 ax_motiflet.set_ylabel("")
 
