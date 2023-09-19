@@ -621,7 +621,7 @@ def plot_elbow(k_max,
         plot_grid_motiflets(
             ds_name, data, candidates, elbow_points,
             dists, motif_length, show_elbows=False,
-            # TODO candidate_dims
+            candidates_dims=candidate_dims,
             font_size=24,
             ground_truth=ground_truth,
             dimension_labels=dimension_labels)
@@ -813,7 +813,7 @@ def plot_motif_length_selection(
                     plot_grid_motiflets(
                         ds_name, data, candidates, elbow_points,
                         dists, motif_length,
-                        # TODO candidate_dims=candidate_dims,
+                        candidates_dims=candidate_dims,
                         show_elbows=False,
                         font_size=24,
                         ground_truth=ground_truth,
@@ -1045,6 +1045,7 @@ def plot_motiflets_by_dimension(
 def plot_grid_motiflets(
         ds_name, data, candidates, elbow_points, dist,
         motif_length, font_size=20,
+        candidates_dims=None,
         ground_truth=None,
         show_elbows=False,
         dimension_labels=None,
@@ -1134,15 +1135,18 @@ def plot_grid_motiflets(
         ax_ts.set_yticklabels([], fontsize=12)
         sns.despine()
 
-        #  Plot the motiflet
+
         for i, motiflet in enumerate(motiflets):
-            if motiflet is not None:
-                for aa, pos in enumerate(motiflet):
-                    _ = sns.lineplot(x=data_index[pos: pos + motif_length],
-                                     y=dim_data_raw[pos: pos + motif_length] + offset,
-                                     ax=ax_ts,
-                                     linewidth=1,
-                                     color=color_palette[1 + i])
+            #  Plot the motiflet
+            if (candidates_dims is None or
+                    dim in candidates_dims[elbow_points][i]):
+                if motiflet is not None:
+                    for aa, pos in enumerate(motiflet):
+                        _ = sns.lineplot(x=data_index[pos: pos + motif_length],
+                                         y=dim_data_raw[pos: pos + motif_length] + offset,
+                                         ax=ax_ts,
+                                         linewidth=1,
+                                         color=color_palette[1 + i])
 
     if len(candidates[elbow_points]) > 6:
         ax_bars = fig.add_subplot(gs[2:4, :], sharex=ax_ts)
