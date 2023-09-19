@@ -67,5 +67,6 @@ def test_univariate_2():
     _, all_minima = ml.fit_motif_length(
         k_max,
         motif_length_range,
-        subsample=1
+        subsample=1,
+        plot=False
     )

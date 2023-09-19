@@ -103,11 +103,10 @@ def test_multivariate():
     length = 2000
     ds_name, B = read_penguin_data()
 
-    for start in [0, 2000]:
-        series = B.iloc[497699 + start:497699 + start + length,
-                 np.array([0, 2])].T
+    for start in [0, 2000]:  #
+        series = B.iloc[497699 + start:497699 + start + length, 0:6].T
         ml = Motiflets(ds_name, series,
-                       # elbow_deviation=1.1,
+                       elbow_deviation=1.1,
                        slack=0.8
                        )
 
@@ -117,7 +116,7 @@ def test_multivariate():
         best_length, _ = ml.fit_motif_length(
             k_max,
             motif_length_range,
-            plot_elbows=False,
+            plot_elbows=True,
             plot_motifs_as_grid=False,
         )
         ml.plot_motifset()
@@ -136,7 +135,7 @@ def test_multivariate_top2():
                    )
 
     k_max = 50
-    motif_length_range = np.arange(20, 35, 1)
+    motif_length_range = np.arange(15, 35, 1)
 
     best_length, _ = ml.fit_motif_length(
         k_max,

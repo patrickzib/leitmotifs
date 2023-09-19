@@ -401,7 +401,7 @@ def get_radius(D_full, motifset_pos):
 
 
 @njit(fastmath=True, cache=True)
-def get_pairwise_extent(D_full, motifset_pos, upperbound=np.inf):
+def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
     """Computes the extent of the motifset.
 
     Parameters
@@ -431,7 +431,9 @@ def get_pairwise_extent(D_full, motifset_pos, upperbound=np.inf):
         for jj in range(ii + 1, len(motifset_pos)):
             j = motifset_pos[jj]
 
-            motifset_extent = max(motifset_extent, D_full[i, j])
+            # motifset_pos[-1] is the k-NN entry
+            motifset_extent = max(motifset_extent,
+                                  D_full[dim_index[:, i, motifset_pos[-1]], i, j].sum())
             if motifset_extent > upperbound:
                 return np.inf
 
@@ -485,7 +487,7 @@ def _argknn(
 
 @njit(fastmath=True, cache=True)
 def get_approximate_k_motiflet(
-        ts, m, k, D, knns, upper_bound=np.inf
+        ts, m, k, D, knns, dim_index, upper_bound=np.inf
 ):
     """Compute the approximate k-Motiflets.
 
@@ -516,31 +518,56 @@ def get_approximate_k_motiflet(
     motiflet_dist = upper_bound
     motiflet_candidate = None
 
-    # allow subsequence itself
-    np.fill_diagonal(D, 0)
+    # allows subsequence itself
+    for D_ in D:
+        np.fill_diagonal(D_, 0)
 
     # order by increasing k-nn distance
     knn_distances = np.zeros(n, dtype=np.float32)
-    for i in np.arange(n):
-        knn_distances[i] = D[i, knns[i, k - 1]]
+    for order in np.arange(n):
+        # No supported by numba
+        # best_dim = np.argmin(D[np.arange(D.shape[0]), order, knns[:, order, k - 1]])
+
+        # Hack: use the first (best) dimension for ordering of k-NNs
+        knns_i = knns[:, order, k - 1]
+        best_dim, best_dist = 0, np.inf
+        for a in np.arange(D.shape[0]):
+            dist = D[a, order, knns_i[a]]
+            if dist < best_dist:
+                best_dist, best_dim = dist, a
+
+        idx = knns[best_dim, order]
+        knn_distances[order] = D[dim_index[:, order, idx[k - 1]], order, idx[k - 1]].sum()
     best_order = np.argsort(knn_distances)
 
-    # TODO: parallelize??
-    for i, order in enumerate(best_order):
-        dist = D[order]
-        idx = knns[order]
+    motiflet_dims = None
+    for order in best_order:
+        # No supported by numba
+        # best_dim = np.argmin(D[np.arange(D.shape[0]), order, knns[:, order, k - 1]])
+
+        # Hack: use the first (best) dimension for ordering of k-NNs
+        knns_i = knns[:, order, k - 1]
+        best_dim, best_dist = 0, np.inf
+        for a in np.arange(D.shape[0]):
+            dist = D[a, order, knns_i[a]]
+            if dist < best_dist:
+                best_dist, best_dim = dist, a
+
+        idx = knns[best_dim, order]
 
         if len(idx) >= k and idx[k - 1] >= 0:
-            if dist[idx[k - 1]] <= motiflet_dist:
-                # get_pairwise_extent() requires the full distance matrix
-                motiflet_extent = get_pairwise_extent(D, idx[:k], motiflet_dist)
+            # Use the k-th Entry for ordering the dimensions
+            if knn_distances[order] <= motiflet_dist:
+                motiflet_extent = get_pairwise_extent(D, idx[:k], dim_index, motiflet_dist)
                 if motiflet_extent <= motiflet_dist:
                     motiflet_dist = motiflet_extent
                     motiflet_candidate = idx[:k]
+                    motiflet_dims = dim_index[:, order, idx[k-1]]
             else:
                 break
 
-    return motiflet_candidate, motiflet_dist
+    # print("best dims", m, k, motiflet_dims)
+    return motiflet_candidate, motiflet_dist, motiflet_dims
 
 
 @njit(fastmath=True, cache=True)
@@ -672,8 +699,6 @@ def find_au_ef_motif_length(
         data,
         k_max,
         motif_length_range,
-        exclusion=None,
-        exclusion_length=None,
         elbow_deviation=1.00,
         slack=0.5,
         subsample=2):
@@ -687,8 +712,6 @@ def find_au_ef_motif_length(
         The interval of k's to compute the area of a single AU_EF.
     motif_length_range : array-like
         The range of lengths to compute the AU-EF.
-    exclusion : 2d-array
-        exclusion zone - use when searching for the TOP-2 motiflets
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
@@ -724,6 +747,7 @@ def find_au_ef_motif_length(
     au_efs.fill(np.inf)
     elbows = np.zeros(len(motif_length_range), dtype=object)
     top_motiflets = np.zeros(len(motif_length_range), dtype=object)
+    top_motiflets_dims = np.zeros(len(motif_length_range), dtype=object)
     dists = np.zeros(len(motif_length_range), dtype=object)
 
     # stores the position of the l+1 motif set as an approximate pos for l
@@ -732,14 +756,10 @@ def find_au_ef_motif_length(
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m // subsample < data.shape[-1]:
-            dist, candidates, elbow_points, _ = search_k_motiflets_elbow(
+            dist, candidates, candidate_dims, elbow_points, _ = search_k_motiflets_elbow(
                 k_max,
                 data,
                 m // subsample,
-                exclusion=exclusion,
-                exclusion_length=exclusion_length,
-                # TODO this can cause an error with SLACK set?
-                approximate_motiflet_pos=approximate_pos,
                 elbow_deviation=elbow_deviation,
                 slack=slack)
 
@@ -758,30 +778,35 @@ def find_au_ef_motif_length(
             if len(elbow_points > 0):
                 elbows[i] = elbow_points
                 top_motiflets[i] = candidates[elbow_points]
+                top_motiflets_dims[i] = candidate_dims[elbow_points]
             else:
                 # we found only the pair motif
                 elbows[i] = [2]
                 top_motiflets[i] = [candidates[2]]
+                top_motiflets_dims[i] = candidate_dims[candidates[2]]
 
                 # no elbow can be found, ignore this part
                 au_efs[i] = 1.0
 
             dists[i] = dist
-            approximate_pos = candidates
 
     # reverse order
     au_efs = np.array(au_efs, dtype=np.float64)[::-1]
     elbows = elbows[::-1]
     dists = dists[::-1]
     top_motiflets = top_motiflets[::-1] * subsample
+    top_motiflets_dims = top_motiflets_dims[::-1]
 
     # Minima in AU_EF
     minimum = motif_length_range[np.nanargmin(au_efs)]
     au_ef_minima = argrelextrema(au_efs, np.less_equal, order=subsample)
 
     # Maxima in the EF
-    return (minimum, au_ef_minima, au_efs,
-            elbows, top_motiflets, dists)
+    return (minimum,
+            au_ef_minima, au_efs,
+            elbows,
+            top_motiflets, top_motiflets_dims,
+            dists)
 
 
 @njit(cache=True, fastmath=True, parallel=True)
@@ -831,7 +856,7 @@ def search_multidim_k_motiflets(
 
     # computes, for each dimension, one set of motiflets
     for dim in prange(D_.shape[0]):
-        candidate, candidate_dist = get_approximate_k_motiflet(
+        candidate, candidate_dist, candidate_dims = get_approximate_k_motiflet(
             data, m, k_max_, D_[dim], knns[dim]
         )
 
@@ -845,9 +870,6 @@ def search_k_motiflets_elbow(
         k_max,
         data,
         motif_length,
-        exclusion=None,
-        exclusion_length=None,
-        approximate_motiflet_pos=None,
         elbow_deviation=1.00,
         filter=True,
         slack=0.5
@@ -904,62 +926,36 @@ def search_k_motiflets_elbow(
 
     k_max_ = max(3, min(int(n // (m * slack)), k_max))
     D_full, knns = compute_distance_matrix(data_raw, m, k_max_, slack=slack,
-                                           sum_dims=True)
-    D_full = D_full[0]
-    knns = knns[0]
+                                           sum_dims=False)
 
     # non-overlapping motifs only
     k_motiflet_distances = np.zeros(k_max_ + 1)
     k_motiflet_candidates = np.empty(k_max_ + 1, dtype=object)
+    k_motiflet_dims = np.empty(k_max_ + 1, dtype=object)
 
-    # D_index = np.argpartition(D_, use_dim, axis=0)[:use_dim]
-    # D_ = np.take_along_axis(D_, D_index, axis=0)
-    # D_full = D_.sum(axis=0, dtype=np.float32)
-
-    if exclusion is not None:
-        if len(exclusion) == 1:
-            exclusion = exclusion[-1]  # TODO: what happens with two elbows found?
-        for pos in exclusion.flatten():
-            if pos is not None:
-                trivialMatchRange = (max(0, pos - exclusion_length),
-                                     min(pos + exclusion_length, D_full.shape[-1]))
-                D_full[:, trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
-                D_full[trivialMatchRange[0]:trivialMatchRange[1], :] = np.inf
+    # order dimensions by increasing distance
+    use_dim = min(2, D_full.shape[0])       # dimensions indexed by 0
+    dim_index = np.argpartition(D_full, use_dim - 1, axis=0)[:use_dim]
 
     upper_bound = np.inf
     for test_k in tqdm(range(k_max_, 1, -1),
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
 
-        # use an approximate position as an initial estimate, if available
-        # bound_set = False
-        # if approximate_motiflet_pos is not None \
-        #         and len(approximate_motiflet_pos) > test_k \
-        #         and approximate_motiflet_pos[test_k] is not None:
-        #     dd = get_pairwise_extent(D_full, approximate_motiflet_pos[test_k])
-        #     upper_bound = min(dd, upper_bound)
-        #     bound_set = True
-
-        candidate, candidate_dist = get_approximate_k_motiflet(
-            data_raw, m, test_k, D_full, knns,
+        candidate, candidate_dist, candidate_dims = get_approximate_k_motiflet(
+            data_raw, m, test_k, D_full, knns, dim_index,
             upper_bound=upper_bound,
         )
 
-        # if candidate is None and bound_set:
-        #     # If we already found the best motif in length l+1
-        #     candidate = approximate_motiflet_pos[test_k]
-        #     candidate_dist = dd
-
         k_motiflet_distances[test_k] = candidate_dist
         k_motiflet_candidates[test_k] = candidate
+        k_motiflet_dims[test_k] = candidate_dims
         upper_bound = min(candidate_dist, upper_bound)
 
         # compute a new upper bound
         if candidate is not None:
-            dist_new = get_pairwise_extent(D_full, candidate[:test_k])
+            dist_new = get_pairwise_extent(D_full, candidate[:test_k], dim_index)
             upper_bound = min(upper_bound, dist_new)
-
-        incremental = True
 
     # smoothen the line to make it monotonically increasing
     k_motiflet_distances[0:2] = k_motiflet_distances[2]
@@ -974,7 +970,7 @@ def search_k_motiflets_elbow(
         elbow_points = _filter_unique(
             elbow_points, k_motiflet_candidates, motif_length)
 
-    return k_motiflet_distances, k_motiflet_candidates, elbow_points, m
+    return k_motiflet_distances, k_motiflet_candidates, k_motiflet_dims, elbow_points, m
 
 
 @njit(fastmath=True, cache=True)
@@ -1034,77 +1030,3 @@ def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, sla
                             slack=slack,
                             sum_dims=True)
     return D[0]
-
-# Exact algorithm, but too slow
-# @njit(fastmath=True, cache=True)
-# def find_k_motiflets(ts, D_full, m, k, upperbound=None, slack=0.5):
-#     """Exact algorithm to compute k-Motiflets
-#
-#     Warning: The algorithm has exponential runtime complexity.
-#
-#     Parameters
-#     ----------
-#     ts : array-like
-#         The time series
-#     D_full : 2d array-like
-#         The pairwise distance matrix
-#     m : int
-#         Length of the motif
-#     k : int
-#         k-Motiflet size
-#     upperbound : float
-#         Admissible pruning on distance computations.
-#     slack: float
-#         Defines an exclusion zone around each subsequence to avoid trivial matches.
-#         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-#
-#     Returns
-#     -------
-#     best found motiflet and its extent.
-#     """
-#     n = ts.shape[-1] - m + 1
-#
-#     motiflet_dist = upperbound
-#     if upperbound is None:
-#         # FIXME ???!!
-#         motiflet_candidate, motiflet_dist = get_approximate_k_motiflet(
-#             ts, m, k, D_full, upper_bound=np.inf)
-#
-#         motiflet_pos = motiflet_candidate
-#
-#     # allow subsequence itself
-#     np.fill_diagonal(D_full, 0)
-#     k_halve_m = k * int(m * slack)
-#
-#     def exact_inner(ii, k_halve_m, D_full,
-#                     motiflet_dist, motiflet_pos, m):
-#
-#         for i in np.arange(ii, min(n, ii + m)):  # in runs of m
-#             D_candidates = np.argwhere(D_full[i] <= motiflet_dist).flatten()
-#             if (len(D_candidates) >= k and
-#                     np.ptp(D_candidates) > k_halve_m):
-#                 # exhaustive search over all subsets
-#                 for permutation in itertools.combinations(D_candidates, k):
-#                     if np.ptp(permutation) > k_halve_m:
-#                         dist = candidate_dist(D_full, permutation, motiflet_dist, m,
-#                                               slack)
-#                         if dist < motiflet_dist:
-#                             motiflet_dist = dist
-#                             motiflet_pos = np.copy(permutation)
-#         return motiflet_dist, motiflet_pos
-#
-#     motiflet_dists, motiflet_poss = zip(*Parallel(n_jobs=-1)(
-#         delayed(exact_inner)(
-#             i,
-#             k_halve_m,
-#             D_full,
-#             motiflet_dist,
-#             motiflet_pos,
-#             m
-#         ) for i in range(0, n, m)))
-#
-#     min_pos = np.nanargmin(motiflet_dists)
-#     motiflet_dist = motiflet_dists[min_pos]
-#     motiflet_pos = motiflet_poss[min_pos]
-#
-#     return motiflet_dist, motiflet_pos
