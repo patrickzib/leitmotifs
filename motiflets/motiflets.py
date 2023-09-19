@@ -934,7 +934,8 @@ def search_k_motiflets_elbow(
     k_motiflet_dims = np.empty(k_max_ + 1, dtype=object)
 
     # order dimensions by increasing distance
-    use_dim = min(2, D_full.shape[0])       # dimensions indexed by 0
+    # FIXME: extract as parameter
+    use_dim = min(3, D_full.shape[0])       # dimensions indexed by 0
     dim_index = np.argpartition(D_full, use_dim - 1, axis=0)[:use_dim]
 
     upper_bound = np.inf
