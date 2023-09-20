@@ -424,16 +424,18 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
     if -1 in motifset_pos:
         return np.inf
 
+    # motifset_pos[-1] is the k-NN entry
+    k_th = motifset_pos[-1]
+
     motifset_extent = np.float64(0.0)
     for ii in range(len(motifset_pos) - 1):
         i = motifset_pos[ii]
+        dist = D_full[dim_index[:, i, k_th], i]
 
         for jj in range(ii + 1, len(motifset_pos)):
             j = motifset_pos[jj]
 
-            # motifset_pos[-1] is the k-NN entry
-            motifset_extent = max(motifset_extent,
-                                  D_full[dim_index[:, i, motifset_pos[-1]], i, j].sum())
+            motifset_extent = max(motifset_extent, dist[:, j].sum())
             if motifset_extent > upperbound:
                 return np.inf
 
@@ -522,10 +524,15 @@ def get_approximate_k_motiflet(
     for D_ in D:
         np.fill_diagonal(D_, 0)
 
+
+
     # order by increasing k-nn distance
     knn_distances = np.zeros(n, dtype=np.float32)
+    best_dims = np.zeros(n, dtype=np.int32)
+
+    # Determine best order
     for order in np.arange(n):
-        # No supported by numba
+        # Not supported by numba
         # best_dim = np.argmin(D[np.arange(D.shape[0]), order, knns[:, order, k - 1]])
 
         # Hack: use the first (best) dimension for ordering of k-NNs
@@ -536,35 +543,31 @@ def get_approximate_k_motiflet(
             if dist < best_dist:
                 best_dist, best_dim = dist, a
 
+        best_dims[order] = best_dim
         idx = knns[best_dim, order]
         knn_distances[order] = D[dim_index[:, order, idx[k - 1]], order, idx[k - 1]].sum()
     best_order = np.argsort(knn_distances)
 
     motiflet_dims = None
     for order in best_order:
-        # No supported by numba
-        # best_dim = np.argmin(D[np.arange(D.shape[0]), order, knns[:, order, k - 1]])
-
         # Hack: use the first (best) dimension for ordering of k-NNs
-        knns_i = knns[:, order, k - 1]
-        best_dim, best_dist = 0, np.inf
-        for a in np.arange(D.shape[0]):
-            dist = D[a, order, knns_i[a]]
-            if dist < best_dist:
-                best_dist, best_dim = dist, a
-
-        idx = knns[best_dim, order]
+        idx = knns[best_dims[order], order]
 
         if len(idx) >= k and idx[k - 1] >= 0:
             # Use the k-th Entry for ordering the dimensions
             if knn_distances[order] <= motiflet_dist:
-                motiflet_extent = get_pairwise_extent(D, idx[:k], dim_index, motiflet_dist)
+                motiflet_extent = get_pairwise_extent(
+                    D,
+                    idx[:k],
+                    dim_index,
+                    motiflet_dist
+                )
                 if motiflet_extent <= motiflet_dist:
                     motiflet_dist = motiflet_extent
                     motiflet_candidate = idx[:k]
-                    motiflet_dims = dim_index[:, order, idx[k-1]]
+                    motiflet_dims = dim_index[:, order, idx[k - 1]]
             else:
-                break
+               break
 
     # print("best dims", m, k, motiflet_dims)
     return motiflet_candidate, motiflet_dist, motiflet_dims
@@ -935,7 +938,7 @@ def search_k_motiflets_elbow(
 
     # order dimensions by increasing distance
     # FIXME: extract as parameter
-    use_dim = min(3, D_full.shape[0])       # dimensions indexed by 0
+    use_dim = min(3, D_full.shape[0])  # dimensions indexed by 0
     dim_index = np.argpartition(D_full, use_dim - 1, axis=0)[:use_dim]
 
     upper_bound = np.inf
@@ -1024,10 +1027,10 @@ def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, sla
 
     """
     D, _ = compute_distance_matrix(ts,
-                            m,
-                            1,
-                            exclude_trivial_match=exclude_trivial_match,
-                            n_jobs=n_jobs,
-                            slack=slack,
-                            sum_dims=True)
+                                   m,
+                                   1,
+                                   exclude_trivial_match=exclude_trivial_match,
+                                   n_jobs=n_jobs,
+                                   slack=slack,
+                                   sum_dims=True)
     return D[0]

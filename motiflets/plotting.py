@@ -773,14 +773,6 @@ def plot_motif_length_selection(
     endTime = (time.perf_counter() - startTime)
     print("\tTime", np.round(endTime, 1), "s")
 
-    # Find unique motif lengths (filters neigboring minima)
-    # TODO best_motif_length may be missing?
-    # best = ml._filter_unique(
-    #    np.arange(len(top_motiflets[all_minima])),
-    #    top_motiflets[all_minima],
-    #    np.max(motif_length_range[all_minima])
-    # )
-    # all_minima = [all_minima[0][best]]
     all_minima = _filter_duplicate_window_sizes(au_ef, all_minima)
 
     if plot:
