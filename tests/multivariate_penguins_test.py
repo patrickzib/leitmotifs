@@ -116,8 +116,9 @@ def test_multivariate():
         best_length, _ = ml.fit_motif_length(
             k_max,
             motif_length_range,
+            plot=False,
             plot_elbows=True,
-            plot_motifs_as_grid=True,
+            plot_motifs_as_grid=False,
         )
         ml.plot_motifset()
 
