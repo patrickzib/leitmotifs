@@ -524,8 +524,6 @@ def get_approximate_k_motiflet(
     for D_ in D:
         np.fill_diagonal(D_, 0)
 
-
-
     # order by increasing k-nn distance
     knn_distances = np.zeros(n, dtype=np.float32)
     best_dims = np.zeros(n, dtype=np.int32)
@@ -930,6 +928,10 @@ def search_k_motiflets_elbow(
     k_max_ = max(3, min(int(n // (m * slack)), k_max))
     D_full, knns = compute_distance_matrix(data_raw, m, k_max_, slack=slack,
                                            sum_dims=False)
+
+    # FIXME: try transposing the D_full matrix to increase cache locality
+    # dim, start, end => start, end, dim
+    # D_full = np.transpose(D_full, (1, 2, 0))
 
     # non-overlapping motifs only
     k_motiflet_distances = np.zeros(k_max_ + 1)
