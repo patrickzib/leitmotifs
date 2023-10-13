@@ -426,16 +426,20 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
     # motifset_pos[-1] is the k-NN entry
     k_th = motifset_pos[-1]
-
     motifset_extent = np.float64(0.0)
+    idx = dim_index[:, 0, k_th].astype(np.int32)
+
     for ii in range(len(motifset_pos) - 1):
         i = motifset_pos[ii]
-        dist = D_full[dim_index[:, i, k_th], i]
 
-        for jj in range(ii + 1, len(motifset_pos)):
+        for jj in range(ii+1, len(motifset_pos)):
             j = motifset_pos[jj]
 
-            motifset_extent = max(motifset_extent, dist[:, j].sum())
+            extent = np.float64(0.0)
+            for kk in range(len(idx)):
+                extent += D_full[idx[kk], i, j]
+
+            motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
                 return np.inf
 
@@ -524,51 +528,80 @@ def get_approximate_k_motiflet(
     for D_ in D:
         np.fill_diagonal(D_, 0)
 
+    # transposed for better cache locality
+    # knns_T = np.transpose(knns, (1, 2, 0))
+    # D_T = np.transpose(D, (1, 2, 0))
+    # dim_index_T = np.transpose(dim_index, (1, 2, 0))
+
+    # Determine best order
+    knn_distances, best_dims = lower_bound(D, dim_index, k, knns, n)
+
+    best_order = np.argsort(knn_distances)
+
+    motiflet_candidate, motiflet_dims, motiflet_dist = (
+        benchmark_2(D, best_dims,
+                    best_order, dim_index,
+                    k, knn_distances, knns,
+                    motiflet_candidate,
+                    motiflet_dist))
+
+    # print("best dims", m, k, motiflet_dims)
+    return motiflet_candidate, motiflet_dist, motiflet_dims
+
+
+@njit(fastmath=True, cache=True)
+def lower_bound(D, dim_index, k, knns, n):
     # order by increasing k-nn distance
     knn_distances = np.zeros(n, dtype=np.float32)
     best_dims = np.zeros(n, dtype=np.int32)
 
-    # Determine best order
-    for order in np.arange(n):
-        # Not supported by numba
-        # best_dim = np.argmin(D[np.arange(D.shape[0]), order, knns[:, order, k - 1]])
-
+    for order in np.arange(n, dtype=np.int32):
         # Hack: use the first (best) dimension for ordering of k-NNs
-        knns_i = knns[:, order, k - 1]
+        knn_idx = knns[:, order, k - 1]
+
         best_dim, best_dist = 0, np.inf
-        for a in np.arange(D.shape[0]):
-            dist = D[a, order, knns_i[a]]
+        for aa in np.arange(dim_index.shape[0]):  # dimensions
+            a = dim_index[aa, order, knn_idx[aa]]
+            dist = D[a, order, knn_idx[a]]
             if dist < best_dist:
                 best_dist, best_dim = dist, a
-
         best_dims[order] = best_dim
-        idx = knns[best_dim, order]
-        knn_distances[order] = D[dim_index[:, order, idx[k - 1]], order, idx[k - 1]].sum()
-    best_order = np.argsort(knn_distances)
 
+        # lower bound
+        # knn_distances[order] = dim_index.shape[0] * best_dist
+
+        # take only the knns from the best dimension
+        knn_idx = knns[best_dim, order]
+
+        for a in np.arange(dim_index.shape[0]):  # dimensions
+            knn_distances[order] += D[
+                dim_index[a, order, knn_idx[k - 1]], order, knn_idx[k - 1]]
+
+    return knn_distances, best_dims
+
+@njit(fastmath=True, cache=True)
+def benchmark_2(D, best_dims, best_order, dim_index, k, knn_distances, knns,
+                motiflet_candidate, motiflet_dist):
     motiflet_dims = None
+    # D_T = np.ascontiguousarray(np.transpose(D, (1, 2, 0)))
     for order in best_order:
         # Hack: use the first (best) dimension for ordering of k-NNs
-        idx = knns[best_dims[order], order]
-
-        if len(idx) >= k and idx[k - 1] >= 0:
-            # Use the k-th Entry for ordering the dimensions
+        knn_idx = knns[best_dims[order], order]
+        if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distances[order] <= motiflet_dist:
                 motiflet_extent = get_pairwise_extent(
                     D,
-                    idx[:k],
+                    knn_idx[:k],
                     dim_index,
                     motiflet_dist
                 )
                 if motiflet_extent <= motiflet_dist:
                     motiflet_dist = motiflet_extent
-                    motiflet_candidate = idx[:k]
-                    motiflet_dims = dim_index[:, order, idx[k - 1]]
+                    motiflet_candidate = knn_idx[:k]
+                    motiflet_dims = dim_index[:, order, knn_idx[k - 1]]
             else:
-               break
-
-    # print("best dims", m, k, motiflet_dims)
-    return motiflet_candidate, motiflet_dist, motiflet_dims
+                break
+    return motiflet_candidate, motiflet_dims, motiflet_dist
 
 
 @njit(fastmath=True, cache=True)
@@ -941,7 +974,8 @@ def search_k_motiflets_elbow(
     # order dimensions by increasing distance
     # FIXME: extract as parameter
     use_dim = min(3, D_full.shape[0])  # dimensions indexed by 0
-    dim_index = np.argpartition(D_full, use_dim - 1, axis=0)[:use_dim]
+    # dim_index = np.argpartition(D_full, use_dim - 1, axis=0)[:use_dim]
+    dim_index = np.argsort(D_full, axis=0)[:use_dim]    # TODO
 
     upper_bound = np.inf
     for test_k in tqdm(range(k_max_, 1, -1),
@@ -959,9 +993,9 @@ def search_k_motiflets_elbow(
         upper_bound = min(candidate_dist, upper_bound)
 
         # compute a new upper bound
-        if candidate is not None:
-            dist_new = get_pairwise_extent(D_full, candidate[:test_k], dim_index)
-            upper_bound = min(upper_bound, dist_new)
+        # TODO if candidate is not None:
+        #     dist_new = get_pairwise_extent(D_full, candidate[:test_k], dim_index)
+        #     upper_bound = min(upper_bound, dist_new)
 
     # smoothen the line to make it monotonically increasing
     k_motiflet_distances[0:2] = k_motiflet_distances[2]
