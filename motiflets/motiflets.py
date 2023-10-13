@@ -424,10 +424,9 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
     if -1 in motifset_pos:
         return np.inf
 
-    # motifset_pos[-1] is the k-NN entry
-    k_th = motifset_pos[-1]
     motifset_extent = np.float64(0.0)
-    idx = dim_index[:, 0, k_th].astype(np.int32)
+    # first to last entry
+    idx = dim_index[:, motifset_pos[0], motifset_pos[-1]].astype(np.int32)
 
     for ii in range(len(motifset_pos) - 1):
         i = motifset_pos[ii]
@@ -974,13 +973,16 @@ def search_k_motiflets_elbow(
     # order dimensions by increasing distance
     # FIXME: extract as parameter
     use_dim = min(3, D_full.shape[0])  # dimensions indexed by 0
-    # dim_index = np.argpartition(D_full, use_dim - 1, axis=0)[:use_dim]
-    dim_index = np.argsort(D_full, axis=0)[:use_dim]    # TODO
+
+    # only sort by k-th entry?
+    dim_index = np.argpartition(D_full, use_dim - 1, axis=0)[:use_dim]
+    # dim_index = np.argsort(D_full, axis=0)[:use_dim]    # TODO
 
     upper_bound = np.inf
     for test_k in tqdm(range(k_max_, 1, -1),
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
+        # TODO dim_index = np.argpartition(D_full[:, :, k - 1], use_dim - 1, axis=0)[:use_dim]
 
         candidate, candidate_dist, candidate_dims = get_approximate_k_motiflet(
             data_raw, m, test_k, D_full, knns, dim_index,
@@ -993,9 +995,9 @@ def search_k_motiflets_elbow(
         upper_bound = min(candidate_dist, upper_bound)
 
         # compute a new upper bound
-        # TODO if candidate is not None:
-        #     dist_new = get_pairwise_extent(D_full, candidate[:test_k], dim_index)
-        #     upper_bound = min(upper_bound, dist_new)
+        if candidate is not None:
+            dist_new = get_pairwise_extent(D_full, candidate[:test_k], dim_index)
+            upper_bound = min(upper_bound, dist_new)
 
     # smoothen the line to make it monotonically increasing
     k_motiflet_distances[0:2] = k_motiflet_distances[2]
