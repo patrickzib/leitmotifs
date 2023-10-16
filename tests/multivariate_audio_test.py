@@ -54,24 +54,6 @@ def read_songs():
     df.index.name = "MFCC"
     return audio_length_seconds, df, index_range
 
-
-def test_dendrogram():
-    channels = 10
-    audio_length_seconds, df, index_range = read_songs()
-    df = df.iloc[0:channels]
-
-    motif_length = int(length_in_seconds / audio_length_seconds * df.shape[1])
-    print(motif_length)
-
-    ml = Motiflets(ds_name, df,
-                   # elbow_deviation=1.25,
-                   slack=1.0,
-                   dimension_labels=df.index
-                   )
-
-    ml.fit_dendrogram(k_max, motif_length, n_clusters=3)
-
-
 def test_audio():
     audio_length_seconds, df, index_range = read_songs()
 
@@ -97,14 +79,15 @@ def test_audio():
     df_sub = get_dataframe_from_subtitle_object(subtitles)
     df_sub.set_index("seconds", inplace=True)
 
-    motif_length_range_in_s = np.arange(5, 5.8, 0.1)
+    motif_length_range_in_s = np.arange(4.5, 6.0, 0.1)
     motif_length_range = np.int32(motif_length_range_in_s /
                                   audio_length_seconds * df.shape[1])
 
     ml = Motiflets(ds_name, df,
                    # elbow_deviation=1.25,
                    # slack=1.0,
-                   dimension_labels=df.index
+                   dimension_labels=df.index,
+                   n_dims=2,
                    )
     motif_length, _ = ml.fit_motif_length(
         k_max,

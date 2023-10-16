@@ -425,13 +425,14 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
         return np.inf
 
     motifset_extent = np.float64(0.0)
-    # first to last entry
-    idx = dim_index[:, motifset_pos[0], motifset_pos[-1]].astype(np.int32)
+    # dimension chosen based on "first to k-th entry" order
+    idx = dim_index[motifset_pos[0]]  # .astype(np.int32)
 
     for ii in range(len(motifset_pos) - 1):
         i = motifset_pos[ii]
+        # idx = dim_index[:, i, 0]
 
-        for jj in range(ii+1, len(motifset_pos)):
+        for jj in range(ii + 1, len(motifset_pos)):
             j = motifset_pos[jj]
 
             extent = np.float64(0.0)
@@ -527,11 +528,6 @@ def get_approximate_k_motiflet(
     for D_ in D:
         np.fill_diagonal(D_, 0)
 
-    # transposed for better cache locality
-    # knns_T = np.transpose(knns, (1, 2, 0))
-    # D_T = np.transpose(D, (1, 2, 0))
-    # dim_index_T = np.transpose(dim_index, (1, 2, 0))
-
     # Determine best order
     knn_distances, best_dims = lower_bound(D, dim_index, k, knns, n)
 
@@ -555,36 +551,26 @@ def lower_bound(D, dim_index, k, knns, n):
     best_dims = np.zeros(n, dtype=np.int32)
 
     for order in np.arange(n, dtype=np.int32):
-        # Hack: use the first (best) dimension for ordering of k-NNs
-        knn_idx = knns[:, order, k - 1]
+        # Use the first (best) dimension for ordering of k-NNs and lower bound
+        best_dims[order] = dim_index[order, 0]
 
-        best_dim, best_dist = 0, np.inf
-        for aa in np.arange(dim_index.shape[0]):  # dimensions
-            a = dim_index[aa, order, knn_idx[aa]]
-            dist = D[a, order, knn_idx[a]]
-            if dist < best_dist:
-                best_dist, best_dim = dist, a
-        best_dims[order] = best_dim
-
-        # lower bound
+        # a worse lower bound
         # knn_distances[order] = dim_index.shape[0] * best_dist
 
-        # take only the knns from the best dimension
-        knn_idx = knns[best_dim, order]
-
-        for a in np.arange(dim_index.shape[0]):  # dimensions
-            knn_distances[order] += D[
-                dim_index[a, order, knn_idx[k - 1]], order, knn_idx[k - 1]]
+        # sum over the knns from the best dimensions
+        knn_idx = knns[best_dims[order], order]
+        for a in np.arange(dim_index.shape[-1]):  # dimensions
+            knn_distances[order] += D[dim_index[order, a], order, knn_idx[k - 1]]
 
     return knn_distances, best_dims
+
 
 @njit(fastmath=True, cache=True)
 def benchmark_2(D, best_dims, best_order, dim_index, k, knn_distances, knns,
                 motiflet_candidate, motiflet_dist):
     motiflet_dims = None
-    # D_T = np.ascontiguousarray(np.transpose(D, (1, 2, 0)))
     for order in best_order:
-        # Hack: use the first (best) dimension for ordering of k-NNs
+        # Use the first (best) dimension for ordering of k-NNs
         knn_idx = knns[best_dims[order], order]
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distances[order] <= motiflet_dist:
@@ -597,7 +583,7 @@ def benchmark_2(D, best_dims, best_order, dim_index, k, knn_distances, knns,
                 if motiflet_extent <= motiflet_dist:
                     motiflet_dist = motiflet_extent
                     motiflet_candidate = knn_idx[:k]
-                    motiflet_dims = dim_index[:, order, knn_idx[k - 1]]
+                    motiflet_dims = dim_index[order]
             else:
                 break
     return motiflet_candidate, motiflet_dims, motiflet_dist
@@ -732,6 +718,7 @@ def find_au_ef_motif_length(
         data,
         k_max,
         motif_length_range,
+        n_dims=2,
         elbow_deviation=1.00,
         slack=0.5,
         subsample=2):
@@ -745,6 +732,8 @@ def find_au_ef_motif_length(
         The interval of k's to compute the area of a single AU_EF.
     motif_length_range : array-like
         The range of lengths to compute the AU-EF.
+    n_dims : int
+        the number of dimensions to use for subdimensional motif discovery
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
@@ -783,9 +772,6 @@ def find_au_ef_motif_length(
     top_motiflets_dims = np.zeros(len(motif_length_range), dtype=object)
     dists = np.zeros(len(motif_length_range), dtype=object)
 
-    # stores the position of the l+1 motif set as an approximate pos for l
-    approximate_pos = None
-
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m // subsample < data.shape[-1]:
@@ -793,6 +779,7 @@ def find_au_ef_motif_length(
                 k_max,
                 data,
                 m // subsample,
+                n_dims=n_dims,
                 elbow_deviation=elbow_deviation,
                 slack=slack)
 
@@ -842,67 +829,11 @@ def find_au_ef_motif_length(
             dists)
 
 
-@njit(cache=True, fastmath=True, parallel=True)
-def search_multidim_k_motiflets(
-        k_max,
-        data,
-        motif_length,
-        slack=0.5,
-):
-    """Computes the elbow-function for each single dimension.
-
-    This is the method to find the characteristic k-Motiflets
-    for given a `motif_length`.
-
-    Details are given within the paper Section 5.1 Learning meaningful k.
-
-    Parameters
-    ----------
-    k_max : int
-        repetitions of the k-Motiflet.
-    data : array-like
-        the TS
-    motif_length : int
-        the length of the motif (user parameter)
-    slack: float
-        Defines an exclusion zone around each subsequence to avoid trivial matches.
-        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-
-
-    Returns
-    -------
-    Tuple
-        dists :
-            distances for each dimension
-        candidates :
-            motifset-candidates for dimension
-    """
-    m = motif_length
-    n = data.shape[-1] - m + 1
-
-    # TODO why * 1.5 ??? !!!
-    k_max_ = max(3, min(int(n // int(m * slack * 1.5)), k_max))
-    D_, knns = compute_distance_matrix(data, m, k_max_, slack=slack, sum_dims=False)
-
-    k_motiflet_distances = np.zeros(D_.shape[0])
-    k_motiflet_candidates = np.zeros((D_.shape[0], k_max_), dtype=np.int32)
-
-    # computes, for each dimension, one set of motiflets
-    for dim in prange(D_.shape[0]):
-        candidate, candidate_dist, candidate_dims = get_approximate_k_motiflet(
-            data, m, k_max_, D_[dim], knns[dim]
-        )
-
-        k_motiflet_distances[dim] = candidate_dist
-        k_motiflet_candidates[dim] = candidate
-
-    return k_motiflet_distances, k_motiflet_candidates
-
-
 def search_k_motiflets_elbow(
         k_max,
         data,
         motif_length,
+        n_dims=2,
         elbow_deviation=1.00,
         filter=True,
         slack=0.5
@@ -922,11 +853,8 @@ def search_k_motiflets_elbow(
         the TS
     motif_length : int
         the length of the motif (user parameter)
-    exclusion : 2d-array
-        exclusion zone - use when searching for the TOP-2 motiflets
-    approximate_motiflet_pos : array-like
-        An initial estimate of the positions of the k-Motiflets for each k in the
-        given range [2...k_max]. Will be used for bounding distance computations.
+    n_dims : int
+        the number of dimensions to use for subdimensional motif discovery
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
@@ -971,18 +899,28 @@ def search_k_motiflets_elbow(
     k_motiflet_dims = np.empty(k_max_ + 1, dtype=object)
 
     # order dimensions by increasing distance
-    # FIXME: extract as parameter
-    use_dim = min(3, D_full.shape[0])  # dimensions indexed by 0
-
-    # only sort by k-th entry?
-    dim_index = np.argpartition(D_full, use_dim - 1, axis=0)[:use_dim]
-    # dim_index = np.argsort(D_full, axis=0)[:use_dim]    # TODO
+    use_dim = min(n_dims, D_full.shape[0])  # dimensions indexed by 0
 
     upper_bound = np.inf
     for test_k in tqdm(range(k_max_, 1, -1),
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
-        # TODO dim_index = np.argpartition(D_full[:, :, k - 1], use_dim - 1, axis=0)[:use_dim]
+
+        # TODO performance: check if use_dim is smaller than all given dimensions?
+
+        # k-th NN and it's distance along all dimensions
+        knn_idx = knns[:, :, test_k - 1]
+        D_knn = np.take_along_axis(
+            D_full,
+            knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
+            axis=2)[:,:,0]
+
+        dim_index = np.argpartition(D_knn, use_dim - 1, axis=0)[:use_dim]
+        dim_index = np.transpose(dim_index, (1, 0))
+
+        # transpose for better cache locality?
+        # knns_T = np.transpose(knns, (1, 2, 0))
+        # D_T = np.transpose(D, (1, 2, 0))
 
         candidate, candidate_dist, candidate_dims = get_approximate_k_motiflet(
             data_raw, m, test_k, D_full, knns, dim_index,

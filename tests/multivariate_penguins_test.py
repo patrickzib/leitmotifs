@@ -103,14 +103,15 @@ def test_multivariate():
     length = 2000
     ds_name, B = read_penguin_data()
 
-    for start in [0, 2000]:  #
-        series = B.iloc[497699 + start:497699 + start + length, 0:6].T
+    for start in [0, 2000]:  # # 2000
+        series = B.iloc[497699 + start:497699 + start + length, 0:8].T
         ml = Motiflets(ds_name, series,
-                       elbow_deviation=1.1,
-                       slack=0.8
+                       # elbow_deviation=1.1,
+                       # slack=0.8,
+                       n_dims=2
                        )
 
-        k_max = 50
+        k_max = 30
         motif_length_range = np.arange(20, 35, 1)
 
         best_length, _ = ml.fit_motif_length(
@@ -129,10 +130,9 @@ def test_multivariate_top2():
     length = 2000
     ds_name, B = read_penguin_data()
 
-    series = B.iloc[497699:497699 + length,
-             np.array([0, 2])].T
+    series = B.iloc[497699:497699 + length, np.array([0, 2])].T
     ml = Motiflets(ds_name, series,
-                   slack=0.8
+                   slack=0.8, n_dims=2
                    )
 
     k_max = 50
@@ -160,24 +160,6 @@ def test_multivariate_top2():
     ml.plot_motifset()
 
     print("Best found length", best_length)
-
-
-def test_dendrogram():
-    length = 1000
-    B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
-    ds_name = "Penguins (Longer Snippet)"
-    df = B.iloc[497699: 497699 + length, 0:7].T
-
-    k_max = 20
-    motif_length = 22
-
-    ml = Motiflets(ds_name, df,
-                   slack=0.8,
-                   dimension_labels=df.index
-                   )
-
-    ml.fit_dendrogram(k_max, motif_length, n_clusters=2)
-
 
 def test_univariate_profile():
     # ds_name, series = read_penguin_data_short()

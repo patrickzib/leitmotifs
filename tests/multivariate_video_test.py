@@ -263,21 +263,3 @@ def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
                 bitrate=1000,
                 fps=20)
 
-
-def test_dendrogram():
-    joints = amc_parser.parse_asf(asf_path)
-    motions = amc_parser.parse_amc(amc_path)
-
-    df = pd.DataFrame(
-        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-    df = exclude_body_joints(df)
-    df = include_joints(df, use_joints)
-
-    print("Used joints:", use_joints)
-    ml = Motiflets(amc_name, df,
-                   elbow_deviation=1.25,
-                   slack=1.0,
-                   dimension_labels=df.index
-                   )
-
-    ml.fit_dendrogram(k_max, motif_length, n_clusters=2)
