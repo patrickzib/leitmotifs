@@ -886,11 +886,19 @@ def search_k_motiflets_elbow(
     n = data_raw.shape[-1] - m + 1
 
     k_max_ = max(3, min(int(n // (m * slack)), k_max))
-    D_full, knns = compute_distance_matrix(data_raw, m, k_max_, slack=slack,
-                                           sum_dims=False)
 
-    # FIXME: try transposing the D_full matrix to increase cache locality
+    # TODO Check if use_dim is smaller than all given dimensions
+    #      Potential performance benefits
+    sum_dims = True if (n_dims >= data_raw.shape[0] or n_dims is None) else False
+
+    D_full, knns = compute_distance_matrix(
+        data_raw, m, k_max_,
+        slack=slack,
+        sum_dims=sum_dims)
+
+    # TODO Try transposing the D_full matrix to increase cache locality
     # dim, start, end => start, end, dim
+    # knns_T = np.transpose(knns, (1, 2, 0))
     # D_full = np.transpose(D_full, (1, 2, 0))
 
     # non-overlapping motifs only
@@ -906,21 +914,18 @@ def search_k_motiflets_elbow(
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
 
-        # TODO performance: check if use_dim is smaller than all given dimensions?
+        if not sum_dims:
+            # k-th NN and it's distance along all dimensions
+            knn_idx = knns[:, :, test_k - 1]
+            D_knn = np.take_along_axis(
+                D_full,
+                knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
+                axis=2)[:,:,0]
 
-        # k-th NN and it's distance along all dimensions
-        knn_idx = knns[:, :, test_k - 1]
-        D_knn = np.take_along_axis(
-            D_full,
-            knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
-            axis=2)[:,:,0]
-
-        dim_index = np.argpartition(D_knn, use_dim - 1, axis=0)[:use_dim]
-        dim_index = np.transpose(dim_index, (1, 0))
-
-        # transpose for better cache locality?
-        # knns_T = np.transpose(knns, (1, 2, 0))
-        # D_T = np.transpose(D, (1, 2, 0))
+            dim_index = np.argpartition(D_knn, use_dim - 1, axis=0)[:use_dim]
+            dim_index = np.transpose(dim_index, (1, 0))
+        else:
+            dim_index = np.zeros((D_full.shape[1], 1), dtype=np.int32)
 
         candidate, candidate_dist, candidate_dims = get_approximate_k_motiflet(
             data_raw, m, test_k, D_full, knns, dim_index,
