@@ -13,7 +13,7 @@ import matplotlib as mpl
 
 mpl.rcParams['figure.dpi'] = 300
 
-path = "../../motiflets_use_cases/chains/"
+path = "../datasets/experiments/"
 
 
 def read_penguin_data():
@@ -108,38 +108,36 @@ def test_multivariate():
     length = 2000
     ds_name, B = read_penguin_data()
 
-
-
-    for start in [2000]: # , 2000
-        dists = np.zeros(5)
+    for start in [0, 2000, 4000, 6000, 8000, 10000]:  # , 2000
+        # dists = np.zeros(5)
         series = B.iloc[497699 + start:497699 + start + length].T
 
-        for a, n_dims in enumerate(range(1, 6)):
-            ml = Motiflets(ds_name, series,
-                           n_dims=n_dims
-                           )
+        # for a, n_dims in enumerate(range(1, 6)):
+        ml = Motiflets(ds_name, series,
+                       n_dims=3
+                       )
 
-            k_max = 40
-            motif_length_range = np.arange(20, 35, 1)
+        k_max = 40
+        motif_length_range = np.arange(20, 35, 1)
 
-            best_length, _ = ml.fit_motif_length(
-                k_max,
-                motif_length_range,
-                plot=False,
-                plot_elbows=False,
-                plot_motifs_as_grid=True,
-                plot_best_only=True
-            )
-            ml.plot_motifset()
+        best_length, _ = ml.fit_motif_length(
+            k_max,
+            motif_length_range,
+            plot=False,
+            plot_elbows=False,
+            plot_motifs_as_grid=True,
+            plot_best_only=True
+        )
+        ml.plot_motifset()
 
-            dists[a] = ml.dists[ml.elbow_points[-1]]
-            print("Best found length", best_length)
+        # dists[a] = ml.dists[ml.elbow_points[-1]]
+        print("Best found length", best_length)
 
-        fig, ax = plt.subplots(figsize=(10, 4))
-        ax.set_title("Dimension Plot")
-        sns.lineplot(x=np.arange(1, 6, dtype=np.int32), y=dists, ax = ax)
-        plt.tight_layout()
-        plt.show()
+        # fig, ax = plt.subplots(figsize=(10, 4))
+        # ax.set_title("Dimension Plot")
+        # sns.lineplot(x=np.arange(1, 6, dtype=np.int32), y=dists, ax = ax)
+        # plt.tight_layout()
+        # plt.show()
 
 
 def test_plot_n_dim_plot():
