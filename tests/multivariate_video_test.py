@@ -168,7 +168,7 @@ def test_plotting():
 
     ml = Motiflets(amc_name, series,
                    # elbow_deviation=1.25,
-                   slack=1.0,
+                   # slack=1.0,
                    dimension_labels=df.index
                    )
 

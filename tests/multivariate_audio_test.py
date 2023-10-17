@@ -64,8 +64,7 @@ def test_audio():
     # channels = ['MFCC 4', 'MFCC 5']
     # channels = ['MFCC 0', 'MFCC 1', 'MFCC 5']
     # channels = ['MFCC 1', 'MFCC 5', 'MFCC 4']
-    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4',
-                'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
+    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6']
 
     # channels = ['MFCC 1', 'MFCC 2' , 'MFCC 3', 'MFCC 7']  # 2 Motifs, hmm
     # channels = ['MFCC 4', 'MFCC 8', 'MFCC 6', 'MFCC 9']   # hmmm
@@ -79,7 +78,7 @@ def test_audio():
     df_sub = get_dataframe_from_subtitle_object(subtitles)
     df_sub.set_index("seconds", inplace=True)
 
-    motif_length_range_in_s = np.arange(4.5, 6.0, 0.1)
+    motif_length_range_in_s = np.arange(5.0, 6.0, 0.1)
     motif_length_range = np.int32(motif_length_range_in_s /
                                   audio_length_seconds * df.shape[1])
 

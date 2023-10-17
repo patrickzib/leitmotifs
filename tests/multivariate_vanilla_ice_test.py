@@ -29,8 +29,9 @@ def test_audio():
 
         ml = Motiflets(ds_name, df,
                        # elbow_deviation=1.25,
-                       slack=0.9,
-                       dimension_labels=df.index
+                       # slack=0.9,
+                       dimension_labels=df.index,
+                       n_dims=2
                        )
 
         _, all_minima = ml.fit_motif_length(

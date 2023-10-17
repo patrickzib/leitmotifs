@@ -136,6 +136,29 @@ class Motiflets:
 
         return self.dists, self.motiflets, self.elbow_points
 
+    def fit_dimensions(
+            self,
+            k_max,
+            motif_length,
+            dim_range
+    ):
+
+        all_dist, all_candidates, all_candidate_dims, all_elbow_points \
+            = ml.select_subdimensions(
+            self.series,
+            k_max=k_max,
+            motif_length=motif_length,
+            dim_range=dim_range,
+            elbow_deviation=self.elbow_deviation,
+            slack=self.slack,
+        )
+
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.set_title("Dimension Plot")
+        sns.lineplot(x=np.arange(1, 6, dtype=np.int32), y=all_dist, ax=ax)
+        plt.tight_layout()
+        plt.show()
+
     def plot_dataset(self, path=None):
         fig, ax = plot_dataset(
             self.ds_name,
@@ -595,7 +618,6 @@ def plot_motif_length_selection(
         exclusion_length=None,
         n_dims=2,
         ground_truth=None,
-        dimension_labels=None,
         plot=True,
         plot_best_only=True,
         plot_elbows=True,
@@ -626,8 +648,6 @@ def plot_motif_length_selection(
         exclusion zone - use when searching for the TOP-2 motiflets
     ground_truth: pd.Series
         Ground-truth information as pd.Series.
-    dimension_labels: list
-        List of labels for each dimension
 
     Returns
     -------
@@ -695,14 +715,23 @@ def plot_motif_length_selection(
                         motifset_candidates_dims=candidate_dims)
 
                 if plot_grid:
-                    plot_grid_motiflets(
-                        ds_name, data, candidates, elbow_points,
-                        dists, motif_length,
-                        candidates_dims=candidate_dims,
-                        show_elbows=False,
-                        font_size=24,
-                        ground_truth=ground_truth,
-                        dimension_labels=dimension_labels)
+                    # plot_grid_motiflets(
+                    #    ds_name, data, candidates, elbow_points,
+                    #    dists, motif_length,
+                    #    candidates_dims=candidate_dims,
+                    #    show_elbows=False,
+                    #    font_size=24,
+                    #    ground_truth=ground_truth,
+                    #    dimension_labels=dimension_labels)
+
+                    plot_motifset(
+                        ds_name,
+                        data,
+                        motifset=top_motiflets[a][-1],
+                        motiflet_dims=top_motiflets_dims[a][-1],
+                        dist=dists[a][-1],
+                        motif_length=motif_length,
+                        show=True)
 
     best_pos = np.argmin(au_ef)
     best_elbows = elbow[best_pos]
