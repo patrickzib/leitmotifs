@@ -56,18 +56,7 @@ def read_songs():
 
 def test_audio():
     audio_length_seconds, df, index_range = read_songs()
-
-    # df = df.iloc[:channels]
-    # channels = ['MFCC 1', 'MFCC 2']
-    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3']
-    # channels = ['MFCC 2', 'MFCC 3']
-    # channels = ['MFCC 4', 'MFCC 5']
-    # channels = ['MFCC 0', 'MFCC 1', 'MFCC 5']
-    # channels = ['MFCC 1', 'MFCC 5', 'MFCC 4']
     channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6']
-
-    # channels = ['MFCC 1', 'MFCC 2' , 'MFCC 3', 'MFCC 7']  # 2 Motifs, hmm
-    # channels = ['MFCC 4', 'MFCC 8', 'MFCC 6', 'MFCC 9']   # hmmm
 
     df = df.loc[channels]
 
@@ -82,12 +71,12 @@ def test_audio():
     motif_length_range = np.int32(motif_length_range_in_s /
                                   audio_length_seconds * df.shape[1])
 
+    n_dims = 2
     ml = Motiflets(ds_name, df,
-                   # elbow_deviation=1.25,
-                   # slack=1.0,
                    dimension_labels=df.index,
-                   n_dims=2,
+                   n_dims=n_dims,
                    )
+
     motif_length, _ = ml.fit_motif_length(
         k_max,
         motif_length_range,
@@ -96,20 +85,20 @@ def test_audio():
     )
     # ml.plot_motifset()
 
-    # best motiflet
-    motiflet = np.sort(ml.motiflets[ml.elbow_points[-1]])
-    print("Positions:", index_range[motiflet])
+    # best motiflets
+    for a, eb in enumerate(ml.elbow_points):
+        motiflet = np.sort(ml.motiflets[eb])
+        print("Positions:", index_range[motiflet])
 
-    lyrics = []
-    for i, m in enumerate(motiflet):
-        l = lookup_lyrics(df_sub, index_range[m], length_in_seconds)
-        lyrics.append(l)
-        print(i + 1, l)
+        lyrics = []
+        for i, m in enumerate(motiflet):
+            l = lookup_lyrics(df_sub, index_range[m], length_in_seconds)
+            lyrics.append(l)
+            print(i + 1, l)
 
-    path_ = "audio/snippets/" + ds_name + "_Channels_" + str(
-        len(df.index)) + "_Motif.pdf"
-    ml.plot_motifset(path=path_)
+        # path_ = "audio/snippets/" + ds_name + "_Dims_" + str(n_dims) + "_Motif.pdf"
+        # ml.plot_motifset(path=path_)
 
-    extract_audio_segment(
-        df, ds_name, audio_file_url, "snippets",
-        length_in_seconds, index_range, motif_length, motiflet)
+        extract_audio_segment(
+            df, ds_name, audio_file_url, "snippets",
+            length_in_seconds, index_range, motif_length, motiflet, id=(a+1))

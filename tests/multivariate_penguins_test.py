@@ -38,7 +38,7 @@ def test_plot_data():
     ds_name, series = read_penguin_data()
     series = series.iloc[497699 - 5000: 497699 + 5000, np.array([0, 7])].T
 
-    ml = Motiflets(ds_name, series, elbow_deviation=1.25)
+    ml = Motiflets(ds_name, series)
     ml.plot_dataset()
 
 

@@ -348,7 +348,7 @@ def plot_motifset(
 
     for dim in range(data_raw.shape[0]):
         dim_data_raw = zscore(data_raw[dim])
-        offset -= (np.max(dim_data_raw) - np.min(dim_data_raw))
+        offset -= 1.2 * (np.max(dim_data_raw) - np.min(dim_data_raw))
         tick_offsets.append(offset)
 
         _ = sns.lineplot(x=data_index,
@@ -395,12 +395,14 @@ def plot_motifset(
         if motiflet_dims is None or dim in motiflet_dims:
             if motifset is not None:
                 axes[1].set_title(
-                    "Motif Set, k=" + str(len(motifset)) + ", d=" + str(
-                        np.round(dist, 2)),
+                    "Motif Set\n"
+                    "k=" + str(len(motifset)) +
+                    ", d=" + str(np.round(dist, 2)) +
+                    ", m=" + str(motif_length),
                     fontsize=20)
 
                 df = pd.DataFrame()
-                df["time"] = data_index[range(0, motif_length)]
+                df["time"] = range(0, motif_length)
 
                 for aa, pos in enumerate(motifset):
                     df[str(aa)] = zscore(dim_data_raw[pos:pos + motif_length]) + offset
@@ -487,14 +489,14 @@ def _plot_elbow_points(
             scale = max(dists) - min(dists)
             # y_pos = (dists[elbow_points[i]] - min(dists) + scale * 0.15) / scale
             axins = ax.inset_axes(
-                [x_pos, 0.1, 0.1, 0.15])
+                [x_pos, 0.1, 0.2, 0.15])
 
             df = pd.DataFrame()
             df["time"] = data_index[range(0, motif_length)]
 
             for dim in range(data_raw.shape[0]):
                 if (motifset_candidates_dims is None or
-                        dim in motifset_candidates_dims[elbow_points][0]):
+                        dim == motifset_candidates_dims[elbow_points][0][1]):
                     pos = motiflet[0]
                     normed_data = zscore(data_raw[dim, pos:pos + motif_length])
                     df["dim_" + str(dim)] = normed_data
@@ -506,7 +508,7 @@ def _plot_elbow_points(
                              style="variable",
                              ci=99,
                              # alpha=0.8,
-                             n_boot=10, color=sns.color_palette("tab10")[i % 10])
+                             n_boot=10, color=sns.color_palette("tab10")[(i+1) % 10])
             axins.set_xlabel("")
             axins.patch.set_alpha(0)
             axins.set_ylabel("")
@@ -724,14 +726,15 @@ def plot_motif_length_selection(
                     #    ground_truth=ground_truth,
                     #    dimension_labels=dimension_labels)
 
-                    plot_motifset(
-                        ds_name,
-                        data,
-                        motifset=top_motiflets[a][-1],
-                        motiflet_dims=top_motiflets_dims[a][-1],
-                        dist=dists[a][-1],
-                        motif_length=motif_length,
-                        show=True)
+                    for i in range(len(top_motiflets[a])):
+                        plot_motifset(
+                            ds_name,
+                            data,
+                            motifset=top_motiflets[a][i],
+                            motiflet_dims=top_motiflets_dims[a][i],
+                            dist=dists[a][i],
+                            motif_length=motif_length,
+                            show=True)
 
     best_pos = np.argmin(au_ef)
     best_elbows = elbow[best_pos]
@@ -809,14 +812,14 @@ def _plot_window_lengths(
             x_pos = minimum / len(motif_length_range)
             scale = max(au_ef) - min(au_ef)
             y_pos = (au_ef[minimum] - min(au_ef) + (1.5 * a + 1) * scale * 0.15) / scale
-            axins = ax.inset_axes([x_pos, y_pos, 0.10, 0.15])
+            axins = ax.inset_axes([x_pos, y_pos, 0.20, 0.15])
 
             motif_length = motif_length_range[minimum]
             df = pd.DataFrame()
             df["time"] = index[range(0, motif_length)]
 
             for dim in range(data_raw.shape[0]):
-                if top_motiflets_dims is None or dim in top_motiflets_dims[minimum][0]:
+                if top_motiflets_dims is None or dim == top_motiflets_dims[minimum][0][0]:
                     pos = motiflet_pos[0]
                     normed_data = zscore(data_raw[dim, pos:pos + motif_length])
                     df["dim_" + str(dim)] = normed_data
@@ -827,7 +830,9 @@ def _plot_window_lengths(
                              hue="variable",
                              style="variable",
                              ci=99,
-                             n_boot=10, color=sns.color_palette("tab10")[i % 10])
+                             n_boot=10,
+                             lw=1,
+                             color=sns.color_palette("tab10")[(i+1) % 10])
             axins.set_xlabel("")
             axins.patch.set_alpha(0)
             axins.set_ylabel("")
