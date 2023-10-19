@@ -337,7 +337,7 @@ def plot_motifsets(
             git_ratio.append(1)
 
         fig, axes = plt.subplots(2, 1+len(motifsets),
-                                 sharey=False,
+                                 sharey="row",
                                  sharex=False,
                                  figsize=(10 + 5 * len(motifsets), 5 + data.shape[0] // 3),
                                  gridspec_kw={

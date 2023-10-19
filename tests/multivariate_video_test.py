@@ -163,7 +163,7 @@ def test_plotting():
 
     series = df
 
-    length_range = np.arange(100, 200, 10)
+    length_range = np.arange(50, 200, 10)
     print(length_range)
 
     ml = Motiflets(amc_name, series,
