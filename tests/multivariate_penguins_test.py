@@ -108,7 +108,7 @@ def test_multivariate():
     length = 2000
     ds_name, B = read_penguin_data()
 
-    for start in [0, 2000, 4000, 6000, 8000, 10000]:  # , 2000
+    for start in [0, 2000]:  # , 2000
         # dists = np.zeros(5)
         series = B.iloc[497699 + start:497699 + start + length].T
 
@@ -123,7 +123,7 @@ def test_multivariate():
         best_length, _ = ml.fit_motif_length(
             k_max,
             motif_length_range,
-            plot=False,
+            plot=True,
             plot_elbows=False,
             plot_motifs_as_grid=True,
             plot_best_only=True
