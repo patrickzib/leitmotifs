@@ -78,7 +78,7 @@ def test_audio():
         motif_length_range,
         plot=False,
         plot_elbows=True,
-        plot_motifs_as_grid=True,
+        plot_motifsets=True,
         plot_best_only=True
     )
     # ml.plot_motifset()

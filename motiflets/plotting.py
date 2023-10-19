@@ -58,6 +58,7 @@ class Motiflets:
         self.motiflets = []
         self.elbow_points = []
         self.motiflets_dims = []
+        self.all_dimensions = []
 
     def fit_motif_length(
             self,
@@ -68,7 +69,7 @@ class Motiflets:
             subsample=1,
             plot=True,
             plot_elbows=False,
-            plot_motifs_as_grid=True,
+            plot_motifsets=True,
             plot_best_only=True
     ):
 
@@ -86,6 +87,7 @@ class Motiflets:
          self.all_elbows,
          self.all_top_motiflets,
          self.all_dists,
+         self.all_dimensions,
          self.all_extrema) = plot_motif_length_selection(
             k_max,
             self.series,
@@ -98,7 +100,7 @@ class Motiflets:
             slack=self.slack,
             subsample=subsample,
             plot_elbows=plot_elbows,
-            plot_motifs=plot_motifs_as_grid,
+            plot_motifs=plot_motifsets,
             plot=plot,
             plot_best_only=plot_best_only)
 
@@ -337,7 +339,7 @@ def plot_motifset(
         fig, axes = plt.subplots(1, 1+len(motifsets),
                                  sharey=True,
                                  sharex=False,
-                                 figsize=(10 + 5 * len(motifsets), 3 + data.shape[0] // 2),
+                                 figsize=(10 + 5 * len(motifsets), 3 + data.shape[0] // 3),
                                  gridspec_kw={'width_ratios': git_ratio}
                                 )
     else:
@@ -751,6 +753,7 @@ def plot_motif_length_selection(
             elbow,
             top_motiflets,
             dists,
+            top_motiflets_dims,
             all_minima[0])
 
 

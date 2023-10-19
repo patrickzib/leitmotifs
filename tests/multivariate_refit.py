@@ -70,7 +70,7 @@ def test_multivariate():
         motif_length_range,
         plot=True,
         plot_elbows=False,
-        plot_motifs_as_grid=True,
+        plot_motifsets=True,
         plot_best_only=False
     )
     # ml.plot_motifset()

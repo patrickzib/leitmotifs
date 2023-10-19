@@ -51,7 +51,7 @@ def test_audio():
 
     motif_length, all_minima = ml.fit_motif_length(
         k_max, length_range,
-        plot_motifs_as_grid=False
+        plot_motifsets=False
     )
     length_in_seconds = index_range[motif_length]
     print("Best length", motif_length, length_in_seconds, "s")

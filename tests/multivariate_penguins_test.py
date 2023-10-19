@@ -58,7 +58,7 @@ def test_univariate():
     _, all_minima = ml.fit_motif_length(
         k_max, motif_length_range,
         plot_elbows=False,
-        plot_motifs_as_grid=False,
+        plot_motifsets=False,
         plot_best_only=True,
         subsample=1)
 
@@ -86,7 +86,7 @@ def test_univariate_top2():
         motif_length_range,
         plot=True,
         plot_elbows=False,
-        plot_motifs_as_grid=False
+        plot_motifsets=False
     )
     ml.plot_motifset()
     print("Best found length", best_length)
@@ -99,7 +99,7 @@ def test_univariate_top2():
         exclusion_length=best_length,
         plot=True,
         plot_elbows=False,
-        plot_motifs_as_grid=False
+        plot_motifsets=False
     )
     ml.plot_motifset()
 
@@ -125,7 +125,7 @@ def test_multivariate():
             motif_length_range,
             plot=True,
             plot_elbows=False,
-            plot_motifs_as_grid=True,
+            plot_motifsets=True,
             plot_best_only=True
         )
         ml.plot_motifset()
@@ -164,7 +164,7 @@ def test_multivariate_top2():
     best_length, _ = ml.fit_motif_length(
         k_max,
         motif_length_range,
-        plot_motifs_as_grid=False,
+        plot_motifsets=False,
     )
     ml.plot_motifset()
 
@@ -176,7 +176,7 @@ def test_multivariate_top2():
         k_max,
         motif_length_range,
         plot_elbows=True,
-        plot_motifs_as_grid=False,
+        plot_motifsets=False,
         exclusion=exclusion,
         exclusion_length=best_length,
     )
@@ -199,7 +199,7 @@ def test_univariate_profile():
 
     _, all_minima = ml.fit_motif_length(
         k_max, motif_length_range,
-        plot=False, plot_elbows=False, plot_motifs_as_grid=False,
+        plot=False, plot_elbows=False, plot_motifsets=False,
         subsample=1)
 
     # ml.plot_motifset()
@@ -220,7 +220,7 @@ def test_multivariate_all():
         motif_length_range,
         plot=False,
         plot_elbows=True,
-        plot_motifs_as_grid=False,
+        plot_motifsets=False,
     )
     ml.plot_motifset()
 

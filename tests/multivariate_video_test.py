@@ -173,22 +173,35 @@ def test_plotting():
 
     m, all_minima = ml.fit_motif_length(
         k_max, length_range,
-        plot=True, plot_best_only=False,
-        plot_motifs_as_grid=True)
+        plot=True,
+        plot_best_only=False,
+        plot_motifsets=True)
 
-    for motif_length in length_range[all_minima]:
-        dists, motiflets, elbow_points = ml.fit_k_elbow(
-            k_max,
-            plot_elbows=False,
-            plot_motifs_as_grid=True,
-            motif_length=motif_length)
+    for minimum in all_minima:
+        motif_length = length_range[minimum]
+        dists = ml.all_dists[minimum]
+        elbow_points = ml.all_elbows[minimum]
+
+        # motiflets = ml.all_top_motiflets[minimum]
+        motiflets = np.zeros(len(dists), dtype=np.object)
+        motiflets[elbow_points] = ml.all_top_motiflets[minimum]
+
+        dimensions = np.zeros(len(dists), dtype=np.object)
+        dimensions[elbow_points] = ml.all_dimensions[minimum] # need to unpack
+
+        #dists2, motiflets2, elbow_points2 = ml.fit_k_elbow(
+        #    k_max,
+        #    plot_elbows=False,
+        #    plot_motifs_as_grid=True,
+        #    motif_length=motif_length)
+
 
         video = False
         if video:
             if len(elbow_points) > 1:
                 for eb in elbow_points:
                     for i, pos in enumerate(motiflets[eb]):
-                        use_joints = df.index.values[ml.motiflets_dims[eb]]
+                        use_joints = df.index.values[dimensions[eb]]  # FIXME!?
                         # strip the _x, _y, _z from the joint
                         use_joints = [joint[:-2] for joint in use_joints]
                         fig = plt.figure()
