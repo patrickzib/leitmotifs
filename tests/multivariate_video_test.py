@@ -196,7 +196,7 @@ def test_plotting():
         #    motif_length=motif_length)
 
 
-        video = False
+        video = True
         if video:
             if len(elbow_points) > 1:
                 for eb in elbow_points:

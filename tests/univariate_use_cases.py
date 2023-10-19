@@ -32,7 +32,7 @@ def test_ecg():
         subsample=1,
         plot=True,
         plot_elbows=True,
-        plot_motifs_as_grid=True
+        plot_motifsets=True
     )
 
     print("Best found length", best_length)
@@ -65,7 +65,7 @@ def test_vanilla_ice():
         subsample=1,
         plot=True,
         plot_elbows=True,
-        plot_motifs_as_grid=True
+        plot_motifsets=True
     )
 
     print("Best found length", best_length)
@@ -102,7 +102,7 @@ def test_muscle_activation():
         subsample=1,
         plot=True,
         plot_elbows=True,
-        plot_motifs_as_grid=True
+        plot_motifsets=True
     )
 
     print("Best found length", best_length)
@@ -134,8 +134,9 @@ def test_physiodata():
         subsample=1,
         plot=True,
         plot_elbows=True,
-        plot_motifs_as_grid=True
+        plot_motifsets=True
     )
+
 
 def test_winding():
     file = "winding_col.csv"

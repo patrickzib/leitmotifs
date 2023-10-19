@@ -126,9 +126,9 @@ def test_multivariate():
             plot=True,
             plot_elbows=False,
             plot_motifsets=True,
-            plot_best_only=True
+            plot_best_only=False
         )
-        ml.plot_motifset()
+        # ml.plot_motifset()
 
         # dists[a] = ml.dists[ml.elbow_points[-1]]
         print("Best found length", best_length)
