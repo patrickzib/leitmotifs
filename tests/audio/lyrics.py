@@ -39,8 +39,9 @@ def extract_audio_segment(
         motif_audio.export('audio/' + export_file_url + '/' + ds_name +
                            "_Dims_" + str(len(df.index)) +
                            "_Length_" + str(motif_length) +
-                           "_Motif_" + str(a) +
+                           "_Motif" +
                            ("" if id is None else "_" + str(id)) +
+                           "_" +  str(a) +
                            '.wav', format="wav")
 
 

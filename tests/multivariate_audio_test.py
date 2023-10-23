@@ -25,7 +25,7 @@ datasets = {
     },
     "The Rolling Stones - Paint It, Black": {
         "ks": 15,
-        "channels": 2,
+        "channels": 3,
         "length_in_seconds": np.arange(5.0, 6.0, 0.1),
         "ds_name": "The Rolling Stones - Paint It, Black",
         "audio_file_url": path + "The Rolling Stones - Paint It, Black.wav",
@@ -33,7 +33,8 @@ datasets = {
     }
 }
 
-dataset = datasets["What I've Done - Linkin Park"]
+dataset = datasets["The Rolling Stones - Paint It, Black"]
+# dataset = datasets["What I've Done - Linkin Park"]
 k_max = dataset["ks"]
 n_dims = dataset["channels"]
 motif_length_range_in_s = dataset["length_in_seconds"]
@@ -80,23 +81,23 @@ def test_audio():
         plot_best_only=False
     )
 
-    # length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
-    # print("Found motif length", length_in_seconds, motif_length)
-    #
-    # # best motiflets
-    # for a, eb in enumerate(ml.elbow_points):
-    #     motiflet = np.sort(ml.motiflets[eb])
-    #     print("Positions:", index_range[motiflet])
-    #
-    #     lyrics = []
-    #     for i, m in enumerate(motiflet):
-    #         l = lookup_lyrics(df_sub, index_range[m], length_in_seconds)
-    #         lyrics.append(l)
-    #         print(i + 1, l)
-    #
-    #     # path_ = "audio/snippets/" + ds_name + "_Dims_" + str(n_dims) + "_Motif.pdf"
-    #     # ml.plot_motifset(path=path_)
-    #
-    #     extract_audio_segment(
-    #         df, ds_name, audio_file_url, "snippets",
-    #         length_in_seconds, index_range, motif_length, motiflet, id=(a+1))
+    length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
+    print("Found motif length", length_in_seconds, motif_length)
+
+    # best motiflets
+    for a, eb in enumerate(ml.elbow_points):
+        motiflet = np.sort(ml.motiflets[eb])
+        print("Positions:", index_range[motiflet])
+
+        lyrics = []
+        for i, m in enumerate(motiflet):
+            l = lookup_lyrics(df_sub, index_range[m], length_in_seconds)
+            lyrics.append(l)
+            print(i + 1, l)
+
+        # path_ = "audio/snippets/" + ds_name + "_Dims_" + str(n_dims) + "_Motif.pdf"
+        # ml.plot_motifset(path=path_)
+
+        extract_audio_segment(
+            df, ds_name, audio_file_url, "snippets",
+            length_in_seconds, index_range, motif_length, motiflet, id=(a+1))
