@@ -10,14 +10,14 @@ datasets = {
     "Common-Starling": {
         "ks": 5,
         "channels": 10,
-        "length_range": np.arange(25, 100, 1),
+        "length_range": np.arange(25, 100, 5),
         "ds_name": "Common-Starling",
         "audio_file_url": path + "xc27154---common-starling---sturnus-vulgaris.mp3",
     },
     "House-Sparrow": {
         "ks": 20,
         "channels": 10,
-        "length_range": np.arange(25, 50, 1),
+        "length_range": np.arange(25, 50, 5),
         "ds_name": "House-Sparrow",
         "audio_file_url": path + "house-sparrow-passer-domesticus-audio.mp3"
     }
@@ -32,16 +32,7 @@ audio_file_url = dataset["audio_file_url"]
 
 
 def test_audio():
-    # channels = ['MFCC 1', 'MFCC 2']
-    # channels = ['MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9']
-
-    # channels = ['MFCC 3', 'MFCC 5']
-    # channels = ['MFCC 1', 'MFCC 4', 'MFCC 0', 'MFCC 9', 'MFCC 6']
-
-    # channels = ['MFCC 0', 'MFCC 1']
-
     seconds, df, index_range = read_mp3(audio_file_url)
-    # df = df.loc[channels]
 
     ml = Motiflets(ds_name, df,
                    slack=1.0,

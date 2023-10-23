@@ -364,7 +364,7 @@ def distance(dot_rolled, n, m, means, stds, order, halve_m):
                          min(order + halve_m, n))
     dist[trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
 
-    # allow subsequence itself to be in result
+    # allow subsequenceg itself to be in result
     dist[order] = 0
 
     return dist
@@ -426,11 +426,10 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
     motifset_extent = np.float64(0.0)
     # dimension chosen based on "first to k-th entry" order
-    idx = dim_index[motifset_pos[0]]  # .astype(np.int32)
+    idx = dim_index[motifset_pos[-1]]
 
     for ii in range(len(motifset_pos) - 1):
         i = motifset_pos[ii]
-        # idx = dim_index[:, i, 0]
 
         for jj in range(ii + 1, len(motifset_pos)):
             j = motifset_pos[jj]
@@ -551,8 +550,8 @@ def lower_bound(D, dim_index, k, knns, n):
     best_dims = np.zeros(n, dtype=np.int32)
 
     for order in np.arange(n, dtype=np.int32):
-        # Use the first (best) dimension for ordering of k-NNs and lower bound
-        best_dims[order] = dim_index[order, -1]  # TODO or 0?
+        # Use the best dimension for ordering of k-NNs and lower bound
+        best_dims[order] = dim_index[order, 0]
 
         # a worse lower bound
         # knn_distances[order] = dim_index.shape[0] * best_dist
@@ -979,11 +978,6 @@ def search_k_motiflets_elbow(
             slack=slack,
             sum_dims=sum_dims)
 
-    # TODO Try transposing the D_full matrix to increase cache locality
-    # dim, start, end => start, end, dim
-    # knns_T = np.transpose(knns, (1, 2, 0))
-    # D_full = np.transpose(D_full, (1, 2, 0))
-
     # non-overlapping motifs only
     k_motiflet_distances = np.zeros(k_max_ + 1)
     k_motiflet_candidates = np.empty(k_max_ + 1, dtype=object)
@@ -999,13 +993,13 @@ def search_k_motiflets_elbow(
 
         if not sum_dims:
             # k-th NN and it's distance along all dimensions
-            knn_idx = knns[:, :, test_k - 1]  # TODO or 1-NN?
+            knn_idx = knns[:, :, test_k - 1]
             D_knn = np.take_along_axis(
                 D_full,
                 knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
                 axis=2)[:, :, 0]
 
-            dim_index = np.argpartition(D_knn, use_dim - 1, axis=0)[:use_dim]
+            dim_index = np.argsort(D_knn, axis=0)[:use_dim]
             dim_index = np.transpose(dim_index, (1, 0))
         else:
             dim_index = np.zeros((n, 1), dtype=np.int32)

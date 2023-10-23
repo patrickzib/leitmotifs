@@ -33,7 +33,7 @@ datasets = {
     }
 }
 
-dataset = datasets["The Rolling Stones - Paint It, Black"]
+dataset = datasets["What I've Done - Linkin Park"]
 k_max = dataset["ks"]
 n_dims = dataset["channels"]
 motif_length_range_in_s = dataset["length_in_seconds"]
@@ -63,11 +63,9 @@ def test_audio():
     df_sub = get_dataframe_from_subtitle_object(subtitles)
     df_sub.set_index("seconds", inplace=True)
 
-    # motif_length_range_in_s = np.arange(5.0, 6.0, 0.1)
     motif_length_range = np.int32(motif_length_range_in_s /
                                   audio_length_seconds * df.shape[1])
 
-    # n_dims = 2
     ml = Motiflets(ds_name, df,
                    dimension_labels=df.index,
                    n_dims=n_dims,
@@ -76,12 +74,12 @@ def test_audio():
     motif_length, _ = ml.fit_motif_length(
         k_max,
         motif_length_range,
-        plot=False,
+        plot=True,
         plot_elbows=True,
         plot_motifsets=True,
-        plot_best_only=True
+        plot_best_only=False
     )
-    # ml.plot_motifset()
+
     # length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
     # print("Found motif length", length_in_seconds, motif_length)
     #
