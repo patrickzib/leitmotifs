@@ -314,16 +314,15 @@ def compute_distance_matrix(time_series,
         D_all = np.zeros((dims, n, n), dtype=np.float32)
         knns = np.zeros((dims, n, k), dtype=np.int32)
 
-    # prange does not work here! causes inconsistent results - why?
-    for d in range(dims):
-        ts = time_series[d, :]
-        means, stds = _sliding_mean_std(ts, m)
+    bin_size = time_series.shape[-1] // n_jobs
+    for idx in prange(n_jobs):
+        start = idx * bin_size
+        end = min((idx + 1) * bin_size, time_series.shape[-1] - m + 1)
 
-        dot_first = _sliding_dot_product(ts[:m], ts)
-        bin_size = ts.shape[-1] // n_jobs
-        for idx in prange(n_jobs):
-            start = idx * bin_size
-            end = min((idx + 1) * bin_size, ts.shape[-1] - m + 1)
+        for d in range(dims):
+            ts = time_series[d, :]
+            means, stds = _sliding_mean_std(ts, m)
+            dot_first = _sliding_dot_product(ts[:m], ts)
 
             dot_prev = None
             for order in np.arange(start, end):
@@ -339,16 +338,18 @@ def compute_distance_matrix(time_series,
 
                 dist = distance(dot_rolled, n, m, means, stds, order, halve_m)
                 if sum_dims:
-                    D_all[0, order, :] += dist
+                    D_all[0, order] += dist
                 else:
-                    D_all[d, order, :] = dist
+                    D_all[d, order] = dist
                 dot_prev = dot_rolled
 
-    for d in prange(D_all.shape[0]):
-        for order in prange(D_all.shape[1]):
-            knn = _argknn(D_all[d, order], k, m, n, slack=slack)
-            knns[d, order, :len(knn)] = knn
-            knns[d, order, len(knn):] = -1
+        # do not merge with previous loop, as we are adding distances
+        # over dimensions, first
+        for d in range(dims):
+            for order in np.arange(start, end):
+                knn = _argknn(D_all[d, order], k, m, n, slack=slack)
+                knns[d, order, :len(knn)] = knn
+                knns[d, order, len(knn):] = -1
 
     return D_all, knns
 
