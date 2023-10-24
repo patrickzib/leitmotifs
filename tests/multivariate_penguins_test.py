@@ -232,7 +232,6 @@ def test_fit_dimensions():
     ds_name, B = read_penguin_data()
 
     for start in [0]: # , 2000
-        dists = np.zeros(5)
         series = B.iloc[497699 + start:497699 + start + length].T
 
         ml = Motiflets(ds_name, series)
@@ -242,3 +241,29 @@ def test_fit_dimensions():
             motif_length=22,
             dim_range=np.arange(1, 6, dtype=np.int32),
         )
+
+
+def test_sparse():
+    ds_name, series = read_penguin_data()
+    n = 100_000
+    series = series.iloc[497699:497699 + n].T.to_numpy()
+
+    m = 100
+    D_knn, D_sparse, knns = ml.compute_distance_matrix_sparse(series, m=m, k=10)
+
+    elements = 0
+    for A in D_sparse:
+        for B in A:
+            elements += len(B)
+
+    n = (series.shape[1]-m+1)
+    print(elements, (series.shape[0] * n)**2,
+          str((elements * 100 / (series.shape[0] * n)**2))  + "%")
+
+
+def test_full():
+    ds_name, series = read_penguin_data()
+    series = series.iloc[497699:497699 + 10000].T
+
+    m = 100
+    _, _ = ml.compute_distance_matrix(series.to_numpy(), m=m, k=5)
