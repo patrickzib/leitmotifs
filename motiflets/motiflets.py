@@ -16,7 +16,7 @@ from numba import njit, prange, objmode, types
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
 from tqdm.auto import tqdm
-from numba.typed import Dict
+from numba.typed import Dict, List
 
 def _resample(data, sampling_factor=10000):
     """Resamples a time series to roughly `sampling_factor` points.
@@ -351,7 +351,7 @@ def compute_distance_matrix(time_series,
     return D_all, knns
 
 
-@njit(fastmath=True, cache=True, parallel=True)
+@njit(fastmath=True, cache=True)  # , parallel=True)
 def compute_distance_matrix_sparse(time_series,
                             m,
                             k,
@@ -399,16 +399,14 @@ def compute_distance_matrix_sparse(time_series,
     knns = np.zeros((dims, n, k), dtype=np.int32)
 
     # TODO: no sparse matrix support in numba. Thus we use this hack
-    D_bool = []
-    D_sparse = []
+    # TODO set???
+    D_bool = [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in range(n)]
+
+    D_sparse = List()
     for d in range(dims):
-        _list = []
-        _list2 = []
-        D_bool.append(_list)
+        _list2 = List()
         D_sparse.append(_list2)
         for i in range(n):
-            # TODO set???
-            _list.append(Dict.empty(key_type=types.int32, value_type=types.bool_))
             _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
     # first pass, computing the k-nns
@@ -437,10 +435,10 @@ def compute_distance_matrix_sparse(time_series,
 
             # memorize which pairs are needed
             for ks in knn:
-                D_bool[d][min(order, ks)][max(order, ks)] = True
+                D_bool[min(order, ks)][max(order, ks)] = True
                 for ks2 in knn:
                     if ks < ks2:
-                        D_bool[d][ks][ks2] = True
+                        D_bool[ks][ks2] = True
 
     # second pass, filling only the pairs needed
     for d in prange(dims):
@@ -463,7 +461,7 @@ def compute_distance_matrix_sparse(time_series,
             dot_prev = dot_rolled
 
             # fill the knns now with the distances computed
-            for key in D_bool[d][order]:
+            for key in D_bool[order]:
                 D_sparse[d][order][key] = dist[key]
 
     return D_knn, D_sparse, knns
@@ -538,7 +536,7 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
     """
 
     if -1 in motifset_pos:
-        return np.inf
+       return np.inf
 
     motifset_extent = np.float64(0.0)
     # dimension chosen based on "first to k-th entry" order
@@ -552,7 +550,7 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
             extent = np.float64(0.0)
             for kk in range(len(idx)):
-                extent += D_full[idx[kk], i, j]
+                extent += D_full[idx[kk]][min(i,j)][max(i,j)]
 
             motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
@@ -606,7 +604,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-# @njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def get_approximate_k_motiflet(
         ts, m, k, D, knns, dim_index, upper_bound=np.inf
 ):
@@ -640,9 +638,10 @@ def get_approximate_k_motiflet(
     motiflet_candidate = None
 
     # allows subsequence itself
-    # TODO???
-    # for D_ in D:
-    #    np.fill_diagonal(D_, 0)
+    # fills diagonal with 0
+    for D_ in D:
+        for i in np.arange(len(D_)):
+            D_[i][i] = 0
 
     # Determine best order
     knn_distances, best_dims = lower_bound(D, dim_index, k, knns, n)
@@ -660,7 +659,7 @@ def get_approximate_k_motiflet(
     return motiflet_candidate, motiflet_dist, motiflet_dims
 
 
-# @njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def lower_bound(D, dim_index, k, knns, n):
     # order by increasing k-nn distance
     knn_distances = np.zeros(n, dtype=np.float32)
@@ -1101,7 +1100,7 @@ def search_k_motiflets_elbow(
             data_raw, m, k_max_,
             slack=slack)
 
-        D_full = np.array(D_full)
+        # D_full = np.array(D_full)
 
     # non-overlapping motifs only
     k_motiflet_distances = np.zeros(k_max_ + 1)
@@ -1109,7 +1108,7 @@ def search_k_motiflets_elbow(
     k_motiflet_dims = np.empty(k_max_ + 1, dtype=object)
 
     # order dimensions by increasing distance
-    use_dim = min(n_dims, D_full.shape[0])  # dimensions indexed by 0
+    use_dim = min(n_dims, knns.shape[0])  # dimensions indexed by 0
 
     upper_bound = np.inf
     for test_k in tqdm(range(k_max_, 1, -1),

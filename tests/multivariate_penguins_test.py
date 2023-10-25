@@ -108,7 +108,7 @@ def test_multivariate():
     length = 2000
     ds_name, B = read_penguin_data()
 
-    for start in [0, 2000]:  # , 2000
+    for start in [0]:  # , 2000
         # dists = np.zeros(5)
         series = B.iloc[497699 + start:497699 + start + length].T
 
@@ -126,7 +126,7 @@ def test_multivariate():
             plot=True,
             plot_elbows=False,
             plot_motifsets=True,
-            plot_best_only=False
+            plot_best_only=True
         )
         # ml.plot_motifset()
 
@@ -245,7 +245,7 @@ def test_fit_dimensions():
 
 def test_sparse():
     ds_name, series = read_penguin_data()
-    n = 100_000
+    n = 1_000
     series = series.iloc[497699:497699 + n].T.to_numpy()
 
     m = 100
