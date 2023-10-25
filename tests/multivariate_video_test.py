@@ -3,6 +3,9 @@ from matplotlib.animation import FuncAnimation
 import amc.amc_parser as amc_parser
 from motiflets.plotting import *
 
+import matplotlib as mpl
+mpl.rcParams['figure.dpi'] = 150
+
 
 def get_joint_pos_dict(c_joints, c_motion):
     c_joints['root'].set_motion(c_motion)

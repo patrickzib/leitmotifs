@@ -10,8 +10,7 @@ import warnings
 warnings.simplefilter("ignore")
 
 import matplotlib as mpl
-
-mpl.rcParams['figure.dpi'] = 300
+mpl.rcParams['figure.dpi'] = 150
 
 path = "../datasets/experiments/"
 
