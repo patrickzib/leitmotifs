@@ -105,12 +105,12 @@ def test_univariate_top2():
 
 
 def test_multivariate():
-    length = 2000
+    length = 10_000
     ds_name, B = read_penguin_data()
 
     for start in [0]:  # , 2000
         # dists = np.zeros(5)
-        series = B.iloc[497699 + start:497699 + start + length].T
+        series = B.iloc[497699 + start:497699 + start + length, 0:6].T
 
         # for a, n_dims in enumerate(range(1, 6)):
         ml = Motiflets(ds_name, series,
@@ -246,7 +246,7 @@ def test_fit_dimensions():
 def test_sparse():
     ds_name, series = read_penguin_data()
     n = 30_000
-    series = series.iloc[497699:497699 + n:, 0:2].T.to_numpy()
+    series = series.iloc[497699:497699 + n:, 0:6].T.to_numpy()
 
     m = 1000
     k = 10
