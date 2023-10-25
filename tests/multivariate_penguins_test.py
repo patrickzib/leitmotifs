@@ -110,7 +110,7 @@ def test_multivariate():
 
     for start in [0]:  # , 2000
         # dists = np.zeros(5)
-        series = B.iloc[497699 + start:497699 + start + length, 0:6].T
+        series = B.iloc[497699 + start:497699 + start + length, 0:2].T
 
         # for a, n_dims in enumerate(range(1, 6)):
         ml = Motiflets(ds_name, series,

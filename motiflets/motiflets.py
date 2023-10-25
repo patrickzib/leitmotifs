@@ -571,10 +571,10 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
             extent = np.float64(0.0)
             for kk in range(len(idx)):
-                if i < j:
-                    extent += D_full[idx[kk]][i][j]
-                else:
-                    extent += D_full[idx[kk]][j][i]
+                # if i < j:
+                extent += D_full[idx[kk]][i][j]
+                # else:
+                #    extent += D_full[idx[kk]][j][i]
 
             motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
@@ -697,10 +697,10 @@ def lower_bound(D, dim_index, k, knns, n):
         knn_idx = knns[best_dims[order], order]
         for a in np.arange(dim_index.shape[-1]):  # dimensions
             kk = knn_idx[k - 1]
-            if order < kk:
-                knn_distances[order] += D[dim_index[order, a]][order][kk]
-            else:
-                knn_distances[order] += D[dim_index[order, a]][kk][order]
+            # if order < kk:
+            knn_distances[order] += D[dim_index[order, a]][order][kk]
+            # else:
+            #   knn_distances[order] += D[dim_index[order, a]][kk][order]
 
     return knn_distances, best_dims
 
@@ -906,7 +906,7 @@ def select_subdimensions(
     knns = None
     for i, n_dims in enumerate(dim_range):
         if n_dims <= data.shape[0]:
-            dist, candidates, candidate_dims, elbow_points, D_full, knns \
+            dist, candidates, candidate_dims, elbow_points, D_knns, D_full, knns \
                 = search_k_motiflets_elbow(
                 k_max,
                 data,
@@ -916,6 +916,7 @@ def select_subdimensions(
                 slack=slack,
                 return_distances=True,
                 D_full=D_full,
+                D_knns=D_knns,
                 knns=knns  # reuse distances from last runs
             )
 
@@ -1056,6 +1057,7 @@ def search_k_motiflets_elbow(
         slack=0.5,
         return_distances=False,
         D_full=None,
+        D_knns=None,
         knns=None
 ):
     """Computes the elbow-function.
@@ -1110,20 +1112,18 @@ def search_k_motiflets_elbow(
 
     # Check if use_dim is smaller than all given dimensions
     n_dims = d if n_dims is None else n_dims
-    # sum_dims = True if n_dims >= d else False
+    sum_dims = True if n_dims >= d else False
 
     # compute the distance matrix
     if D_full is None:
-        #D_full, knns = compute_distance_matrix(
-        #    data_raw, m, k_max_,
-        #    slack=slack,
-        #    sum_dims=sum_dims)
-
-        D_knns, D_full, knns = compute_distance_matrix_sparse(
+        D_full, knns = compute_distance_matrix(
             data_raw, m, k_max_,
-            slack=slack)
+            slack=slack,
+            sum_dims=sum_dims)
 
-        # D_full = np.array(D_full)
+        #D_knns, D_full, knns = compute_distance_matrix_sparse(
+        #    data_raw, m, k_max_,
+        #    slack=slack)
 
     # non-overlapping motifs only
     k_motiflet_distances = np.zeros(k_max_ + 1)
@@ -1140,7 +1140,14 @@ def search_k_motiflets_elbow(
 
         # if not sum_dims:
         # k-th NN and it's distance along all dimensions
-        D_knn = D_knns[:, :, test_k - 1]
+        # D_knn = D_knns[:, :, test_k - 1]
+
+        knn_idx = knns[:, :, test_k - 1]
+        D_knn = np.take_along_axis(
+            D_full,
+            knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
+            axis=2)[:, :, 0]
+
         dim_index = np.argsort(D_knn, axis=0)[:use_dim]
         dim_index = np.transpose(dim_index, (1, 0))
         # else:
@@ -1181,7 +1188,7 @@ def search_k_motiflets_elbow(
 
     if return_distances:
         return (k_motiflet_distances, k_motiflet_candidates, k_motiflet_dims,
-                elbow_points, D_full, knns)
+                elbow_points, D_knns, D_full, knns)
     else:
         return (k_motiflet_distances, k_motiflet_candidates, k_motiflet_dims,
                 elbow_points, m)
