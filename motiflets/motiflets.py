@@ -351,7 +351,7 @@ def compute_distance_matrix(time_series,
     return D_all, knns
 
 
-@njit(fastmath=True, cache=True)  # , parallel=True)
+@njit(fastmath=True, cache=True, parallel=True)
 def compute_distance_matrix_sparse(time_series,
                             m,
                             k,
@@ -410,7 +410,8 @@ def compute_distance_matrix_sparse(time_series,
             _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
     # first pass, computing the k-nns
-    for d in prange(dims):
+    # Parallelizm does not work :( 
+    for d in np.arange(dims):
         ts = time_series[d, :]
         means, stds = _sliding_mean_std(ts, m)
         dot_first = _sliding_dot_product(ts[:m], ts)
