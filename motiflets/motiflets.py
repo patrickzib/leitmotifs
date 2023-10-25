@@ -434,7 +434,7 @@ def compute_distance_matrix_sparse(time_series,
             knns[d, order] = knn
 
 
-    # Parallelizm does not work :(
+    # Parallelizm does not work, as Dict ist not thread safe :(
     for d in np.arange(dims):
         for order in np.arange(0, n):
             knn = knns[d, order]
