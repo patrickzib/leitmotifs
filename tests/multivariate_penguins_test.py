@@ -245,11 +245,12 @@ def test_fit_dimensions():
 
 def test_sparse():
     ds_name, series = read_penguin_data()
-    n = 1_000
+    n = 100_000
     series = series.iloc[497699:497699 + n].T.to_numpy()
 
     m = 100
-    D_knn, D_sparse, knns = ml.compute_distance_matrix_sparse(series, m=m, k=10)
+    k = 10
+    D_knn, D_sparse, knns = ml.compute_distance_matrix_sparse(series, m=m, k=k)
 
     elements = 0
     for A in D_sparse:
@@ -257,8 +258,8 @@ def test_sparse():
             elements += len(B)
 
     n = (series.shape[1]-m+1)
-    print(elements, (series.shape[0] * n)**2,
-          str((elements * 100 / (series.shape[0] * n)**2))  + "%")
+    print(elements, series.shape[0] * (n**2),
+          str(elements * 100 / (series.shape[0] * (n**2))) + "%")
 
 
 def test_full():

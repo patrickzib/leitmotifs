@@ -410,13 +410,12 @@ def compute_distance_matrix_sparse(time_series,
             _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
     # first pass, computing the k-nns
-    # Parallelizm does not work :(
-    for d in np.arange(dims):
+    for d in prange(dims):
         ts = time_series[d, :]
         means, stds = _sliding_mean_std(ts, m)
         dot_first = _sliding_dot_product(ts[:m], ts)
         dot_prev = None
-        for order in np.arange(ts.shape[-1] - m + 1):
+        for order in np.arange(n):
             if order == 0:
                 # O(n log n) operation
                 dot_rolled = _sliding_dot_product(ts[0:m], ts)
@@ -434,12 +433,17 @@ def compute_distance_matrix_sparse(time_series,
             D_knn[d, order] = dist[knn]
             knns[d, order] = knn
 
+
+    # Parallelizm does not work :(
+    for d in np.arange(dims):
+        for order in np.arange(0, n):
+            knn = knns[d, order]
             # memorize which pairs are needed
             for ks in knn:
-                D_bool[min(order, ks)][max(order, ks)] = True
+                D_bool[order][ks] = True
                 for ks2 in knn:
-                    if ks < ks2:
-                        D_bool[ks][ks2] = True
+                    D_bool[ks][ks2] = True
+
 
     # second pass, filling only the pairs needed
     for d in prange(dims):
