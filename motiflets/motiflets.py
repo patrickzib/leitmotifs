@@ -319,7 +319,7 @@ def compute_distance_matrix(time_series,
         start = idx * bin_size
         end = min((idx + 1) * bin_size, time_series.shape[-1] - m + 1)
 
-        for d in range(dims):
+        for d in prange(dims):
             ts = time_series[d, :]
             means, stds = _sliding_mean_std(ts, m)
             dot_first = _sliding_dot_product(ts[:m], ts)
@@ -345,8 +345,8 @@ def compute_distance_matrix(time_series,
 
         # do not merge with previous loop, as we are adding distances
         # over dimensions, first
-        for d in range(dims):
-            for order in np.arange(start, end):
+        for d in prange(dims):
+            for order in prange(start, end):
                 knn = _argknn(D_all[d, order], k, m, n, slack=slack)
                 knns[d, order, :len(knn)] = knn
                 knns[d, order, len(knn):] = -1
