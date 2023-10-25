@@ -410,7 +410,7 @@ def compute_distance_matrix_sparse(time_series,
             _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
     # first pass, computing the k-nns
-    # Parallelizm does not work :( 
+    # Parallelizm does not work :(
     for d in np.arange(dims):
         ts = time_series[d, :]
         means, stds = _sliding_mean_std(ts, m)
