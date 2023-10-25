@@ -104,12 +104,12 @@ def test_univariate_top2():
 
 
 def test_multivariate():
-    length = 2000
+    length = 10_000
     ds_name, B = read_penguin_data()
 
-    for start in [0, 2000]:  # , 2000
+    for start in [0]:  # , 2000
         # dists = np.zeros(5)
-        series = B.iloc[497699 + start:497699 + start + length].T
+        series = B.iloc[497699 + start:497699 + start + length, 0:2].T
 
         # for a, n_dims in enumerate(range(1, 6)):
         ml = Motiflets(ds_name, series,
@@ -125,7 +125,7 @@ def test_multivariate():
             plot=True,
             plot_elbows=False,
             plot_motifsets=True,
-            plot_best_only=False
+            plot_best_only=True
         )
         # ml.plot_motifset()
 
