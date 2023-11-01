@@ -412,6 +412,9 @@ def compute_distance_matrix_sparse(time_series,
         for i in range(n):
             _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
+    # lowest_distance = np.zeros(k, dtype=np.float32)
+    # lowest_distance[:] = np.inf
+
     # first pass, computing the k-nns
     for d in range(dims):
         ts = time_series[d, :]
@@ -442,11 +445,17 @@ def compute_distance_matrix_sparse(time_series,
                 D_knn[d, order] = dist[knn]
                 knns[d, order] = knn
 
+                # dist[order] = np.inf
+                # lowest_distance = np.minimum(lowest_distance, D_knn[d, order])
+
+    # 2*r is the maximal distance between two subsequences
+    # lowest_distance[1:] = np.sqrt(2*(lowest_distance[1:] ** 2))
 
     # Parallelizm does not work, as Dict ist not thread safe :(
     for d in np.arange(dims):
         for order in np.arange(0, n):
             knn = knns[d, order]
+            # if np.any(D_knn[d, order][1:] <= lowest_distance[1:]):
             # memorize which pairs are needed
             for ks in knn:
                 D_bool[order][ks] = True
@@ -1113,17 +1122,20 @@ def search_k_motiflets_elbow(
     # Check if use_dim is smaller than all given dimensions
     n_dims = d if n_dims is None else n_dims
     sum_dims = True if n_dims >= d else False
+    sparse = True
 
     # compute the distance matrix
     if D_full is None:
-        D_full, knns = compute_distance_matrix(
-            data_raw, m, k_max_,
-            slack=slack,
-            sum_dims=sum_dims)
+        if sparse:
+            D_knns, D_full, knns = compute_distance_matrix_sparse(
+                data_raw, m, k_max_,
+                slack=slack)
+        else:
+            D_full, knns = compute_distance_matrix(
+               data_raw, m, k_max_,
+               slack=slack,
+               sum_dims=sum_dims)
 
-        #D_knns, D_full, knns = compute_distance_matrix_sparse(
-        #    data_raw, m, k_max_,
-        #    slack=slack)
 
     # non-overlapping motifs only
     k_motiflet_distances = np.zeros(k_max_ + 1)
@@ -1140,13 +1152,15 @@ def search_k_motiflets_elbow(
 
         # if not sum_dims:
         # k-th NN and it's distance along all dimensions
-        # D_knn = D_knns[:, :, test_k - 1]
+        if sparse:
+            D_knn = D_knns[:, :, test_k - 1]
 
-        knn_idx = knns[:, :, test_k - 1]
-        D_knn = np.take_along_axis(
-            D_full,
-            knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
-            axis=2)[:, :, 0]
+        else:
+            knn_idx = knns[:, :, test_k - 1]
+            D_knn = np.take_along_axis(
+                D_full,
+                knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
+                axis=2)[:, :, 0]
 
         dim_index = np.argsort(D_knn, axis=0)[:use_dim]
         dim_index = np.transpose(dim_index, (1, 0))

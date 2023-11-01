@@ -246,9 +246,9 @@ def test_fit_dimensions():
 def test_sparse():
     ds_name, series = read_penguin_data()
     n = 30_000
-    series = series.iloc[497699:497699 + n:, 0:6].T.to_numpy()
+    series = series.iloc[497699:497699 + n:, 0:3].T.to_numpy()
 
-    m = 1000
+    m = 100
     k = 10
     D_knn, D_sparse, knns = ml.compute_distance_matrix_sparse(series, m=m, k=k)
 
