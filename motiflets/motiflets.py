@@ -412,8 +412,8 @@ def compute_distance_matrix_sparse(time_series,
         for i in range(n):
             _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
-    # lowest_distance = np.zeros(k, dtype=np.float32)
-    # lowest_distance[:] = np.inf
+    lowest_distance = np.zeros(k, dtype=np.float32)
+    lowest_distance[:] = np.inf
 
     # first pass, computing the k-nns
     for d in range(dims):
@@ -445,23 +445,29 @@ def compute_distance_matrix_sparse(time_series,
                 D_knn[d, order] = dist[knn]
                 knns[d, order] = knn
 
-                # dist[order] = np.inf
-                # lowest_distance = np.minimum(lowest_distance, D_knn[d, order])
+    # compute a lower bound for the distance
+    # for d in range(dims):
+    #    for dist_knn in D_knn[d]:
+    #        # np.minimum does not work with numba
+    #        for i in range(len(dist_knn)):
+    #            lowest_distance[i] = min(lowest_distance[i], dist_knn[i])
 
     # 2*r is the maximal distance between two subsequences
-    # lowest_distance[1:] = np.sqrt(2*(lowest_distance[1:] ** 2))
+    # lowest_distance = 4 * lowest_distance * dims  # FIXME: depends on worst dimension
 
     # Parallelizm does not work, as Dict ist not thread safe :(
     for d in np.arange(dims):
         for order in np.arange(0, n):
-            knn = knns[d, order]
+            for ks in knns[d, order]:  # needed to compute the k-nn distances
+                D_bool[order][ks] = True
+
+        for order in np.arange(0, n):
+            # all pairs only needed when lower bound is given
             # if np.any(D_knn[d, order][1:] <= lowest_distance[1:]):
             # memorize which pairs are needed
-            for ks in knn:
-                D_bool[order][ks] = True
-                for ks2 in knn:
-                    if ks < ks2:
-                        D_bool[ks][ks2] = True
+            for ks in knns[d, order]:
+                for ks2 in knns[d, order]:
+                    D_bool[ks][ks2] = True
 
 
     # second pass, filling only the pairs needed
@@ -722,7 +728,7 @@ def benchmark_2(D, best_dims, best_order, dim_index, k, knn_distances, knns,
         # Use the first (best) dimension for ordering of k-NNs
         knn_idx = knns[best_dims[order], order]
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
-            if knn_distances[order] <= motiflet_dist:
+            if knn_distances[order] < motiflet_dist:
                 motiflet_extent = get_pairwise_extent(
                     D,
                     knn_idx[:k],

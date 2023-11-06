@@ -209,8 +209,8 @@ def test_multivariate_all():
     length = 2000
     ds_name, B = read_penguin_data()
 
-    series = B.iloc[497699:497699 + length, 0:3].T
-    ml = Motiflets(ds_name, series)
+    series = B.iloc[497699:497699 + length, 0:6].T
+    ml = Motiflets(ds_name, series, n_dims=3)
 
     k_max = 30
     motif_length_range = np.arange(20, 35, 1)
