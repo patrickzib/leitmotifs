@@ -1128,7 +1128,7 @@ def search_k_motiflets_elbow(
     # Check if use_dim is smaller than all given dimensions
     n_dims = d if n_dims is None else n_dims
     sum_dims = True if n_dims >= d else False
-    sparse = False
+    sparse = True
 
     # compute the distance matrix
     if D_full is None:
