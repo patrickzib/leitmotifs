@@ -315,11 +315,14 @@ def compute_distance_matrix(time_series,
         knns = np.zeros((dims, n, k), dtype=np.int32)
 
     bin_size = time_series.shape[-1] // n_jobs
+    #lower_bounds = np.zeros(n_jobs)
+    #lower_bounds[:] = np.inf
+
     for idx in prange(n_jobs):
         start = idx * bin_size
         end = min((idx + 1) * bin_size, time_series.shape[-1] - m + 1)
 
-        for d in range(dims):
+        for d in np.arange(dims):
             ts = time_series[d, :]
             means, stds = _sliding_mean_std(ts, m)
             dot_first = _sliding_dot_product(ts[:m], ts)
@@ -345,11 +348,16 @@ def compute_distance_matrix(time_series,
 
         # do not merge with previous loop, as we are adding distances
         # over dimensions, first
-        for d in prange(D_all.shape[0]):
+        for d in np.arange(D_all.shape[0]):
             for order in np.arange(start, end):
                 knn = _argknn(D_all[d, order], k, m, n, slack=slack)
+                              # lowest_dist=lower_bounds[idx]
                 knns[d, order, :len(knn)] = knn
                 knns[d, order, len(knn):] = -1
+
+                #if len(knn) == k:
+                #    lower_bounds[idx] = min(lower_bounds[idx],
+                #                            4 * D_all[d, order, knn[-1]])
 
     return D_all, knns
 
@@ -488,6 +496,7 @@ def _argknn(
             dists[max(0, pos - halve_m): min(pos + halve_m, n)] = np.inf
         else:
             break
+
     return np.array(idx, dtype=np.int32)
 
 
@@ -522,58 +531,22 @@ def get_approximate_k_motiflet(
     """
     n = ts.shape[-1] - m + 1
     motiflet_dist = upper_bound
+    motiflet_dims = None
     motiflet_candidate = None
 
-    # allows subsequence itself
-    for D_ in D:
-        np.fill_diagonal(D_, 0)
-
-    # Determine best order
-    knn_distances, best_dims = lower_bound(D, dim_index, k, knns, n)
-
-    best_order = np.argsort(knn_distances)
-
-    motiflet_candidate, motiflet_dims, motiflet_dist = (
-        benchmark_2(D, best_dims,
-                    best_order, dim_index,
-                    k, knn_distances, knns,
-                    motiflet_candidate,
-                    motiflet_dist))
-
-    # print("best dims", m, k, motiflet_dims)
-    return motiflet_candidate, motiflet_dist, motiflet_dims
-
-
-@njit(fastmath=True, cache=True)
-def lower_bound(D, dim_index, k, knns, n):
-    # order by increasing k-nn distance
-    knn_distances = np.zeros(n, dtype=np.float32)
-    best_dims = np.zeros(n, dtype=np.int32)
-
     for order in np.arange(n, dtype=np.int32):
-        # Use the best dimension for ordering of k-NNs and lower bound
-        best_dims[order] = dim_index[order, 0]
-
-        # a worse lower bound
-        # knn_distances[order] = dim_index.shape[0] * best_dist
+        # Use the first (best) dimension for ordering of k-NNs
+        knn_idx = knns[dim_index[order, 0], order]
+        if np.any(knn_idx[:k] == -1):
+            continue
 
         # sum over the knns from the best dimensions
-        knn_idx = knns[best_dims[order], order]
+        knn_distance = 0.0
         for a in np.arange(dim_index.shape[-1]):  # dimensions
-            knn_distances[order] += D[dim_index[order, a], order, knn_idx[k - 1]]
+            knn_distance += D[dim_index[order, a], order, knn_idx[k - 1]]
 
-    return knn_distances, best_dims
-
-
-@njit(fastmath=True, cache=True)
-def benchmark_2(D, best_dims, best_order, dim_index, k, knn_distances, knns,
-                motiflet_candidate, motiflet_dist):
-    motiflet_dims = None
-    for order in best_order:
-        # Use the first (best) dimension for ordering of k-NNs
-        knn_idx = knns[best_dims[order], order]
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
-            if knn_distances[order] <= motiflet_dist:
+            if knn_distance <= motiflet_dist:
                 motiflet_extent = get_pairwise_extent(
                     D,
                     knn_idx[:k],
@@ -584,9 +557,9 @@ def benchmark_2(D, best_dims, best_order, dim_index, k, knn_distances, knns,
                     motiflet_dist = motiflet_extent
                     motiflet_candidate = knn_idx[:k]
                     motiflet_dims = dim_index[order]
-            else:
-                break
-    return motiflet_candidate, motiflet_dims, motiflet_dist
+
+    # print("best dims", m, k, motiflet_dims)
+    return motiflet_candidate, motiflet_dist, motiflet_dims
 
 
 @njit(fastmath=True, cache=True)

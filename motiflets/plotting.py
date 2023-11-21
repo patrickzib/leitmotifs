@@ -743,10 +743,10 @@ def plot_motif_length_selection(
 
             for a in to_plot:
                 motif_length = motif_length_range[a]
-                candidates = np.zeros(len(dists[a]), dtype=np.object)
+                candidates = np.zeros(len(dists[a]), dtype=object)
                 candidates[elbow[a]] = top_motiflets[a]  # need to unpack
 
-                candidate_dims = np.zeros(len(dists[a]), dtype=np.object)
+                candidate_dims = np.zeros(len(dists[a]), dtype=object)
                 candidate_dims[elbow[a]] = top_motiflets_dims[a]  # need to unpack
 
                 elbow_points = elbow[a]
@@ -770,9 +770,9 @@ def plot_motif_length_selection(
     best_pos = np.argmin(au_ef)
     best_elbows = elbow[best_pos]
     best_dist = dists[best_pos]
-    best_motiflets = np.zeros(len(dists[best_pos]), dtype=np.object)
+    best_motiflets = np.zeros(len(dists[best_pos]), dtype=object)
     best_motiflets[elbow[best_pos]] = top_motiflets[best_pos]  # need to unpack
-    best_motiflets_dims = np.zeros(len(dists[best_pos]), dtype=np.object)
+    best_motiflets_dims = np.zeros(len(dists[best_pos]), dtype=object)
     best_motiflets_dims[elbow[best_pos]] = top_motiflets_dims[
         best_pos]  # need to unpack
 
