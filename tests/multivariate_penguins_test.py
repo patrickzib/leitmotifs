@@ -241,3 +241,33 @@ def test_fit_dimensions():
             motif_length=22,
             dim_range=np.arange(1, 6, dtype=np.int32),
         )
+
+
+def test_sparse():
+    ds_name, series = read_penguin_data()
+    n = 200_000
+    series = series.iloc[497699:497699 + n:, 0:3].T.to_numpy()
+
+    m = 100
+    k = 10
+    D_knn, D_sparse, knns = ml.compute_distance_matrix_sparse(series, m=m, k=k)
+
+    elements = 0
+    for A in D_sparse:
+        for B in A:
+            elements += len(B)
+
+    n = (series.shape[1]-m+1)
+    print(elements, series.shape[0] * (n**2),
+          str(elements * 100 / (series.shape[0] * (n**2))) + "%")
+
+
+def test_full():
+    ds_name, series = read_penguin_data()
+    n = 30_000
+    series = series.iloc[497699:497699 + n:, 0:3].T.to_numpy()
+
+    m = 100
+    k = 10
+
+    _, _ = ml.compute_distance_matrix(series, m=m, k=k)

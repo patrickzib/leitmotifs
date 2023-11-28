@@ -6,19 +6,17 @@
 
 __author__ = ["patrickzib"]
 
-import itertools
 from ast import literal_eval
 from os.path import exists
 
 import numpy as np
 import numpy.fft as fft
 import pandas as pd
-from joblib import Parallel, delayed
-from numba import njit, prange, objmode
+from numba import njit, prange, objmode, types
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
 from tqdm.auto import tqdm
-
+from numba.typed import Dict, List
 
 def _resample(data, sampling_factor=10000):
     """Resamples a time series to roughly `sampling_factor` points.
@@ -360,6 +358,158 @@ def compute_distance_matrix(time_series,
                 #                            4 * D_all[d, order, knn[-1]])
 
     return D_all, knns
+
+
+@njit(fastmath=True, cache=True, parallel=True)
+def compute_distance_matrix_sparse(time_series,
+                            m,
+                            k,
+                            exclude_trivial_match=True,
+                            n_jobs=4,
+                            slack=0.5):
+    """ Compute the full Distance Matrix between all pairs of subsequences of a
+        multivariate time series.
+
+        Computes pairwise distances between n-m+1 subsequences, of length, extracted
+        from the time series, of length n.
+
+        Z-normed ED is used for distances.
+
+        This implementation is in O(n^2) by using the sliding dot-product.
+
+        Parameters
+        ----------
+        time_series : array-like
+            The time series
+        m : int
+            The window length
+        k : int
+            Number of nearest neighbors
+        exclude_trivial_match : bool
+            Trivial matches will be excluded if this parameter is set
+        n_jobs : int
+            Number of jobs to be used.
+        slack: float
+            Defines an exclusion zone around each subsequence to avoid trivial matches.
+            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+
+        Returns
+        -------
+        D : 2d array-like
+            The O(n^2) z-normed ED distances between all pairs of subsequences
+        knns : 2d array-like
+            The k-nns for each subsequence
+
+    """
+    dims = time_series.shape[0]
+    n = np.int32(time_series.shape[-1] - m + 1)
+    halve_m = 0
+    if exclude_trivial_match:
+        halve_m = int(m * slack)
+
+    D_knn = np.zeros((dims, n, k), dtype=np.float32)
+    knns = np.zeros((dims, n, k), dtype=np.int32)
+
+    # TODO: no sparse matrix support in numba. Thus we use this hack
+    # TODO set???
+    D_bool = [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in range(n)]
+
+    D_sparse = List()
+    for d in range(dims):
+        _list2 = List()
+        D_sparse.append(_list2)
+        for i in range(n):
+            _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
+
+    lowest_distance = np.zeros(k, dtype=np.float32)
+    lowest_distance[:] = np.inf
+
+    # first pass, computing the k-nns
+    for d in range(dims):
+        ts = time_series[d, :]
+        means, stds = _sliding_mean_std(ts, m)
+
+        dot_first = _sliding_dot_product(ts[:m], ts)
+        bin_size = ts.shape[0] // n_jobs
+        for idx in prange(n_jobs):
+            start = idx * bin_size
+            end = min((idx + 1) * bin_size, n)
+
+            dot_prev = None
+            for order in np.arange(start, end):
+                if order == start:
+                    # O(n log n) operation
+                    dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
+                else:
+                    # constant time O(1) operations
+                    dot_rolled = np.roll(dot_prev, 1) \
+                                 + ts[order + m - 1] * ts[m - 1:n + m] \
+                                 - ts[order - 1] * np.roll(ts[:n], 1)
+                    dot_rolled[0] = dot_first[order]
+
+                dist = distance(dot_rolled, n, m, means, stds, order, halve_m)
+                dot_prev = dot_rolled
+
+                knn = _argknn(dist, k, m, slack=slack)
+                D_knn[d, order] = dist[knn]
+                knns[d, order] = knn
+
+    # compute a lower bound for the distance
+    # for d in range(dims):
+    #    for dist_knn in D_knn[d]:
+    #        # np.minimum does not work with numba
+    #        for i in range(len(dist_knn)):
+    #            lowest_distance[i] = min(lowest_distance[i], dist_knn[i])
+
+    # 2*r is the maximal distance between two subsequences
+    # lowest_distance = 4 * lowest_distance * dims  # FIXME: depends on worst dimension
+
+    # Parallelizm does not work, as Dict ist not thread safe :(
+    for d in np.arange(dims):
+        for order in np.arange(0, n):
+            for ks in knns[d, order]:  # needed to compute the k-nn distances
+                D_bool[order][ks] = True
+
+        for order in np.arange(0, n):
+            # all pairs only needed when lower bound is given
+            # if np.any(D_knn[d, order][1:] <= lowest_distance[1:]):
+            # memorize which pairs are needed
+            for ks in knns[d, order]:
+                for ks2 in knns[d, order]:
+                    D_bool[ks][ks2] = True
+
+
+    # second pass, filling only the pairs needed
+    for d in range(dims):
+        ts = time_series[d, :]
+        means, stds = _sliding_mean_std(ts, m)
+
+        dot_first = _sliding_dot_product(ts[:m], ts)
+        bin_size = ts.shape[0] // n_jobs
+        for idx in prange(n_jobs):
+            start = idx * bin_size
+            end = min((idx + 1) * bin_size, n)
+
+            dot_prev = None
+            for order in np.arange(start, end):
+                if order == start:
+                    # O(n log n) operation
+                    dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
+                else:
+                    # constant time O(1) operations
+                    dot_rolled = np.roll(dot_prev, 1) \
+                                 + ts[order + m - 1] * ts[m - 1:n + m] \
+                                 - ts[order - 1] * np.roll(ts[:n], 1)
+                    dot_rolled[0] = dot_first[order]
+
+                dist = distance(dot_rolled, n, m, means, stds, order, halve_m)
+                dot_prev = dot_rolled
+
+                # fill the knns now with the distances computed
+                for key in D_bool[order]:
+                    D_sparse[d][order][key] = dist[key]
+
+    return D_knn, D_sparse, knns
 
 
 @njit(fastmath=True, cache=True)
@@ -964,12 +1114,21 @@ def search_k_motiflets_elbow(
     n_dims = d if n_dims is None else n_dims
     sum_dims = True if n_dims >= d else False
 
+    # switch to sparse matrix representation when length is above 30_000
+    # sparse matrix is 2x slower but needs less memory
+    sparse = n >= 30000
+
     # compute the distance matrix
     if D_full is None:
-        D_full, knns = compute_distance_matrix(
-            data_raw, m, k_max_,
-            slack=slack,
-            sum_dims=sum_dims)
+        if sparse:
+            D_knns, D_full, knns = compute_distance_matrix_sparse(
+                data_raw, m, k_max_,
+                slack=slack)
+        else:
+            D_full, knns = compute_distance_matrix(
+               data_raw, m, k_max_,
+               slack=slack,
+               sum_dims=sum_dims)
 
     # non-overlapping motifs only
     k_motiflet_distances = np.zeros(k_max_ + 1)
