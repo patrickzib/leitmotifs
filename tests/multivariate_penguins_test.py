@@ -104,7 +104,7 @@ def test_univariate_top2():
 
 
 def test_multivariate():
-    length = 2_000
+    length = 10_000
     ds_name, B = read_penguin_data()
 
     for start in [0]:  # , 2000
@@ -116,7 +116,7 @@ def test_multivariate():
                        n_dims=3
                        )
 
-        k_max = 20
+        k_max = 30
         motif_length_range = np.arange(20, 30, 1)
 
         best_length, _ = ml.fit_motif_length(
