@@ -245,7 +245,7 @@ def test_fit_dimensions():
 
 def test_sparse():
     ds_name, series = read_penguin_data()
-    n = 200_000
+    n = 100_000  # 100k equals 2 mins, 200k equals 13 mins
     series = series.iloc[497699:497699 + n:, 0:3].T.to_numpy()
 
     m = 100
