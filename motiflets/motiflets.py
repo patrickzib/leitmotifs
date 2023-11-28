@@ -991,12 +991,9 @@ def search_k_motiflets_elbow(
         else:
             k_motiflet_dims[test_k] = np.arange(d)
 
+        # compute a new upper bound
         upper_bound = min(candidate_dist, upper_bound)
 
-        # compute a new upper bound
-        if candidate is not None:
-            dist_new = get_pairwise_extent(D_full, candidate[:test_k], dim_index)
-            upper_bound = min(upper_bound, dist_new)
 
     # smoothen the line to make it monotonically increasing
     k_motiflet_distances[0:2] = k_motiflet_distances[2]
