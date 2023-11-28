@@ -350,18 +350,10 @@ def compute_distance_matrix(time_series,
         # over dimensions, first
         for d in np.arange(D_all.shape[0]):
             for order in np.arange(start, end):
-                # knn = _argknn(D_all[d, order], k, m, n, slack=slack)
-                              # lowest_dist=lower_bounds[idx]
-
-                knn = _argknn(D_all[d, order], k, m, n, slack=slack)
+                knn = _argknn(D_all[d, order], k, m, slack=slack)
 
                 knns[d, order, :len(knn)] = knn
                 knns[d, order, len(knn):] = -1
-
-                #if set(knn) != set(knn2):
-                #    print(d, order)
-                #    print(knn)
-                #    print(knn2)
 
                 #if len(knn) == k:
                 #    lower_bounds[idx] = min(lower_bounds[idx],
