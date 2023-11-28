@@ -13,10 +13,11 @@ import numpy as np
 import numpy.fft as fft
 import pandas as pd
 from numba import njit, prange, objmode, types
+from numba.typed import Dict, List
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
 from tqdm.auto import tqdm
-from numba.typed import Dict, List
+
 
 def _resample(data, sampling_factor=10000):
     """Resamples a time series to roughly `sampling_factor` points.
@@ -313,8 +314,8 @@ def compute_distance_matrix(time_series,
         knns = np.zeros((dims, n, k), dtype=np.int32)
 
     bin_size = time_series.shape[-1] // n_jobs
-    #lower_bounds = np.zeros(n_jobs)
-    #lower_bounds[:] = np.inf
+    # lower_bounds = np.zeros(n_jobs)
+    # lower_bounds[:] = np.inf
 
     for idx in prange(n_jobs):
         start = idx * bin_size
@@ -353,7 +354,7 @@ def compute_distance_matrix(time_series,
                 knns[d, order, :len(knn)] = knn
                 knns[d, order, len(knn):] = -1
 
-                #if len(knn) == k:
+                # if len(knn) == k:
                 #    lower_bounds[idx] = min(lower_bounds[idx],
                 #                            4 * D_all[d, order, knn[-1]])
 
@@ -362,11 +363,11 @@ def compute_distance_matrix(time_series,
 
 @njit(fastmath=True, cache=True, parallel=True)
 def compute_distance_matrix_sparse(time_series,
-                            m,
-                            k,
-                            exclude_trivial_match=True,
-                            n_jobs=4,
-                            slack=0.5):
+                                   m,
+                                   k,
+                                   exclude_trivial_match=True,
+                                   n_jobs=4,
+                                   slack=0.5):
     """ Compute the full Distance Matrix between all pairs of subsequences of a
         multivariate time series.
 
@@ -412,7 +413,8 @@ def compute_distance_matrix_sparse(time_series,
 
     # TODO: no sparse matrix support in numba. Thus we use this hack
     # TODO set???
-    D_bool = [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in range(n)]
+    D_bool = [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
+              range(n)]
 
     D_sparse = List()
     for d in range(dims):
@@ -477,7 +479,6 @@ def compute_distance_matrix_sparse(time_series,
             for ks in knns[d, order]:
                 for ks2 in knns[d, order]:
                     D_bool[ks][ks2] = True
-
 
     # second pass, filling only the pairs needed
     for d in range(dims):
@@ -631,7 +632,7 @@ def _argknn(
     halve_m = int(m * slack)
     dists = np.copy(dist)
 
-    dist_pos = np.argpartition(dist, 2*k)[:2*k]
+    dist_pos = np.argpartition(dist, 2 * k)[:2 * k]
     dist_sort = dist[dist_pos]
 
     idx = []  # there may be less than k, thus use a list
@@ -653,7 +654,6 @@ def _argknn(
         if len(idx) == k:
             break
 
-
     # if not enough elements found, go through the rest
     for i in range(len(idx), k):
         pos = np.argmin(dists)
@@ -668,6 +668,7 @@ def _argknn(
             break
 
     return np.array(idx, dtype=np.int32)
+
 
 @njit(fastmath=True, cache=True)
 def get_approximate_k_motiflet(
@@ -910,16 +911,16 @@ def select_subdimensions(
         if n_dims <= data.shape[0]:
             dist, candidates, candidate_dims, elbow_points, D_full, knns \
                 = search_k_motiflets_elbow(
-                        k_max,
-                        data,
-                        motif_length,
-                        n_dims=n_dims,
-                        elbow_deviation=elbow_deviation,
-                        slack=slack,
-                        return_distances=True,
-                        D_full=D_full,
-                        knns=knns   # reuse distances from last runs
-                    )
+                k_max,
+                data,
+                motif_length,
+                n_dims=n_dims,
+                elbow_deviation=elbow_deviation,
+                slack=slack,
+                return_distances=True,
+                D_full=D_full,
+                knns=knns  # reuse distances from last runs
+            )
 
             elbow_points = _filter_unique(elbow_points, candidates, motif_length)
 
@@ -1126,9 +1127,9 @@ def search_k_motiflets_elbow(
                 slack=slack)
         else:
             D_full, knns = compute_distance_matrix(
-               data_raw, m, k_max_,
-               slack=slack,
-               sum_dims=sum_dims)
+                data_raw, m, k_max_,
+                slack=slack,
+                sum_dims=sum_dims)
 
     # non-overlapping motifs only
     k_motiflet_distances = np.zeros(k_max_ + 1)
@@ -1171,7 +1172,6 @@ def search_k_motiflets_elbow(
 
         # compute a new upper bound
         upper_bound = min(candidate_dist, upper_bound)
-
 
     # smoothen the line to make it monotonically increasing
     k_motiflet_distances[0:2] = k_motiflet_distances[2]
