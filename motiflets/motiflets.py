@@ -353,6 +353,10 @@ def compute_distance_matrix(time_series,
                 knns[d, order, :len(knn)] = knn
                 knns[d, order, len(knn):] = -1
 
+                #if len(knn) == k:
+                #    lower_bounds[idx] = min(lower_bounds[idx],
+                #                            4 * D_all[d, order, knn[-1]])
+
     return D_all, knns
 
 
@@ -1109,7 +1113,10 @@ def search_k_motiflets_elbow(
     # Check if use_dim is smaller than all given dimensions
     n_dims = d if n_dims is None else n_dims
     sum_dims = True if n_dims >= d else False
-    sparse = True
+
+    # switch to sparse matrix representation when length is above 30_000
+    # sparse matrix is 2x slower but needs less memory
+    sparse = n >= 30000
 
     # compute the distance matrix
     if D_full is None:
