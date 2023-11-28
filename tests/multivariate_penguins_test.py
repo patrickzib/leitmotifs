@@ -264,7 +264,10 @@ def test_sparse():
 
 def test_full():
     ds_name, series = read_penguin_data()
-    series = series.iloc[497699:497699 + 10000].T
+    n = 30_000
+    series = series.iloc[497699:497699 + n:, 0:3].T.to_numpy()
 
     m = 100
-    _, _ = ml.compute_distance_matrix(series.to_numpy(), m=m, k=5)
+    k = 10
+
+    _, _ = ml.compute_distance_matrix(series, m=m, k=k)
