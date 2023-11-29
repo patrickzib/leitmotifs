@@ -10,6 +10,7 @@ import warnings
 warnings.simplefilter("ignore")
 
 import matplotlib as mpl
+
 mpl.rcParams['figure.dpi'] = 150
 
 path = "../datasets/experiments/"
@@ -64,47 +65,8 @@ def test_univariate():
     ml.plot_motifset()
 
 
-def test_univariate_top2():
-    length = 4000
-    ds_name, B = read_penguin_data()
-
-    series = B.iloc[497699:497699 + length, np.array([0])].T
-    series.reset_index(drop=True, inplace=True)
-
-    ml = Motiflets(ds_name,
-                   series,
-                   elbow_deviation=1,
-                   slack=0.8
-                   )
-
-    k_max = 50
-    motif_length_range = np.arange(20, 45)
-
-    best_length, _ = ml.fit_motif_length(
-        k_max,
-        motif_length_range,
-        plot=True,
-        plot_elbows=False,
-        plot_motifsets=False
-    )
-    ml.plot_motifset()
-    print("Best found length", best_length)
-
-    exclusion = ml.motiflets[ml.elbow_points[-1]]
-    best_length, _ = ml.fit_motif_length(
-        k_max,
-        motif_length_range,
-        exclusion=exclusion,  # TODO: refactor?
-        exclusion_length=best_length,
-        plot=True,
-        plot_elbows=False,
-        plot_motifsets=False
-    )
-    ml.plot_motifset()
-
-
 def test_multivariate():
-    length = 10_000
+    length = 2_000
     ds_name, B = read_penguin_data()
 
     for start in [0]:  # , 2000
@@ -113,7 +75,7 @@ def test_multivariate():
 
         # for a, n_dims in enumerate(range(1, 6)):
         ml = Motiflets(ds_name, series,
-                       n_dims=3
+                       n_dims=3, n_jobs=8
                        )
 
         k_max = 30
@@ -143,45 +105,10 @@ def test_plot_n_dim_plot():
     dists = [0., 25.16639805, 89.46489525, 137.10974884, 195.87618828]
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.set_title("Dimension Plot")
-    sns.lineplot(x=np.arange(1, 6, dtype=np.int32), y=dists, ax = ax)
+    sns.lineplot(x=np.arange(1, 6, dtype=np.int32), y=dists, ax=ax)
     plt.tight_layout()
     plt.show()
 
-
-def test_multivariate_top2():
-    length = 2000
-    ds_name, B = read_penguin_data()
-
-    series = B.iloc[497699:497699 + length, np.array([0, 2])].T
-    ml = Motiflets(ds_name, series,
-                   slack=0.8, n_dims=2
-                   )
-
-    k_max = 50
-    motif_length_range = np.arange(15, 35, 1)
-
-    best_length, _ = ml.fit_motif_length(
-        k_max,
-        motif_length_range,
-        plot_motifsets=False,
-    )
-    ml.plot_motifset()
-
-    print("Best found length", best_length)
-
-    exclusion = ml.motiflets[ml.elbow_points]
-
-    best_length, _ = ml.fit_motif_length(
-        k_max,
-        motif_length_range,
-        plot_elbows=True,
-        plot_motifsets=False,
-        exclusion=exclusion,
-        exclusion_length=best_length,
-    )
-    ml.plot_motifset()
-
-    print("Best found length", best_length)
 
 def test_univariate_profile():
     # ds_name, series = read_penguin_data_short()
@@ -230,7 +157,7 @@ def test_fit_dimensions():
     length = 2000
     ds_name, B = read_penguin_data()
 
-    for start in [0]: # , 2000
+    for start in [0]:  # , 2000
         dists = np.zeros(5)
         series = B.iloc[497699 + start:497699 + start + length].T
 
@@ -257,9 +184,9 @@ def test_sparse():
         for B in A:
             elements += len(B)
 
-    n = (series.shape[1]-m+1)
-    print(elements, series.shape[0] * (n**2),
-          str(elements * 100 / (series.shape[0] * (n**2))) + "%")
+    n = (series.shape[1] - m + 1)
+    print(elements, series.shape[0] * (n ** 2),
+          str(elements * 100 / (series.shape[0] * (n ** 2))) + "%")
 
 
 def test_full():

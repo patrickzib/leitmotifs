@@ -35,6 +35,7 @@ class Motiflets:
             dimension_labels=None,
             elbow_deviation=1.00,
             n_dims=None,
+            n_jobs=4,
             slack=0.5,
     ):
         self.ds_name = ds_name
@@ -52,6 +53,7 @@ class Motiflets:
         self.all_dists = []
 
         self.n_dims = n_dims
+        self.n_jobs = n_jobs
         self.motif_length = 0
         self.k_max = 0
         self.dists = []
@@ -64,18 +66,12 @@ class Motiflets:
             self,
             k_max,
             motif_length_range,
-            exclusion=None,
-            exclusion_length=None,
             subsample=1,
             plot=True,
             plot_elbows=False,
             plot_motifsets=True,
             plot_best_only=True
     ):
-
-        if exclusion is None and not (exclusion_length is None):
-            raise Exception("Please set both exclusion and exclusion_length.")
-
         self.motif_length_range = motif_length_range
         self.k_max = k_max
 
@@ -93,9 +89,8 @@ class Motiflets:
             self.series,
             motif_length_range,
             self.ds_name,
-            exclusion=exclusion,
-            exclusion_length=exclusion_length,
             n_dims=self.n_dims,
+            n_jobs=self.n_jobs,
             elbow_deviation=self.elbow_deviation,
             slack=self.slack,
             subsample=subsample,
@@ -132,6 +127,7 @@ class Motiflets:
             ground_truth=self.ground_truth,
             dimension_labels=self.dimension_labels,
             filter=filter_duplicates,
+            n_jobs=self.n_jobs,
             elbow_deviation=self.elbow_deviation,
             slack=self.slack
         )
@@ -151,6 +147,7 @@ class Motiflets:
             k_max=k_max,
             motif_length=motif_length,
             dim_range=dim_range,
+            n_jobs=self.n_jobs,
             elbow_deviation=self.elbow_deviation,
             slack=self.slack,
         )
@@ -340,7 +337,7 @@ def plot_motifsets(
                                  sharey="row",
                                  sharex=False,
                                  figsize=(
-                                 10 + 5 * len(motifsets), 5 + data.shape[0] // 3),
+                                     10 + 5 * len(motifsets), 5 + data.shape[0] // 3),
                                  squeeze=False,
                                  gridspec_kw={
                                      'width_ratios': git_ratio,
@@ -571,6 +568,7 @@ def plot_elbow(k_max,
                ground_truth=None,
                dimension_labels=None,
                filter=True,
+               n_jobs=4,
                elbow_deviation=1.00,
                slack=0.5):
     """Plots the elbow-plot for k-Motiflets.
@@ -602,11 +600,15 @@ def plot_elbow(k_max,
         Labels for the dimensions
     filter: bool, default=True
         filters overlapping motiflets from the result,
+    n_jobs : int
+        Number of jobs to be used.
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
-
+    slack : float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
     Returns
     -------
@@ -631,6 +633,7 @@ def plot_elbow(k_max,
         n_dims=n_dims,
         elbow_deviation=elbow_deviation,
         filter=filter,
+        n_jobs=n_jobs,
         slack=slack)
     endTime = (time.perf_counter() - startTime)
 
@@ -656,11 +659,11 @@ def plot_elbow(k_max,
 
 def plot_motif_length_selection(
         k_max, data, motif_length_range, ds_name,
-        elbow_deviation=1.00, slack=0.5, subsample=2,
-        exclusion=None,
-        exclusion_length=None,
+        n_jobs=4,
+        elbow_deviation=1.00,
+        slack=0.5,
+        subsample=2,
         n_dims=2,
-        ground_truth=None,
         plot=True,
         plot_best_only=True,
         plot_elbows=True,
@@ -683,14 +686,15 @@ def plot_motif_length_selection(
         the interval of lengths
     ds_name: String
         Name of the time series for displaying
+    n_jobs : int
+        Number of jobs to be used.
     elbow_deviation: float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
-    exclusion : 2d-array
-        exclusion zone - use when searching for the TOP-2 motiflets
-    ground_truth: pd.Series
-        Ground-truth information as pd.Series.
+    slack : float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
     Returns
     -------
@@ -722,6 +726,7 @@ def plot_motif_length_selection(
             data_raw, k_max,
             n_dims=n_dims,
             motif_length_range=motif_length_range,
+            n_jobs=n_jobs,
             elbow_deviation=elbow_deviation,
             slack=slack,
             subsample=subsample)
@@ -1262,6 +1267,10 @@ def plot_all_competitors(
         The dimensionality of the grid (number of columns)
     plot_index: int
         Plots only the passed methods in the given order
+    slack : float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+
     """
 
     # convert to numpy array
@@ -1313,6 +1322,9 @@ def plot_competitors(
         Ground-truth information as pd.Series.
     dimension_labels:
         Labels for the dimensions
+    slack : float
+        Defines an exclusion zone around each subsequence to avoid trivial matches.
+        Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
     """
 

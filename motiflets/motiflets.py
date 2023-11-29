@@ -862,6 +862,7 @@ def select_subdimensions(
         k_max,
         motif_length,
         dim_range,
+        n_jobs=4,
         elbow_deviation=1.00,
         slack=0.5):
     """Findes the optimal number of dimensions
@@ -876,6 +877,8 @@ def select_subdimensions(
         The length of the motif
     dim_range : list
         the range of dimensions to use for subdimensional motif discovery
+    n_jobs : int
+        Number of jobs to be used.
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
@@ -919,7 +922,8 @@ def select_subdimensions(
                 slack=slack,
                 return_distances=True,
                 D_full=D_full,
-                knns=knns  # reuse distances from last runs
+                knns=knns,  # reuse distances from last runs
+                n_jobs=n_jobs
             )
 
             elbow_points = _filter_unique(elbow_points, candidates, motif_length)
@@ -940,6 +944,7 @@ def find_au_ef_motif_length(
         k_max,
         motif_length_range,
         n_dims=None,
+        n_jobs=4,
         elbow_deviation=1.00,
         slack=0.5,
         subsample=2):
@@ -955,6 +960,8 @@ def find_au_ef_motif_length(
         The range of lengths to compute the AU-EF.
     n_dims : int
         the number of dimensions to use for subdimensional motif discovery
+    n_jobs : int
+        Number of jobs to be used.
     elbow_deviation : float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
@@ -1001,6 +1008,7 @@ def find_au_ef_motif_length(
                 data,
                 m // subsample,
                 n_dims=n_dims,
+                n_jobs=n_jobs,
                 elbow_deviation=elbow_deviation,
                 slack=slack)
 
@@ -1059,7 +1067,8 @@ def search_k_motiflets_elbow(
         slack=0.5,
         return_distances=False,
         D_full=None,
-        knns=None
+        knns=None,
+        n_jobs=4,
 ):
     """Computes the elbow-function.
 
@@ -1087,6 +1096,8 @@ def search_k_motiflets_elbow(
     slack: float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+    n_jobs : int
+        Number of jobs to be used.
 
 
     Returns
@@ -1124,10 +1135,12 @@ def search_k_motiflets_elbow(
         if sparse:
             D_knns, D_full, knns = compute_distance_matrix_sparse(
                 data_raw, m, k_max_,
+                n_jobs=n_jobs,
                 slack=slack)
         else:
             D_full, knns = compute_distance_matrix(
                 data_raw, m, k_max_,
+                n_jobs=n_jobs,
                 slack=slack,
                 sum_dims=sum_dims)
 
