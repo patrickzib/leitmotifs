@@ -171,7 +171,7 @@ class Motiflets:
 
         return fig, ax
 
-    def plot_motifset(self, path=None, elbow_point=None):
+    def plot_motifset(self, path=None):
 
         if self.dists is None or self.motiflets is None or self.elbow_points is None:
             raise Exception("Please call fit_k_elbow first.")
@@ -387,9 +387,9 @@ def plot_motifsets(
                             axes[0, 1 + i].set_title(
                                 "Motif Set " + str(i + 1) + "\n" +
                                 "k=" + str(len(motifset)) +
-                                ", d=" + str(np.round(dist[i], 2)) +
-                                ", m=" + str(motif_length),
-                                fontsize=20)
+                                # ", d=" + str(np.round(dist[i], 2)) +
+                                ", l=" + str(motif_length),
+                                fontsize=16)
 
                             df = pd.DataFrame()
                             df["time"] = range(0, motif_length)

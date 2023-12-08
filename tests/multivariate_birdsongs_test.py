@@ -1,4 +1,6 @@
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+
 mpl.rcParams['figure.dpi'] = 150
 
 from audio.lyrics import *
@@ -88,3 +90,41 @@ def test_publication():
     extract_audio_segment(
         df, ds_name, audio_file_url, "bird_songs",
         length_in_seconds, index_range, motif_length, ml.motiflets[ml.elbow_points[-1]])
+
+
+def plot_spectrogram(audio_file_urls):
+
+    fig, ax = plt.subplots(len(audio_file_urls), 1,
+                           figsize=(10, 5),
+                           sharex=True, sharey=True)
+
+    offset = [3000, 3000, 10000, 10000]
+    for i, audio_file_url in enumerate(audio_file_urls):
+        samplingFrequency, data = read_wave(audio_file_url)
+        left, right = data[offset[i]:,0], data[offset[i]:,1]
+
+        ax[i].specgram(left, Fs=samplingFrequency, cmap='plasma')
+        ax[i].set_ylabel("Freq.")
+
+        ax[i].set_ylim([0, 10000])
+        ax[i].set_xlim([0, 0.92])
+
+    # for a in ax:
+        # a.set_xticklabels([])
+        # a.set_yticklabels([])
+
+    ax[-1].set_xlabel('Time')
+    plt.tight_layout()
+    # plt.subplots_adjust(wspace=0, hspace=0.1)
+
+    plt.savefig("images_paper/bird_songs/spectrogram.pdf")
+
+def test_plot_spectrogram():
+    audio_file_urls = \
+        ["images_paper/bird_songs/Common-Starling_Dims_20_Length_50_Motif_0.wav",
+         "images_paper/bird_songs/Common-Starling_Dims_20_Length_50_Motif_1.wav",
+         "images_paper/bird_songs/Common-Starling_Dims_20_Length_50_Motif_2.wav",
+         "images_paper/bird_songs/Common-Starling_Dims_20_Length_50_Motif_3.wav"]
+
+    plot_spectrogram(audio_file_urls)
+    plt.show()

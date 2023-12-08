@@ -55,6 +55,7 @@ def read_songs():
     df.index.name = "MFCC"
     return audio_length_seconds, df, index_range
 
+
 def test_audio():
     audio_length_seconds, df, index_range = read_songs()
     channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6']
@@ -100,4 +101,89 @@ def test_audio():
 
         extract_audio_segment(
             df, ds_name, audio_file_url, "snippets",
-            length_in_seconds, index_range, motif_length, motiflet, id=(a+1))
+            length_in_seconds, index_range, motif_length, motiflet, id=(a + 1))
+
+def test_publication():
+    audio_length_seconds, df, index_range = read_songs()
+    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
+                'MFCC 6']
+    df = df.loc[channels]
+
+    subtitles = read_lrc(lrc_url)
+    df_sub = get_dataframe_from_subtitle_object(subtitles)
+    df_sub.set_index("seconds", inplace=True)
+
+    motif_length_range = np.int32(motif_length_range_in_s /
+                                  audio_length_seconds * df.shape[1])
+
+    ml = Motiflets(ds_name, df,
+                   dimension_labels=df.index,
+                   n_dims=n_dims,
+                   )
+
+    motif_length, _ = ml.fit_motif_length(
+        k_max,
+        motif_length_range,
+        plot=False,
+        plot_elbows=True,
+        plot_motifsets=True,
+        plot_best_only=False
+    )
+    ml.plot_motifset(path="images_paper/audio/" + ds_name + ".pdf")
+
+    length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
+    print("Found motif length", length_in_seconds, motif_length)
+
+    # best motiflets
+    for a, eb in enumerate(ml.elbow_points):
+        motiflet = np.sort(ml.motiflets[eb])
+        print("Positions:", index_range[motiflet])
+
+        lyrics = []
+        for i, m in enumerate(motiflet):
+            l = lookup_lyrics(df_sub, index_range[m], length_in_seconds)
+            lyrics.append(l)
+            print(i + 1, l)
+
+        extract_audio_segment(
+            df, ds_name, audio_file_url, "snippets",
+            length_in_seconds, index_range, motif_length, motiflet, id=(a + 1))
+
+
+
+def plot_spectrogram(audio_file_urls):
+
+    fig, ax = plt.subplots(len(audio_file_urls), 1,
+                           figsize=(10, 5),
+                           sharex=True, sharey=True)
+
+    # offset = [3000, 3000, 10000, 10000]
+    for i, audio_file_url in enumerate(audio_file_urls):
+        samplingFrequency, data = read_wave(audio_file_url)
+        left, right = data[:,0], data[:,1]
+
+        ax[i].specgram(left, Fs=samplingFrequency, cmap='plasma')
+        ax[i].set_ylabel("Freq.")
+
+        ax[i].set_ylim([0, 5000])
+        # ax[i].set_xlim([0, 0.92])
+
+    # for a in ax:
+        # a.set_xticklabels([])
+        # a.set_yticklabels([])
+
+    ax[-1].set_xlabel('Time')
+    plt.tight_layout()
+    # plt.subplots_adjust(wspace=0, hspace=0.1)
+
+    plt.savefig("images_paper/audio/rolling-stones-spectrogram.pdf")
+
+def test_plot_spectrogram():
+    audio_file_urls = \
+        ["images_paper/audio/The Rolling Stones - Paint It, Black_Dims_7_Length_232_Motif_2_0.wav",
+         "images_paper/audio/The Rolling Stones - Paint It, Black_Dims_7_Length_232_Motif_2_1.wav",
+         "images_paper/audio/The Rolling Stones - Paint It, Black_Dims_7_Length_232_Motif_2_2.wav",
+         "images_paper/audio/The Rolling Stones - Paint It, Black_Dims_7_Length_232_Motif_2_3.wav"]
+
+    plot_spectrogram(audio_file_urls)
+    plt.show()

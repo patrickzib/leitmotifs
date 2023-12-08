@@ -2,12 +2,18 @@ import audioread
 import librosa
 import pylrc
 from pydub import AudioSegment
+from scipy.io import wavfile
 
 from motiflets.plotting import *
 
 
+def read_wave(audio_file_url):
+    samplingFrequency, data = wavfile.read(audio_file_url)
+    return samplingFrequency, data
+
+
 def read_mp3(audio_file_url):
-    # Read audio from wav file
+    # Read audio from mp3 file
     aro = audioread.ffdec.FFmpegAudioFile(audio_file_url)
     x, sr = librosa.load(aro, mono=True)
     mfcc_f = librosa.feature.mfcc(y=x, sr=sr)
@@ -25,7 +31,7 @@ def extract_audio_segment(
         df, ds_name, audio_file_url, export_file_url,
         length_in_seconds, index_range, motif_length,
         motiflet,
-        id = None):
+        id=None):
     file_type = audio_file_url.split(".")[-1]
     if file_type == "wav":
         song = AudioSegment.from_wav(audio_file_url)
@@ -41,7 +47,7 @@ def extract_audio_segment(
                            "_Length_" + str(motif_length) +
                            "_Motif" +
                            ("" if id is None else "_" + str(id)) +
-                           "_" +  str(a) +
+                           "_" + str(a) +
                            '.wav', format="wav")
 
 
