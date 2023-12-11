@@ -127,7 +127,7 @@ def test_publication():
         plot=False,
         plot_elbows=True,
         plot_motifsets=True,
-        plot_best_only=False
+        plot_best_only=True
     )
     ml.plot_motifset(path="images_paper/audio/" + ds_name + ".pdf")
 
