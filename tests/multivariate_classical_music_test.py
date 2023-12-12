@@ -51,14 +51,36 @@ def read_songs():
     return audio_length_seconds, df, index_range
 
 
+def test_stumpy():
+    import stumpy
+    m = 301
+
+    audio_length_seconds, df, index_range = read_songs()
+    channels = [  # 'MFCC 0',
+        'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
+        'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
+        'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15',
+        # 'MFCC 16', 'MFCC 17', 'MFCC 18', 'MFCC 19'
+    ]
+    data = df.loc[channels].astype(np.float64).values
+    mps, indices = stumpy.mstump(data, m)
+    motifs_idx = np.argmin(mps, axis=1)
+    nn_idx = indices[np.arange(len(motifs_idx)), motifs_idx]
+
+    pos = motifs_idx[n_dims - 1]
+    pos2 = nn_idx[n_dims - 1]
+
+    print("Positions:", index_range[pos], index_range[pos2])
+
+
 def test_publication():
     audio_length_seconds, df, index_range = read_songs()
     channels = [  # 'MFCC 0',
         'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
         'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
         'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15',
-        #'MFCC 16', 'MFCC 17', 'MFCC 18', 'MFCC 19'
-        ]
+        # 'MFCC 16', 'MFCC 17', 'MFCC 18', 'MFCC 19'
+    ]
     df = df.loc[channels]
 
     motif_length_range = np.int32(motif_length_range_in_s /
@@ -120,10 +142,10 @@ def plot_spectrogram(audio_file_urls):
 def test_plot_spectrogram():
     audio_file_urls = \
         [
-        "audio/snippets/Lord of the Rings Symphony - The Shire_Dims_15_Length_301_Motif_1_0.wav",
-        "audio/snippets/Lord of the Rings Symphony - The Shire_Dims_15_Length_301_Motif_1_1.wav",
-        "audio/snippets/Lord of the Rings Symphony - The Shire_Dims_15_Length_301_Motif_1_2.wav",
-        "audio/snippets/Lord of the Rings Symphony - The Shire_Dims_15_Length_301_Motif_1_3.wav"
+            "audio/snippets/Lord of the Rings Symphony - The Shire_Dims_15_Length_301_Motif_1_0.wav",
+            "audio/snippets/Lord of the Rings Symphony - The Shire_Dims_15_Length_301_Motif_1_1.wav",
+            "audio/snippets/Lord of the Rings Symphony - The Shire_Dims_15_Length_301_Motif_1_2.wav",
+            "audio/snippets/Lord of the Rings Symphony - The Shire_Dims_15_Length_301_Motif_1_3.wav"
         ]
     #        [
     #            "audio/snippets/Hans Zimmer - Zoosters Breakout_Dims_14_Length_172_Motif_1_0.wav",
