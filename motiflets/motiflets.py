@@ -466,7 +466,7 @@ def compute_distance_matrix_sparse(time_series,
     # 2*r is the maximal distance between two subsequences
     # lowest_distance = 4 * lowest_distance * dims  # FIXME: depends on worst dimension
 
-    # Parallelizm does not work, as Dict ist not thread safe :(
+    # Parallelizm does not work, as Dict is not thread safe :(
     for d in np.arange(dims):
         for order in np.arange(0, n):
             for ks in knns[d, order]:  # needed to compute the k-nn distances
@@ -596,7 +596,7 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
             extent = np.float64(0.0)
             for kk in range(len(idx)):
-                extent += D_full[idx[kk], i, j]
+                extent += D_full[idx[kk]][i][j]
 
             motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
@@ -713,7 +713,7 @@ def get_approximate_k_motiflet(
         # sum over the knns from the best dimensions
         knn_distance = 0.0
         for a in np.arange(dim_index.shape[-1]):  # dimensions
-            knn_distance += D[dim_index[order, a], order, knn_idx[k - 1]]
+            knn_distance += D[dim_index[order, a]][order][knn_idx[k - 1]]
 
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distance <= motiflet_dist:
@@ -1128,11 +1128,13 @@ def search_k_motiflets_elbow(
 
     # switch to sparse matrix representation when length is above 30_000
     # sparse matrix is 2x slower but needs less memory
-    sparse = n >= 30000
+    sparse_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
+    sparse = sparse_gb > 4.0
 
     # compute the distance matrix
     if D_full is None:
         if sparse:
+            print("sparse")
             D_knns, D_full, knns = compute_distance_matrix_sparse(
                 data_raw, m, k_max_,
                 n_jobs=n_jobs,
@@ -1150,7 +1152,7 @@ def search_k_motiflets_elbow(
     k_motiflet_dims = np.empty(k_max_ + 1, dtype=object)
 
     # order dimensions by increasing distance
-    use_dim = min(n_dims, D_full.shape[0])  # dimensions indexed by 0
+    use_dim = min(n_dims, len(D_full))  # dimensions indexed by 0
 
     upper_bound = np.inf
     for test_k in tqdm(range(k_max_, 1, -1),
@@ -1160,10 +1162,13 @@ def search_k_motiflets_elbow(
         if not sum_dims:
             # k-th NN and it's distance along all dimensions
             knn_idx = knns[:, :, test_k - 1]
-            D_knn = np.take_along_axis(
-                D_full,
-                knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
-                axis=2)[:, :, 0]
+            if isinstance(D_full, List) or isinstance(D_full, list):
+                D_knn = take_along_axis(D_full, d, knn_idx, n)
+            else:
+                D_knn = np.take_along_axis(
+                    D_full,
+                    knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
+                    axis=2)[:, :, 0]
 
             dim_index = np.argsort(D_knn, axis=0)[:use_dim]
             dim_index = np.transpose(dim_index, (1, 0))
@@ -1205,6 +1210,15 @@ def search_k_motiflets_elbow(
     else:
         return (k_motiflet_distances, k_motiflet_candidates, k_motiflet_dims,
                 elbow_points, m)
+
+
+@njit(fastmath=True, cache=True, parallel=True)
+def take_along_axis(D_full, d, knn_idx, n):
+    D_knn = np.zeros((d, n), dtype=np.float32)
+    for i in prange(d):
+        for j in prange(n):
+            D_knn[i, j] = D_full[i][j][knn_idx[i, j]]
+    return D_knn
 
 
 @njit(fastmath=True, cache=True)

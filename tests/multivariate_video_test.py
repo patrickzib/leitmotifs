@@ -126,8 +126,8 @@ datasets = {
     }
 }
 
-# dataset = datasets["Boxing"]
-dataset = datasets["Charleston-Side-By-Side-Female"]
+dataset = datasets["Boxing"]
+#dataset = datasets["Charleston-Side-By-Side-Female"]
 k_max = dataset["ks"]
 motif_length = dataset["motif_length"]
 amc_name = dataset["amc_name"]
