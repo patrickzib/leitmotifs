@@ -100,6 +100,12 @@ def plot_multivariate_motiflet(
 # http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
 
 datasets = {
+    "Stairs": {
+        "ks": 5,
+        "motif_length": 100,
+        "amc_name": "13_34",
+        "asf_path": '../datasets/motion_data/13.asf'
+    },
     "Boxing": {
         "ks": 15,
         "motif_length": 100,
@@ -127,6 +133,7 @@ datasets = {
 }
 
 dataset = datasets["Boxing"]
+# dataset = datasets["Stairs"]
 #dataset = datasets["Charleston-Side-By-Side-Female"]
 k_max = dataset["ks"]
 motif_length = dataset["motif_length"]
@@ -141,21 +148,25 @@ amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 #     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
 
 # Body
-# use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
+# used_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 # Right
-# use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb']
+# used_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb']
 
-# use_joints = [  'lhand', 'lfingers', 'lthumb'
+# used_joints = [  'lhand', 'lfingers', 'lthumb'
 #               'rhand', 'rfingers', 'rthumb']
 
-use_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
-              'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
-              ]
+# used_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
+#              'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
+#              ]
 
+# Hands
+used_joints = [
+    'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+    'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb']
 
 # footwork
-# use_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
+# used_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 
 def test_plotting():
@@ -165,8 +176,7 @@ def test_plotting():
     df = pd.DataFrame(
         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
     df = exclude_body_joints(df)
-    # df = include_joints(df, use_joints2)
-    # print("Used joints:", use_joints)
+    df = include_joints(df, used_joints)
 
     print("Data", df.shape)
 
@@ -177,7 +187,7 @@ def test_plotting():
 
     ml = Motiflets(amc_name, series,
                    dimension_labels=df.index,
-                   n_dims=10
+                   n_dims=5
                    )
 
     m, all_minima = ml.fit_motif_length(
@@ -225,7 +235,7 @@ def test_plotting():
 
 
 def test_motion_capture():
-    _generate_motion_capture(use_joints)
+    _generate_motion_capture(used_joints)
 
 
 def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):

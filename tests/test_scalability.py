@@ -70,10 +70,11 @@ def test_motiflets():
 
 
 def test_mstamp():
-    lengths = [1_000, 5_000,
-               10_000, 30_000,
-               50_000, 100_000,
-               # 150_000, 200_000,
+    lengths = [#1_000, 5_000,
+               #10_000, 30_000,
+               #50_000, 100_000,
+               150_000,
+               # 200_000,
                # 250_000
                ]
 
@@ -97,7 +98,7 @@ def test_mstamp():
         df = pd.DataFrame(data=dict, columns=['Time'], index=lengths)
         df["Method"] = "k-Motiflets"
         df.index.name = "Lengths"
-        df.to_csv('csv/mstamp.csv')
+        df.to_csv('csv/mstamp2.csv')
 
 
 def test_sizes():
@@ -109,12 +110,31 @@ def test_sizes():
 
 
 def test_plot():
-    df = pd.read_csv("csv/scalability_motiflets_k5.csv", index_col=0)
-    df.index.name = "Walltime in s"
+    df = pd.read_csv("csv/scalability.csv", index_col=0)
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.set_title("Scalability in length n for d=8")
-    sns.lineplot(data=df, ax=ax)
+    sns.lineplot(x="Lengths", y="Time", hue="Method", style="Method", data=df.reset_index(), ax=ax)
+
+    ax.set_ylabel("Walltime in s")
+    ax.set_xlabel("Time Series Length")
     plt.tight_layout()
 
-    plt.savefig("images_paper/scalability/scalability_motiflets_k5.pdf")
+    plt.savefig("images_paper/scalability/scalability.pdf")
     plt.show()
+
+
+
+def test_write_data():
+    lengths = [1_000, 5_000,
+               10_000, 30_000,
+               50_000, 100_000,
+               150_000, 200_000,
+               250_000
+               ]
+
+    ds_name, B = read_penguin_data()
+
+    for i, length in enumerate(lengths):
+        series = B.iloc[:length].T
+        series.T.to_csv('/Users/bzcschae/workspace/multidim_motifs/CHIME/jar/penguin_'+str(length)+'.csv',
+                        header=None, index=None)
