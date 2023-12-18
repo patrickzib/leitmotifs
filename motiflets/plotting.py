@@ -330,7 +330,13 @@ def plot_motifsets(
     """
     # turn into 2d array
     if data.ndim != 2:
-        raise ValueError('The input dimension must be 2d.')
+        print('Warning: The input dimension must be 2d.')
+        data = data.reshape(1, -1)
+
+    if data.shape[0] > data.shape[1]:
+        raise ('Warning: The input shape is wrong. Dimensions should be on rows. '
+              'Try transposing the input.')
+
 
     if motifsets is not None:
         git_ratio = [4]
@@ -716,6 +722,11 @@ def plot_motif_length_selection(
     if data_raw.ndim == 1:
         data_raw = data_raw.reshape((1, -1))
 
+    if data_raw.shape[0] > data_raw.shape[1]:
+        raise ('Warning: The input shape is wrong. Dimensions should be on rows. '
+               'Try transposing the input series.')
+
+
     header = " in " + data.index.name if isinstance(
         data, pd.Series) and data.index.name != None else ""
 
@@ -923,7 +934,8 @@ def plot_motiflets_by_dimension(
 
     # turn into 2d array
     if data.ndim != 2:
-        raise ValueError('The input dimension must be 2d.')
+        print('Warning: The input dimension must be 2d.')
+        data = data.reshape(1, -1)
 
     data_index, data_raw = ml.pd_series_to_numpy(data)
 

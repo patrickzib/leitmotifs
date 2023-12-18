@@ -23,9 +23,9 @@ def test_har():
                   'climb stairs', 'walk', 'wait', 'end']
 
     for i, (a, b) in enumerate(zip(cps[:-1], cps[1:])):
-        series = har_series.iloc[a:b].values.reshape(1, -1)
-        ml = Motiflets(ds_name=activities[i], series=series, elbow_deviation=1.25,
-                       slack=0.6)
+        series = har_series.iloc[a:b].values
+        ml = Motiflets(ds_name=activities[i], series=series,
+                       elbow_deviation=1.25, slack=0.6)
 
         k_max = 50
         length_range = np.arange(40, 150, 2)
