@@ -171,10 +171,13 @@ class Motiflets:
 
         return fig, ax
 
-    def plot_motifset(self, path=None):
+    def plot_motifset(self, elbow_points=None, path=None):
 
         if self.dists is None or self.motiflets is None or self.elbow_points is None:
             raise Exception("Please call fit_k_elbow first.")
+
+        if elbow_points is None:
+            elbow_points = self.elbow_points
 
         # TODO
         # if elbow_point is None:
@@ -183,9 +186,9 @@ class Motiflets:
         fig, ax = plot_motifsets(
             self.ds_name,
             self.series,
-            motifsets=self.motiflets[self.elbow_points],
-            motiflet_dims=self.motiflets_dims[self.elbow_points],
-            dist=self.dists[self.elbow_points],
+            motifsets=self.motiflets[elbow_points],
+            motiflet_dims=self.motiflets_dims[elbow_points],
+            dist=self.dists[elbow_points],
             motif_length=self.motif_length,
             show=path is None)
 
@@ -299,6 +302,7 @@ def plot_motifsets(
         ds_name,
         data,
         motifsets=None,
+        motifset_names=None,
         dist=None,
         motiflet_dims=None,
         motif_length=None,
@@ -337,13 +341,13 @@ def plot_motifsets(
                                  sharey="row",
                                  sharex=False,
                                  figsize=(
-                                     10 + 5 * len(motifsets), 5 + data.shape[0] // 3),
+                                     10 + 2 * len(motifsets), 5 + data.shape[0] // 2),
                                  squeeze=False,
                                  gridspec_kw={
                                      'width_ratios': git_ratio,
                                      'height_ratios': [10, 1]})
     else:
-        fig, axes = plt.subplots(1, 1, squeeze=False, figsize=(20, 3))
+        fig, axes = plt.subplots(1, 1, squeeze=False, figsize=(20, 3 + data.shape[0] // 3))
 
     if ground_truth is None:
         ground_truth = []
@@ -380,12 +384,13 @@ def plot_motifsets(
                                              y=dim_data_raw[
                                                pos:pos + motif_length] + offset,
                                              linewidth=2,
-                                             color=sns.color_palette("tab10")[1 + i],
+                                             color=sns.color_palette("tab10")[2 + i],
                                              ci=None,
                                              estimator=None)
 
                             axes[0, 1 + i].set_title(
-                                "Motif Set " + str(i + 1) + "\n" +
+                                (("Motif Set " + str(i + 1)) if motifset_names is None
+                                    else motifset_names[i]) + "\n" +
                                 "k=" + str(len(motifset)) +
                                 # ", d=" + str(np.round(dist[i], 2)) +
                                 ", l=" + str(motif_length),
@@ -404,7 +409,7 @@ def plot_motifsets(
                                              ci=99,
                                              n_boot=10,
                                              lw=1,
-                                             color=sns.color_palette("tab10")[1 + i],
+                                             color=sns.color_palette("tab10")[2 + i],
                                              x="time",
                                              y="value")
 
@@ -437,7 +442,7 @@ def plot_motifsets(
                         (data_index[pos], -i),
                         data_index[pos + motif_length - 1] - data_index[pos],
                         ratio,
-                        facecolor=sns.color_palette("tab10")[1 + i],
+                        facecolor=sns.color_palette("tab10")[2 + i],
                         alpha=0.7
                     )
                     axes[1, 0].add_patch(rect)
