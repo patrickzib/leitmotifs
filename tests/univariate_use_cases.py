@@ -17,25 +17,25 @@ def test_ecg():
     ml.plot_dataset()
 
     k_max = 20
-    motif_length_range = np.arange(50, 180, 5)
+    motif_length_range = np.arange(10, 180, 10)
     best_length, all_minima = ml.fit_motif_length(
         k_max, motif_length_range, subsample=1)
 
     print("Best found length", best_length)
 
-    exclusion = ml.motiflets[ml.elbow_points[-1]]
-    best_length, _ = ml.fit_motif_length(
-        k_max,
-        motif_length_range,
-        exclusion=exclusion,  # TODO: refactor?
-        exclusion_length=best_length,
-        subsample=1,
-        plot=True,
-        plot_elbows=True,
-        plot_motifsets=True
-    )
-
-    print("Best found length", best_length)
+    # exclusion = ml.motiflets[ml.elbow_points[-1]]
+    # best_length, _ = ml.fit_motif_length(
+    #     k_max,
+    #     motif_length_range,
+    #     exclusion=exclusion,  # TODO: refactor?
+    #     exclusion_length=best_length,
+    #     subsample=1,
+    #     plot=True,
+    #     plot_elbows=True,
+    #     plot_motifsets=True
+    # )
+    #
+    # print("Best found length", best_length)
 
 
 def test_vanilla_ice():

@@ -126,7 +126,7 @@ def plot_spectrogram(audio_file_urls):
         samplingFrequency, data = read_wave(audio_file_url)
         left, right = data[:, 0], data[:, 1]
 
-        ax[i].specgram(left, Fs=samplingFrequency, cmap='plasma')
+        ax[i].specgram(left, Fs=samplingFrequency, cmap='Spectral')
         ax[i].set_ylabel("Freq.")
 
         ax[i].set_ylim([0, 5000])

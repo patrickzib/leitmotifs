@@ -219,9 +219,123 @@ def test_publication():
         best_length, _ = ml.fit_motif_length(
             k_max,
             motif_length_range,
-            plot=False,
+            plot=True,
             plot_elbows=False,
-            plot_motifsets=True,
-            plot_best_only=True
+            plot_motifsets=False,
+            plot_best_only=False
         )
-        ml.plot_motifset(path="images_paper/penguins/penguins_"+str(start)+".pdf")
+        ml.plot_motifset(path="images_paper/penguins/penguins_" + str(start) + ".pdf")
+
+        print("Positions:")
+        for eb in ml.elbow_points:
+            motiflet = np.sort(ml.motiflets[eb])
+            print("\tpos\t:", motiflet)
+            print("\tdims\t:", ml.motiflets_dims[eb])
+
+
+def test_mstamp():
+    import stumpy
+
+    length = 1_000
+    ds_name, B = read_penguin_data()
+    lengths = [23, 21]
+    for i, start in enumerate([0, 3000]):
+        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]]
+
+        m = lengths[i]  # As used by k-Motiflets
+
+        # Find the Pair Motif
+        mps, indices = stumpy.mstump(series, m=m)
+        motifs_idx = np.argmin(mps, axis=1)
+        nn_idx = indices[np.arange(len(motifs_idx)), motifs_idx]
+
+        # Find the optimal dimensionality by minimizing the MDL
+        mdls, subspaces = stumpy.mdl(series, m, motifs_idx, nn_idx)
+
+        plt.plot(np.arange(len(mdls)), mdls, c='red', linewidth='2')
+        plt.xlabel('k (zero-based)')
+        plt.ylabel('Bit Size')
+        plt.xticks(range(mps.shape[0]))
+        plt.tight_layout()
+        plt.show()
+
+        k = np.argmin(mdls)
+        print("Best dimensions", series.index[subspaces[k]])
+
+        # found Pair Motif
+        motif = [motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]
+        print("Pair Motif Position:")
+        print("\tpos:\t", motif)
+        print("\tf:  \t", subspaces[k])
+
+        dims = [subspaces[k]]
+        motifs = [[motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]]
+        motifset_names = ["mStamp"]
+
+        fig, ax = plot_motifsets(
+            ds_name,
+            series.T,
+            motifsets=motifs,
+            motiflet_dims=dims,
+            motifset_names=motifset_names,
+            motif_length=m,
+            show=True)
+
+
+def test_plot_both():
+    lengths = [23, 21]
+
+    motif_sets = [
+        [  # mstamp
+            [346, 366],
+            # motiflets
+            [190, 209, 228, 247, 267, 287, 306, 326, 346, 366, 386, 406, 426, 446, 466,
+             486, 506, 527, 547, 567, 587, 607, 628, 648, 669, 689, 710, 730, 768, 788,
+             809, 851, 871, 936, 957]
+        ],
+        [  # mstamp
+            [346, 366],
+            # motiflets
+            [22, 56, 92, 125, 158, 191, 227, 260, 291, 323, 357, 385, 418, 452, 479,
+             511, 542, 573, 599, 620, 662, 706, 758, 792]
+        ]
+    ]
+
+    dims = [
+        [  # mstamp
+            [6],
+            # motiflets
+            [2, 0]
+
+        ],
+        [  # mstamp
+            [6],
+            # motiflets
+            [2, 0]
+        ]
+    ]
+
+    length = 1_000
+    ds_name, B = read_penguin_data()
+    for i, start in enumerate([0, 3000]):
+        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]]
+
+        m = lengths[i]  # As used by k-Motiflets
+
+        path = "images_paper/penguins/penguins_" + str(start) + ".pdf"
+
+        motifset_names = ["mStamp + MDL", "Motiflets"]
+        motifs = motif_sets[i]
+        dim = dims[i]
+        fig, ax = plot_motifsets(
+            ds_name,
+            series.T,
+            motifsets=motifs,
+            motiflet_dims=dim,
+            motifset_names=motifset_names,
+            motif_length=lengths[i],
+            show=path is None)
+
+        if path is not None:
+            plt.savefig(path)
+            plt.show()

@@ -787,7 +787,7 @@ def _filter_unique(elbow_points, candidates, motif_length):
         The set of non-overlapping elbow points.
 
     """
-    filtered_ebp = []
+    filtered_ebp = []  # TODO
     for i in range(len(elbow_points)):
         unique = True
         for j in range(i + 1, len(elbow_points)):
