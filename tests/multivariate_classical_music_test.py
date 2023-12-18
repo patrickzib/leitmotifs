@@ -51,26 +51,26 @@ def read_songs():
     return audio_length_seconds, df, index_range
 
 
-def test_stumpy():
-    import stumpy
-    m = 301
-
-    audio_length_seconds, df, index_range = read_songs()
-    channels = [  # 'MFCC 0',
-        'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
-        'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
-        'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15',
-        # 'MFCC 16', 'MFCC 17', 'MFCC 18', 'MFCC 19'
-    ]
-    data = df.loc[channels].astype(np.float64).values
-    mps, indices = stumpy.mstump(data, m)
-    motifs_idx = np.argmin(mps, axis=1)
-    nn_idx = indices[np.arange(len(motifs_idx)), motifs_idx]
-
-    pos = motifs_idx[n_dims - 1]
-    pos2 = nn_idx[n_dims - 1]
-
-    print("Positions:", index_range[pos], index_range[pos2])
+# def test_stumpy():
+#     import stumpy
+#     m = 301
+#
+#     audio_length_seconds, df, index_range = read_songs()
+#     channels = [  # 'MFCC 0',
+#         'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
+#         'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
+#         'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15',
+#         # 'MFCC 16', 'MFCC 17', 'MFCC 18', 'MFCC 19'
+#     ]
+#     data = df.loc[channels].astype(np.float64).values
+#     mps, indices = stumpy.mstump(data, m)
+#     motifs_idx = np.argmin(mps, axis=1)
+#     nn_idx = indices[np.arange(len(motifs_idx)), motifs_idx]
+#
+#     pos = motifs_idx[n_dims - 1]
+#     pos2 = nn_idx[n_dims - 1]
+#
+#     print("Positions:", index_range[pos], index_range[pos2])
 
 
 def test_publication():

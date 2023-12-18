@@ -1,5 +1,3 @@
-import matplotlib
-
 from motiflets.plotting import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -13,7 +11,7 @@ def test_strain():
     ds_name = "Strain"
 
     data = pd.read_csv("../datasets/experiments/strain-0-left.csv",
-                       index_col=0, squeeze=True)
+                       index_col=0).squeeze('columns')
     print("Dataset Original Length n: ", len(data))
     data, factor = ml._resample(data, sampling_factor=10000)
     data[:] = zscore(data)
@@ -22,7 +20,7 @@ def test_strain():
                     elbow_deviation=1.25, slack=1.0)
 
     k_max = 20
-    length_range = np.arange(40, 100, 1)
+    length_range = np.arange(40, 100, 5)
 
     motif_length, all_minima = ml2.fit_motif_length(k_max, length_range)
     print(motif_length)

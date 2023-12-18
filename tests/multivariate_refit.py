@@ -1,5 +1,3 @@
-import scipy.io as sio
-
 from motiflets.plotting import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -59,7 +57,7 @@ def test_multivariate():
 
     ml = Motiflets(ds_name,
                    series,
-                   n_dims=1
+                   n_dims=2
                    )
 
     k_max = 20

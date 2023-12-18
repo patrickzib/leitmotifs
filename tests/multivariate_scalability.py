@@ -1,5 +1,3 @@
-import scipy.io as sio
-import pandas as pd
 import stumpy
 
 from motiflets.plotting import *

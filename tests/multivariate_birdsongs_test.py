@@ -1,5 +1,4 @@
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 
 mpl.rcParams['figure.dpi'] = 150
 

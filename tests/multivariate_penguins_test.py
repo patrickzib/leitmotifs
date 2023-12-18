@@ -339,3 +339,23 @@ def test_plot_both():
         if path is not None:
             plt.savefig(path)
             plt.show()
+
+
+
+def test_map():
+    import scipy.stats
+    length = 1_000
+    ds_name, B = read_penguin_data()
+    for i, start in enumerate([0, 3000]):
+        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]]
+
+
+        # print(scipy.stats.median_absolute_deviation(series, axis=0))
+
+        print("Normal\t", scipy.stats.median_abs_deviation(series, axis=0, scale="normal"))
+
+        print("Constant\t", scipy.stats.median_abs_deviation(series, axis=0, scale=1/1.4826))
+
+        print("Default\t", scipy.stats.median_abs_deviation(series, axis=0))
+
+        print("...")

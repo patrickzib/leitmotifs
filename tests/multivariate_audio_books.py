@@ -1,7 +1,5 @@
 import matplotlib as mpl
 
-from audio.lyrics import *
-
 mpl.rcParams['figure.dpi'] = 150
 
 path = "../../motiflets_use_cases/audio/"
