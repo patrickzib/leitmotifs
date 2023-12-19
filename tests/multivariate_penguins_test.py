@@ -220,7 +220,7 @@ def test_publication():
             k_max,
             motif_length_range,
             plot=True,
-            plot_elbows=False,
+            plot_elbows=True,
             plot_motifsets=False,
             plot_best_only=False
         )
@@ -260,7 +260,7 @@ def test_mstamp():
         plt.show()
 
         k = np.argmin(mdls)
-        print("Best dimensions", series.index[subspaces[k]])
+        print("Best dimensions", series.columns[subspaces[k]])
 
         # found Pair Motif
         motif = [motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]
