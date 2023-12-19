@@ -1,19 +1,23 @@
 [project]
-name = "motiflets"
+name = "leitmotif"
 
-version = "0.4.1"
+version = "0.0.1"
 
-description = "Motiflets - Simple and Accurate Detection of Motifs in Time Series"
+description = "Discovering Leitmotifs in Multidimensional Time Series"
 readme = "README.md"
 authors = [
     {name = "patrickzib", email = "void@void.com"}
 ]
 keywords = [
+    "multidimensional",
+    "sub-dimensional",
+    "multivariate",
+    "time-series",
+    "motif",
+    "motif-set",
+    "leitmotif",
     "machine-learning",
-    "time-series",    
     "motif-discovery",
-    "motif-sets",
-    "motif-pairs",    
     "unsupervised",
 ]
 classifiers = [
