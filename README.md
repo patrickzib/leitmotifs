@@ -10,7 +10,7 @@ Supporting Material
 - `motiflets`: Code implementing multidimensonal k-Motiflet
 - `datasets`: Use cases in the paper
 
-# k-Motiflets
+# Leitmotifs
 
 TODO 
 
@@ -20,7 +20,7 @@ TODO
 
 # Installation
 
-The easiest is to use pip to install motiflets.
+The easiest is to use pip to install leitmotif.
 
 ## a) Install using pip
 ```
@@ -33,7 +33,7 @@ You can also install the project from source.
 
 First, download the repository.
 ```
-git clone https://github.com/patrickzib/motiflets.git
+git clone https://github.com/patrickzib/leitmotif.git
 ```
 
 Change into the directory and build the package from source.
@@ -43,7 +43,7 @@ pip install .
 
 # Usage
 
-Here we illustrate how to use k-Motiflets.
+Here we illustrate how to use Leitmotifs.
 
 # Use Cases
 
@@ -54,8 +54,8 @@ of our paper.
 TODO
 
 - Jupyter-Notebook 
-<a href="notebooks/use_cases_paper.ipynb">Univariate Use Cases for k-Motiflets</a>:
-highlights all use cases used in the paper and shows the unique ability of k-Motiflets 
+<a href="notebooks/use_cases_paper.ipynb">Univariate Use Cases</a>:
+highlights all use cases used in the paper and shows the unique ability 
 to learn its parameters from the data and find itneresting motif sets.
 
 
