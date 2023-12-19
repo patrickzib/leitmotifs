@@ -69,8 +69,10 @@ def test_multivariate():
     ds_name, B = read_penguin_data()
 
     for start in [0, 2000]:
-        # dists = np.zeros(5)
-        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]].T
+        series = B.iloc[
+                    497699 + start:497699 + start + length,
+                    [0, 1, 2, 3, 4, 5, 7]
+                 ].T
 
         ml = Motiflets(ds_name, series,
                        n_dims=2,
