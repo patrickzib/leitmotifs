@@ -1,6 +1,7 @@
 import matplotlib as mpl
 
 from audio.lyrics import *
+from motiflets.competitors import *
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -156,55 +157,13 @@ def test_publication():
 
 
 def test_mstamp():
-    import stumpy
-
     audio_length_seconds, df, index_range = read_songs()
-    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3',
-                'MFCC 4', 'MFCC 5', 'MFCC 6']
+    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2',
+                'MFCC 3', 'MFCC 4', 'MFCC 5',
+                'MFCC 6']
     df = df.loc[channels]
-    series = df.values.astype(np.float64)
 
-    m = 232     # As used by k-Motiflets
-    length_in_seconds = m * audio_length_seconds / df.shape[1]
-    print("Used motif length", length_in_seconds, m)
-
-    # Find the Pair Motif
-    mps, indices = stumpy.mstump(series, m=m)
-    motifs_idx = np.argmin(mps, axis=1)
-    nn_idx = indices[np.arange(len(motifs_idx)), motifs_idx]
-
-    # Find the optimal dimensionality by minimizing the MDL
-    mdls, subspaces = stumpy.mdl(series, m, motifs_idx, nn_idx)
-    k = np.argmin(mdls)
-
-    plt.plot(np.arange(len(mdls)), mdls, c='red', linewidth='2')
-    plt.xlabel('k (zero-based)')
-    plt.ylabel('Bit Size')
-    plt.xticks(range(mps.shape[0]))
-    plt.tight_layout()
-    plt.show()
-
-    print("Best dimensions", df.index[subspaces[k]])
-
-    # found Pair Motif
-    motif = [motifs_idx[subspaces[k]], nn_idx[subspaces[k]]]
-    print("Pair Motif Position:")
-    print("\tpos:\t", motif)
-    print("\tf:  \t", subspaces[k])
-
-    dims = [subspaces[k]]
-    motifs = [[motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]]
-    motifset_names = ["mStamp"]
-
-    fig, ax = plot_motifsets(
-        ds_name,
-        series,
-        motifsets=motifs,
-        motiflet_dims=dims,
-        motifset_names=motifset_names,
-        motif_length=m,
-        show=True)
-
+    run_mstamp(df, ds_name, motif_length=232)
 
 
 def test_plot_both():

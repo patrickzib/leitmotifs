@@ -3,6 +3,7 @@ import matplotlib as mpl
 mpl.rcParams['figure.dpi'] = 150
 
 from audio.lyrics import *
+from motiflets.competitors import  *
 
 path = "../../motiflets_use_cases/birds/"
 
@@ -133,48 +134,10 @@ def test_plot_spectrogram():
 
 
 def test_mstamp():
-    import stumpy
-
     seconds, df, index_range = read_mp3(audio_file_url)
-    series = df.values.astype(np.float64)
+
     m = 50  # As used by k-Motiflets
-
-    # Find the Pair Motif
-    mps, indices = stumpy.mstump(series, m=m)
-    motifs_idx = np.argmin(mps, axis=1)
-    nn_idx = indices[np.arange(len(motifs_idx)), motifs_idx]
-
-    # Find the optimal dimensionality by minimizing the MDL
-    mdls, subspaces = stumpy.mdl(series, m, motifs_idx, nn_idx)
-    k = np.argmin(mdls)
-
-    plt.plot(np.arange(len(mdls)), mdls, c='red', linewidth='2')
-    plt.xlabel('k (zero-based)')
-    plt.ylabel('Bit Size')
-    plt.xticks(range(mps.shape[0]))
-    plt.tight_layout()
-    plt.show()
-
-    print("Best dimensions", df.index[subspaces[k]])
-
-    # found Pair Motif
-    motif = [motifs_idx[subspaces[k]], nn_idx[subspaces[k]]]
-    print("Pair Motif Position:")
-    print("\tpos:\t", motif)
-    print("\tf:  \t", subspaces[k])
-
-    dims = [subspaces[k]]
-    motifs = [[motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]]
-    motifset_names = ["mStamp"]
-
-    fig, ax = plot_motifsets(
-        ds_name,
-        series,
-        motifsets=motifs,
-        motiflet_dims=dims,
-        motifset_names=motifset_names,
-        motif_length=m,
-        show=True)
+    run_mstamp(df, ds_name, motif_length=m)
 
     # extract_audio_segment(
     #    df, ds_name, audio_file_url, "snippets",
