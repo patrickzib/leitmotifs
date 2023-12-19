@@ -169,69 +169,69 @@ used_joints = [
 # used_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 
-def test_plotting():
-    joints = amc_parser.parse_asf(asf_path)
-    motions = amc_parser.parse_amc(amc_path)
-
-    df = pd.DataFrame(
-        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-    df = exclude_body_joints(df)
-    df = include_joints(df, used_joints)
-
-    print("Data", df.shape)
-
-    series = df
-
-    length_range = np.arange(50, 200, 10)
-    print(length_range)
-
-    ml = Motiflets(amc_name, series,
-                   dimension_labels=df.index,
-                   n_dims=5
-                   )
-
-    m, all_minima = ml.fit_motif_length(
-        k_max, length_range,
-        plot=True,
-        plot_best_only=True,
-        plot_motifsets=True)
-
-    for minimum in all_minima:
-        motif_length = length_range[minimum]
-        dists = ml.all_dists[minimum]
-        elbow_points = ml.all_elbows[minimum]
-
-        # motiflets = ml.all_top_motiflets[minimum]
-        motiflets = np.zeros(len(dists), dtype=object)
-        motiflets[elbow_points] = ml.all_top_motiflets[minimum]
-
-        dimensions = np.zeros(len(dists), dtype=object)
-        dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
-
-        video = True
-        if video:
-            if len(elbow_points) > 1:
-                for eb in elbow_points:
-                    for i, pos in enumerate(motiflets[eb]):
-                        use_joints = df.index.values[dimensions[eb]]  # FIXME!?
-                        # strip the _x, _y, _z from the joint
-                        use_joints = [joint[:-2] for joint in use_joints]
-                        fig = plt.figure()
-                        ax = plt.axes(projection='3d')
-
-                        out_path = ('video/motiflet_' + amc_name + '_' + str(
-                            motif_length)
-                                    + '_' + str(eb) + '_' + str(i) + '.gif')
-
-                        FuncAnimation(fig,
-                                      lambda i: draw_frame(
-                                          ax, motions, joints, i,
-                                          joints_to_highlight=use_joints
-                                      ),
-                                      range(pos, pos + motif_length, 4)).save(
-                            out_path,
-                            bitrate=1000,
-                            fps=20)
+# def test_plotting():
+#     joints = amc_parser.parse_asf(asf_path)
+#     motions = amc_parser.parse_amc(amc_path)
+#
+#     df = pd.DataFrame(
+#         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+#     df = exclude_body_joints(df)
+#     df = include_joints(df, used_joints)
+#
+#     print("Data", df.shape)
+#
+#     series = df
+#
+#     length_range = np.arange(50, 200, 10)
+#     print(length_range)
+#
+#     ml = Motiflets(amc_name, series,
+#                    dimension_labels=df.index,
+#                    n_dims=5
+#                    )
+#
+#     m, all_minima = ml.fit_motif_length(
+#         k_max, length_range,
+#         plot=True,
+#         plot_best_only=True,
+#         plot_motifsets=True)
+#
+#     for minimum in all_minima:
+#         motif_length = length_range[minimum]
+#         dists = ml.all_dists[minimum]
+#         elbow_points = ml.all_elbows[minimum]
+#
+#         # motiflets = ml.all_top_motiflets[minimum]
+#         motiflets = np.zeros(len(dists), dtype=object)
+#         motiflets[elbow_points] = ml.all_top_motiflets[minimum]
+#
+#         dimensions = np.zeros(len(dists), dtype=object)
+#         dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
+#
+#         video = True
+#         if video:
+#             if len(elbow_points) > 1:
+#                 for eb in elbow_points:
+#                     for i, pos in enumerate(motiflets[eb]):
+#                         use_joints = df.index.values[dimensions[eb]]  # FIXME!?
+#                         # strip the _x, _y, _z from the joint
+#                         use_joints = [joint[:-2] for joint in use_joints]
+#                         fig = plt.figure()
+#                         ax = plt.axes(projection='3d')
+#
+#                         out_path = ('video/motiflet_' + amc_name + '_' + str(
+#                             motif_length)
+#                                     + '_' + str(eb) + '_' + str(i) + '.gif')
+#
+#                         FuncAnimation(fig,
+#                                       lambda i: draw_frame(
+#                                           ax, motions, joints, i,
+#                                           joints_to_highlight=use_joints
+#                                       ),
+#                                       range(pos, pos + motif_length, 4)).save(
+#                             out_path,
+#                             bitrate=1000,
+#                             fps=20)
 
 
 def test_motion_capture():

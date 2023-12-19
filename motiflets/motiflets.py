@@ -76,6 +76,14 @@ def read_ground_truth(dataset):
     return None
 
 
+def read_audio_from_dataframe(pandas_file_url):
+    """Reads a time series with an index (e.g. time) from a CSV with MFCC features."""
+
+    df = pd.read_csv(pandas_file_url, index_col=0, compression='gzip')
+    audio_length_seconds = 2 * float(df.columns[-1]) - float(df.columns[-2])
+    return audio_length_seconds, df, np.float64(df.columns)
+
+
 def read_dataset_with_index(dataset, sampling_factor=10000):
     """Reads a time series with an index (e.g. time) and resamples.
 
@@ -142,7 +150,7 @@ def pd_series_to_numpy(data):
     else:
         data_raw = data
         data_index = np.arange(data.shape[-1])
-    return data_index, data_raw.astype(np.float64, copy=False)
+    return data_index.astype(np.float64), data_raw.astype(np.float64, copy=False)
 
 
 def read_dataset(dataset, sampling_factor=10000):

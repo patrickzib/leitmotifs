@@ -1,6 +1,5 @@
 import scipy.io as sio
 
-from motiflets.plotting import *
 from motiflets.competitors import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42

@@ -7,6 +7,19 @@ from scipy.io import wavfile
 from motiflets.plotting import *
 
 
+def read_from_wav(audio_file_url):
+    # Read audio from wav file
+    x, sr, mfcc_f, audio_length_seconds = read_audio(audio_file_url, True)
+    print("Length:", audio_length_seconds)
+    index_range = np.arange(0, mfcc_f.shape[1]) * audio_length_seconds / mfcc_f.shape[1]
+    df = pd.DataFrame(mfcc_f,
+                      index=["MFCC " + str(a) for a in np.arange(0, mfcc_f.shape[0])],
+                      columns=index_range
+                      )
+    df.index.name = "MFCC"
+    return audio_length_seconds, df, index_range
+
+
 def read_wave(audio_file_url):
     samplingFrequency, data = wavfile.read(audio_file_url)
     return samplingFrequency, data

@@ -1,14 +1,6 @@
 import stumpy
 
 from motiflets.plotting import *
-
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
-
-import warnings
-
-warnings.simplefilter("ignore")
-
 import matplotlib as mpl
 
 mpl.rcParams['figure.dpi'] = 150
@@ -17,23 +9,25 @@ path = "../datasets/experiments/"
 
 
 def read_penguin_data():
-    series = pd.read_csv(path + "penguin.txt",
-                         names=(["X-Acc", "Y-Acc", "Z-Acc",
-                                 "4", "5", "6",
-                                 "7", "Pressure", "9"]),
-                         delimiter="\t", header=None)
+    series = pd.read_csv(
+        path + "penguin.txt",
+        names=(["X-Acc", "Y-Acc", "Z-Acc",
+                "4", "5", "6",
+                "7", "Pressure", "9"]),
+        delimiter="\t", header=None)
     ds_name = "Penguins (Longer Snippet)"
 
     return ds_name, series
 
 
 def test_motiflets():
-    lengths = [1_000, 5_000,
-               # 10_000, 30_000,
-               # 50_000, 100_000,
-               # 150_000, 200_000,
-               # 250_000
-               ]
+    lengths = [
+        1_000, 5_000,
+        # 10_000, 30_000,
+        # 50_000, 100_000,
+        # 150_000, 200_000,
+        # 250_000
+    ]
 
     ds_name, B = read_penguin_data()
     time_s = np.zeros(len(lengths))
@@ -68,13 +62,14 @@ def test_motiflets():
 
 
 def test_mstamp():
-    lengths = [#1_000, 5_000,
-               #10_000, 30_000,
-               #50_000, 100_000,
-               150_000,
-               # 200_000,
-               # 250_000
-               ]
+    lengths = [
+        1_000, 5_000,
+        # 10_000, 30_000,
+        # 50_000, 100_000,
+        # 150_000,
+        # 200_000,
+        # 250_000
+    ]
 
     ds_name, B = read_penguin_data()
     time_s = np.zeros(len(lengths))
@@ -99,19 +94,12 @@ def test_mstamp():
         df.to_csv('csv/mstamp2.csv')
 
 
-def test_sizes():
-    n = 20000
-    d = 8
-    sparse_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
-    gb = 4  # 4 GB
-    print(sparse_gb, gb)
-
-
 def test_plot():
     df = pd.read_csv("csv/scalability.csv", index_col=0)
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.set_title("Scalability in length n for d=8")
-    sns.lineplot(x="Lengths", y="Time", hue="Method", style="Method", data=df.reset_index(), ax=ax)
+    sns.lineplot(x="Lengths", y="Time", hue="Method", style="Method",
+                 data=df.reset_index(), ax=ax)
 
     ax.set_ylabel("Walltime in s")
     ax.set_xlabel("Time Series Length")
@@ -120,19 +108,20 @@ def test_plot():
     plt.savefig("images_paper/scalability/scalability.pdf")
     plt.show()
 
-
-
-def test_write_data():
-    lengths = [1_000, 5_000,
-               10_000, 30_000,
-               50_000, 100_000,
-               150_000, 200_000,
-               250_000
-               ]
-
-    ds_name, B = read_penguin_data()
-
-    for i, length in enumerate(lengths):
-        series = B.iloc[:length].T
-        series.T.to_csv('/Users/bzcschae/workspace/multidim_motifs/CHIME/jar/penguin_'+str(length)+'.csv',
-                        header=None, index=None)
+# Write to CHIME directory
+# def test_write_data():
+#     lengths = [1_000, 5_000,
+#                10_000, 30_000,
+#                50_000, 100_000,
+#                150_000, 200_000,
+#                250_000
+#                ]
+#
+#     ds_name, B = read_penguin_data()
+#
+#     for i, length in enumerate(lengths):
+#         series = B.iloc[:length].T
+#         series.T.to_csv(
+#             '/Users/bzcschae/workspace/multidim_motifs/CHIME/jar/penguin_' + str(
+#                 length) + '.csv',
+#             header=None, index=None)
