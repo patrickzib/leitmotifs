@@ -1,11 +1,5 @@
-import sys
-
-sys.path.insert(0, "../")
-
 from motiflets.motiflets import *
 from motiflets.plotting import *
-
-import matplotlib
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -13,6 +7,10 @@ matplotlib.rcParams['ps.fonttype'] = 42
 import warnings
 
 warnings.simplefilter("ignore")
+
+import matplotlib as mpl
+
+mpl.rcParams['figure.dpi'] = 150
 
 
 def test_univariate():
