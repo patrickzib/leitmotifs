@@ -1,4 +1,4 @@
-# Motiflets
+# Discovering Leitmotifs in Multidimensional Time Series
 
 This page was built in support of our paper "Discovering Leitmotifs in Multidimensional 
 Time Series" by Patrick Schäfer and Ulf Leser.
