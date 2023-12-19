@@ -3,8 +3,16 @@ Done
 - Use sparse matrix for scalability
 
 To Do
-- Streaming Motifs?
+
+- Use a different library for sparse matrix support:
+    - https://pypi.org/project/csr/
+    - https://pypi.org/project/numba-plsa/
+    - https://github.com/SanPen/CSparse3
+
+- Implement Streaming Motifs
 - Log-File-Data
+
+
 
 
 
