@@ -48,7 +48,7 @@ def test_motiflets():
             k_max,
             22,
             plot_elbows=False,
-            plot_motifs_as_grid=False
+            plot_motifsets=False
         )
         t_after = time.time()
         time_s[i] = t_after - t_before

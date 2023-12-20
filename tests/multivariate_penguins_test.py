@@ -115,7 +115,7 @@ def test_univariate_profile():
     # ds_name, series = read_penguin_data_short()
     length = 5000
     B = pd.read_csv(path + "penguin.txt", delimiter="\t", header=None)
-    ds_name = "Penguins (Longer Snippet)"
+    ds_name = "Penguins"
     df = B.iloc[497699: 497699 + length, 0:7].T
 
     ml = Motiflets(ds_name, df, elbow_deviation=1.25, slack=0.3)

@@ -92,7 +92,7 @@ class Motiflets:
             slack=self.slack,
             subsample=subsample,
             plot_elbows=plot_elbows,
-            plot_motifs=plot_motifsets,
+            plot_motif=plot_motifsets,
             plot=plot,
             plot_best_only=plot_best_only)
 
@@ -104,7 +104,7 @@ class Motiflets:
             motif_length=None,  # if None, use best_motif_length
             filter_duplicates=True,
             plot_elbows=True,
-            plot_motifs_as_grid=True,
+            plot_motifsets=True,
     ):
         self.k_max = k_max
 
@@ -120,7 +120,7 @@ class Motiflets:
             ds_name=self.ds_name,
             motif_length=motif_length,
             plot_elbows=plot_elbows,
-            plot_grid=plot_motifs_as_grid,
+            plot_motif=plot_motifsets,
             ground_truth=self.ground_truth,
             dimension_labels=self.dimension_labels,
             filter=filter_duplicates,
@@ -526,7 +526,7 @@ def plot_elbow(k_max,
                motif_length,
                n_dims=2,
                plot_elbows=False,
-               plot_grid=True,
+               plot_motif=True,
                ground_truth=None,
                dimension_labels=None,
                filter=True,
@@ -554,7 +554,7 @@ def plot_elbow(k_max,
         the number of dimensions to use for subdimensional motif discovery
     plot_elbows: bool, default=False
         plots the elbow ploints into the plot
-    plot_grid: bool, default=True
+    plot_motif: bool, default=True
         The motifs along the time series
     ground_truth: pd.Series
         Ground-truth information as pd.Series.
@@ -610,7 +610,7 @@ def plot_elbow(k_max,
             ds_name, data, motif_length, elbow_points,
             candidates, dists, motifset_candidates_dims=candidate_dims)
 
-    if plot_grid:
+    if plot_motif:
         plot_motifsets(
             ds_name,
             data,
@@ -641,7 +641,7 @@ def plot_motif_length_selection(
         plot=True,
         plot_best_only=True,
         plot_elbows=True,
-        plot_motifs=True,
+        plot_motif=True,
 ):
     """Computes the AU_EF plot to extract the best motif lengths
 
@@ -713,7 +713,7 @@ def plot_motif_length_selection(
             motif_length_range, top_motiflets,
             top_motiflets_dims=top_motiflets_dims)
 
-        if plot_elbows or plot_motifs:
+        if plot_elbows or plot_motifsets:
             to_plot = all_minima[0]
             if plot_best_only:
                 to_plot = [np.argmin(au_ef)]
@@ -734,7 +734,7 @@ def plot_motif_length_selection(
                         elbow_points, candidates, dists[a],
                         motifset_candidates_dims=candidate_dims)
 
-                if plot_motifs:
+                if plot_motif:
                     plot_motifsets(
                         ds_name,
                         data,
@@ -786,12 +786,11 @@ def _plot_window_lengths(
         elbow, header, index,
         motif_length_range,
         top_motiflets,
-        top_motiflets_dims=None,
-        font_size=20):
-    set_sns_style(font_size)
+        top_motiflets_dims=None):
+    # set_sns_style(font_size)
 
     indices = ~np.isinf(au_ef)
-    fig, ax = plt.subplots(figsize=(10, 3),
+    fig, ax = plt.subplots(figsize=(10, 4),
                            constrained_layout=True
                            )
     sns.lineplot(
@@ -802,7 +801,7 @@ def _plot_window_lengths(
         ci=None, estimator=None,
         ax=ax)
     sns.despine()
-    ax.set_title("Best lengths on " + ds_name, size=20)
+    ax.set_title("Best lengths on " + ds_name, size=14)
     ax.set(xlabel='Motif Length' + header, ylabel='Area under EF\n(lower is better)')
     ax.scatter(  # index[motif_length_range[all_minima]],   # TODO!!!
         motif_length_range[all_minima],
@@ -810,7 +809,7 @@ def _plot_window_lengths(
         label="Minima")
     for item in ([ax.xaxis.label, ax.yaxis.label] +
                  ax.get_xticklabels() + ax.get_yticklabels()):
-        item.set_fontsize(16)
+        item.set_fontsize(12)
     # turn into 2d array
     if data_raw.ndim == 1:
         data_raw = data_raw.reshape((1, -1))
@@ -849,8 +848,8 @@ def _plot_window_lengths(
             axins.xaxis.set_major_formatter(plt.NullFormatter())
             axins.yaxis.set_major_formatter(plt.NullFormatter())
             axins.legend().set_visible(False)
-    fig.set_figheight(5)
-    fig.set_figwidth(8)
+    #fig.set_figheight(5)
+    #fig.set_figwidth(8)
     plt.tight_layout()
     # plt.savefig("window_length.pdf")
     plt.show()
