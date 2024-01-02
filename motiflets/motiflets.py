@@ -713,6 +713,9 @@ def get_approximate_k_motiflet(
     motiflet_candidate = None
 
     for order in np.arange(n, dtype=np.int32):
+        # for dim in np.arange(ts.shape[0], dtype=np.int32):
+            # knn_idx = knns[dim_index[order, dim], order]
+
         # Use the first (best) dimension for ordering of k-NNs
         knn_idx = knns[dim_index[order, 0], order]
         if np.any(knn_idx[:k] == -1):

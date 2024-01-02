@@ -310,6 +310,7 @@ def plot_motifsets(
 
     data_index, data_raw = ml.pd_series_to_numpy(data)
 
+    color_offset = 1
     offset = 0
     tick_offsets = []
     axes[0, 0].set_title(ds_name, fontsize=20)
@@ -342,7 +343,7 @@ def plot_motifsets(
                                                  y=dim_data_raw[
                                                    pos:pos + motif_length] + offset,
                                                  linewidth=2,
-                                                 color=sns.color_palette("tab10")[2 + i],
+                                                 color=sns.color_palette("tab10")[color_offset + i],
                                                  errorbar=("ci", None),
                                                  # alpha=0.9,
                                                  estimator=None)
@@ -368,7 +369,7 @@ def plot_motifsets(
                                              errorbar=("ci", 99),
                                              n_boot=10,
                                              lw=1,
-                                             color=sns.color_palette("tab10")[2 + i],
+                                             color=sns.color_palette("tab10")[color_offset + i],
                                              x="time",
                                              y="value")
 
@@ -401,7 +402,7 @@ def plot_motifsets(
                         (data_index[pos], -i),
                         data_index[pos + motif_length - 1] - data_index[pos],
                         ratio,
-                        facecolor=sns.color_palette("tab10")[2 + i],
+                        facecolor=sns.color_palette("tab10")[color_offset + i],
                         alpha=0.7
                     )
                     axes[1, 0].add_patch(rect)
