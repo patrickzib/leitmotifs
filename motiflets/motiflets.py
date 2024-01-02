@@ -719,6 +719,7 @@ def get_approximate_k_motiflet(
             continue
 
         # sum over the knns from the best dimensions
+        # TODO
         knn_distance = 0.0
         for a in np.arange(dim_index.shape[-1]):  # dimensions
             knn_distance += D[dim_index[order, a]][order][knn_idx[k - 1]]

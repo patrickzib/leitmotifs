@@ -118,7 +118,9 @@ def test_audio():
                              lrc_url, audio_file_url)
 
 
-def test_publication():
+def test_publication(use_PCA=False):
+    from sklearn.decomposition import PCA
+
     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
     channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
                 'MFCC 6']
@@ -127,7 +129,15 @@ def test_publication():
     motif_length_range = np.int32(motif_length_range_in_s /
                                   audio_length_seconds * df.shape[1])
 
-    ml = Motiflets(ds_name, df,
+    # make the signal uni-variate by applying PCA
+    if use_PCA:
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=1)
+        df_transform = pca.fit_transform(df.T).T
+    else:
+        df_transform = df
+
+    ml = Motiflets(ds_name, df_transform,
                    dimension_labels=df.index,
                    n_dims=n_dims,
                    )
@@ -140,8 +150,8 @@ def test_publication():
         plot_motifsets=True,
         plot_best_only=True
     )
-    ml.plot_motifset(elbow_points=[10, 14],
-                     path="images_paper/audio/" + ds_name + ".pdf")
+    ml.plot_motifset(  # elbow_points=[10, 14],
+        path="images_paper/audio/" + ds_name + ".pdf")
 
     length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
     print("Found motif length", length_in_seconds, motif_length)
@@ -149,6 +159,20 @@ def test_publication():
     # if wave is present, extract audio snippets
     extract_motif_from_audio(df, index_range, length_in_seconds, ml, motif_length,
                              lrc_url, audio_file_url)
+
+    print("Positions:")
+    for eb in ml.elbow_points:
+        motiflet = np.sort(ml.motiflets[eb])
+        print("\tpos\t:", repr(motiflet))
+
+        if use_PCA:
+            print("\tdims\t:", repr(np.argsort(pca.components_[:])[:, :n_dims]))
+        else:
+            print("\tdims\t:", repr(ml.motiflets_dims[eb]))
+
+
+def test_univariate_pca():
+    test_publication(use_PCA=True)
 
 
 def test_mstamp():
@@ -161,7 +185,7 @@ def test_mstamp():
     run_mstamp(df, ds_name, motif_length=232)
 
 
-def test_plot_both():
+def test_plot_all():
     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
     channels = ['MFCC 0', 'MFCC 1', 'MFCC 2',
                 'MFCC 3', 'MFCC 4', 'MFCC 5',
@@ -170,7 +194,7 @@ def test_plot_both():
 
     motif_length = 232
 
-    path = "images_paper/audio/" + ds_name + ".pdf"
+    path = "images_paper/audio/" + ds_name + "_2.pdf"
 
     motifs = [  # mstamp
         [9317, 9382],
@@ -179,17 +203,27 @@ def test_plot_both():
          3477, 4276, 4535, 5312, 5572],
         [5954, 6083, 6467, 6596, 6790,
          7081, 7210, 7519, 8018, 8147,
-         8277, 8440, 8733, 8895]
+         8277, 8440, 8733, 8895],
+        # PCA+Motiflets
+        [663, 921, 1702, 1960, 2736,
+         2994, 4829, 5087],
+        [979, 5937, 6450, 6612, 7064, 7486,
+         8001, 8147, 8260, 8439, 8781, 8927]
     ]
 
     dims = [  # mstamp
         [0],
         # motiflets
         [0, 1, 2],
-        [0, 1, 5]
+        [0, 1, 5],
+        # PCA+Motiflets
+        [0, 1, 3],
+        [0, 1, 3]
     ]
 
-    motifset_names = ["mStamp + MDL", "1st Motiflets", "2nd Motiflets"]
+    motifset_names = ["mStamp + MDL",
+                      "1st Motiflets", "2nd Motiflets",
+                      "1st PCA+Univ.", "2nd PCA+Univ."]
 
     plot_motifsets(
         ds_name,
@@ -227,7 +261,7 @@ def plot_spectrogram(audio_file_urls):
 
     ax[-1].set_xlabel('Time')
     plt.tight_layout()
-    plt.savefig("images_paper/audio/rolling-stones-spectrogram.pdf")
+    plt.savefig("images_paper/audio/rolling-stones-spectrogram_2.pdf")
 
 
 def test_plot_spectrogram():

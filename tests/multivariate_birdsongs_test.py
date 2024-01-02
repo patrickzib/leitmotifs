@@ -46,14 +46,24 @@ pandas_file_url = dataset["pandas_file_url"]
 #    audio_length_seconds2, df2, index_range2 = read_from_dataframe()
 
 
-def test_publication():
+def test_publication(use_PCA=False):
     seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    df = df.iloc[:channels, :]
+    n_dims = 2
+
+    # make the signal uni-variate by applying PCA
+    if use_PCA:
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=1)
+        df_transform = pca.fit_transform(df.T).T
+    else:
+        df_transform = df
 
     ml = Motiflets(ds_name,
-                   df.iloc[:channels, :],
+                   df_transform,
                    slack=1.0,
                    dimension_labels=df.index,
-                   n_dims=2,
+                   n_dims=n_dims,
                    )
 
     motif_length, all_minima = ml.fit_motif_length(
@@ -69,8 +79,12 @@ def test_publication():
     for a, eb in enumerate(ml.elbow_points):
         motiflet = np.sort(ml.motiflets[eb])
         print("Positions:")
-        print("\tpos\t:", motiflet)
-        print("\tdims\t:", ml.motiflets_dims[eb])
+        print("\tpos\t:", repr(motiflet))
+
+        if use_PCA:
+            print("\tdims\t:", repr(np.argsort(pca.components_[:])[:, :n_dims]))
+        else:
+            print("\tdims\t:", repr(ml.motiflets_dims[eb]))
 
     if os.path.isfile(audio_file_url):
         extract_audio_segment(
@@ -114,6 +128,10 @@ def test_plot_spectrogram():
     plt.show()
 
 
+def test_univariate_pca():
+    test_publication(use_PCA=True)
+
+
 def test_mstamp():
     seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
     m = 50  # As used by k-Motiflets
@@ -124,26 +142,31 @@ def test_mstamp():
     #    length_in_seconds, index_range, m, motif, id=1)
 
 
-def test_plot_both():
+def test_plot_all():
     seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
 
     motif_length = 50
 
-    path = "images_paper/bird_songs/" + ds_name + ".pdf"
+    path = "images_paper/bird_songs/" + ds_name + "_2.pdf"
 
-    motifs = [  # mstamp
+    motifs = [
+        # mstamp
         [2135, 2227],
         # motiflets
-        [509, 566, 2137, 2229]
+        [509, 566, 2137, 2229],
+        # PCA + motiflets
+        [507, 564, 2135, 2227]
     ]
 
     dims = [  # mstamp
         [1],
         # motiflets
-        [1, 3]
+        [1, 3],
+        # PCA + motiflets
+        [1, 2]
     ]
 
-    motifset_names = ["mStamp + MDL", "1st Motiflets"]
+    motifset_names = ["mStamp + MDL", "1st Motiflets", "PCA+Univariate"]
 
     plot_motifsets(
         ds_name,

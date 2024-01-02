@@ -324,7 +324,7 @@ def plot_motifsets(
                          ax=axes[0, 0],
                          linewidth=1,
                          color=sns.color_palette("tab10")[0],
-                         ci=None,
+                         errorbar=("ci", None),
                          estimator=None
                          )
         sns.despine()
@@ -335,15 +335,17 @@ def plot_motifsets(
                         (motiflet_dims[i] is not None and dim in motiflet_dims[i])):
                     if motifset is not None:
                         for a, pos in enumerate(motifset):
-                            _ = sns.lineplot(ax=axes[0, 0],
-                                             x=data_index[
-                                                 np.arange(pos, pos + motif_length)],
-                                             y=dim_data_raw[
-                                               pos:pos + motif_length] + offset,
-                                             linewidth=2,
-                                             color=sns.color_palette("tab10")[2 + i],
-                                             ci=None,
-                                             estimator=None)
+                            if motifset_names is None or "PCA" not in motifset_names[i]:
+                                _ = sns.lineplot(ax=axes[0, 0],
+                                                 x=data_index[
+                                                     np.arange(pos, pos + motif_length)],
+                                                 y=dim_data_raw[
+                                                   pos:pos + motif_length] + offset,
+                                                 linewidth=2,
+                                                 color=sns.color_palette("tab10")[2 + i],
+                                                 errorbar=("ci", None),
+                                                 # alpha=0.9,
+                                                 estimator=None)
 
                             axes[0, 1 + i].set_title(
                                 (("Motif Set " + str(i + 1)) if motifset_names is None
@@ -363,7 +365,7 @@ def plot_motifsets(
                             df_melt = pd.melt(df, id_vars="time")
                             _ = sns.lineplot(ax=axes[0, 1 + i],
                                              data=df_melt,
-                                             ci=99,
+                                             errorbar=("ci", 99),
                                              n_boot=10,
                                              lw=1,
                                              color=sns.color_palette("tab10")[2 + i],
@@ -379,14 +381,14 @@ def plot_motifsets(
                                      label=column,
                                      color=sns.color_palette("tab10")[(aaa + 1) % 10],
                                      ax=axes[0, 0],
-                                     ci=None, estimator=None
+                                     errorbar=("ci", None), estimator=None
                                      )
                     else:
                         sns.lineplot(x=data_index[off[0]: off[1]],
                                      y=dim_data_raw[off[0]:off[1]] + offset,
                                      color=sns.color_palette("tab10")[(aaa + 1) % 10],
                                      ax=axes[0, 0],
-                                     ci=None, estimator=None
+                                     errorbar=("ci", None), estimator=None
                                      )
 
     if motifsets is not None:
@@ -506,7 +508,7 @@ def _plot_elbow_points(
                              x="time", y="value",
                              hue="variable",
                              style="variable",
-                             ci=99,
+                             errorbar=("ci", 99),
                              # alpha=0.8,
                              n_boot=10, color=sns.color_palette("tab10")[(i + 1) % 10])
             axins.set_xlabel("")
@@ -798,7 +800,7 @@ def _plot_window_lengths(
         x=motif_length_range[indices],
         y=au_ef[indices],
         label="AU_EF",
-        ci=None, estimator=None,
+        errorbar=("ci", None), estimator=None,
         ax=ax)
     sns.despine()
     ax.set_title("Best lengths on " + ds_name, size=14)
@@ -838,7 +840,7 @@ def _plot_window_lengths(
                              x="time", y="value",
                              hue="variable",
                              style="variable",
-                             ci=99,
+                             errorbar=("ci", 99),
                              n_boot=10,
                              lw=1,
                              color=sns.color_palette("tab10")[(i + 1) % 10])
