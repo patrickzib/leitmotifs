@@ -1,6 +1,7 @@
 import os
 import matplotlib as mpl
 from motiflets.motiflets import read_audio_from_dataframe
+from motiflets.motiflets import read_ground_truth
 
 from audio.lyrics import *
 
@@ -53,8 +54,45 @@ pandas_file_url = dataset["pandas_file_url"]
 #    audio_length_seconds2, df2, index_range2 = read_from_dataframe(pandas_file_url)
 
 
+# def test_ground_truth():
+#     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+#
+#     ground_truth = read_ground_truth(pandas_file_url, path="")
+#
+#     channels = [  # 'MFCC 0',
+#         'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
+#         'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
+#         'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15'
+#     ]
+#     df = df.loc[channels]
+#
+#     ml = Motiflets(ds_name, df,
+#                    dimension_labels=df.index,
+#                    n_dims=n_dims,
+#                    slack=1.0,
+#                    ground_truth=ground_truth
+#                    )
+#
+#     print("Positions:", index_range[ground_truth.loc[0][0]])
+#
+#     if os.path.isfile(audio_file_url):
+#         # extract motiflets
+#         for a, motif in enumerate(ground_truth.loc[0]):
+#             motif_length = motif[0][1]-motif[0][0]
+#             length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
+#
+#             extract_audio_segment(
+#                 df, ds_name, audio_file_url, "snippets",
+#                 length_in_seconds, index_range, motif_length,
+#                 np.array(motif)[:,0], id=(a + 1))
+#
+#     ml.plot_dataset()
+
 def test_publication():
     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+
+    ground_truth = read_ground_truth(pandas_file_url, path="")
+
     channels = [  # 'MFCC 0',
         'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
         'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
@@ -69,6 +107,7 @@ def test_publication():
                    dimension_labels=df.index,
                    n_dims=n_dims,
                    slack=1.0,
+                   ground_truth=ground_truth
                    )
 
     motif_length, _ = ml.fit_motif_length(
@@ -89,6 +128,7 @@ def test_publication():
         for a, eb in enumerate(ml.elbow_points):
             motiflet = np.sort(ml.motiflets[eb])
             print("Positions:", index_range[motiflet])
+            print("Positions:", list(zip(motiflet, motiflet+motif_length)))
 
             extract_audio_segment(
                 df, ds_name, audio_file_url, "snippets",

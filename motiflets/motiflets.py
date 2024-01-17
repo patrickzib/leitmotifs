@@ -8,6 +8,7 @@ __author__ = ["patrickzib"]
 
 from ast import literal_eval
 from os.path import exists
+import os
 
 import numpy as np
 import numpy.fft as fft
@@ -50,13 +51,17 @@ def _resample(data, sampling_factor=10000):
     return data, factor
 
 
-def read_ground_truth(dataset):
+def read_ground_truth(
+        dataset,
+        path='../datasets/ground_truth/'):
     """Reads the ground-truth data for the time series.
 
     Parameters
     ----------
     dataset : String
         Name of the dataset
+    path : String
+        Path to the ground-truth data
 
     Returns
     -------
@@ -64,7 +69,7 @@ def read_ground_truth(dataset):
         A series of ground-truth data
 
     """
-    file = '../datasets/ground_truth/' + dataset.split(".")[0] + "_gt.csv"
+    file = os.path.splitext(dataset)[0] + "_gt.csv"
     if exists(file):
         print(file)
         series = pd.read_csv(file, index_col=0)

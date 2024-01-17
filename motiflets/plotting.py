@@ -186,6 +186,7 @@ class Motiflets:
             motifsets=self.motiflets[elbow_points],
             motiflet_dims=self.motiflets_dims[elbow_points],
             dist=self.dists[elbow_points],
+            ground_truth=self.ground_truth,
             motif_length=self.motif_length,
             show=path is None)
 
@@ -300,10 +301,19 @@ def plot_motifsets(
                                  squeeze=False,
                                  gridspec_kw={
                                      'width_ratios': git_ratio,
+                                     'height_ratios': [10, 2]})
+    elif ground_truth is not None:
+        fig, axes = plt.subplots(2, 1,
+                                 sharey="row",
+                                 sharex=False,
+                                 figsize=(20, 5 + data.shape[0] // 2),
+                                 squeeze=False,
+                                 gridspec_kw={
+                                     'width_ratios': [4],
                                      'height_ratios': [10, 1]})
     else:
         fig, axes = plt.subplots(1, 1, squeeze=False,
-                                 figsize=(20, 3 + data.shape[0] // 3))
+                                 figsize=(20, 5 + data.shape[0] // 2))
 
     if ground_truth is None:
         ground_truth = []
@@ -373,33 +383,70 @@ def plot_motifsets(
                                              x="time",
                                              y="value")
 
-        for aaa, column in enumerate(ground_truth):
-            for offsets in ground_truth[column]:
-                for pos, off in enumerate(offsets):
-                    if pos == 0:
-                        sns.lineplot(x=data_index[off[0]: off[1]],
-                                     y=dim_data_raw[off[0]:off[1]] + offset,
-                                     label=column,
-                                     color=sns.color_palette("tab10")[(aaa + 1) % 10],
-                                     ax=axes[0, 0],
-                                     errorbar=("ci", None), estimator=None
-                                     )
-                    else:
-                        sns.lineplot(x=data_index[off[0]: off[1]],
-                                     y=dim_data_raw[off[0]:off[1]] + offset,
-                                     color=sns.color_palette("tab10")[(aaa + 1) % 10],
-                                     ax=axes[0, 0],
-                                     errorbar=("ci", None), estimator=None
-                                     )
+        # for aaa, column in enumerate(ground_truth):
+        #     for offsets in ground_truth[column]:
+        #         for pos, off in enumerate(offsets):
+        #             if pos == 0 and dim == 0:
+        #                 # Plot label only once
+        #                 sns.lineplot(x=data_index[off[0]: off[1]],
+        #                              y=dim_data_raw[off[0]:off[1]] + offset,
+        #                              label=column,
+        #                              alpha=0.5,
+        #                              color=sns.color_palette("tab10")[(aaa-1) % 10],
+        #                              ax=axes[0, 0],
+        #                              errorbar=("ci", None),
+        #                              estimator=None
+        #                              )
+        #             else:
+        #                 sns.lineplot(x=data_index[off[0]: off[1]],
+        #                              y=dim_data_raw[off[0]:off[1]] + offset,
+        #                              color=sns.color_palette("tab10")[(aaa-1) % 10],
+        #                              alpha=0.5,
+        #                              ax=axes[0, 0],
+        #                              errorbar=("ci", None),
+        #                              estimator=None
+        #                              )
+
+    gt_count = 0
+    y_labels = []
+    motif_set_count = 0 if motifsets is None else len(motifsets)
+
+    for aaa, column in enumerate(ground_truth):
+        for offsets in ground_truth[column]:
+            for off in offsets:
+                ratio = 0.8
+                start = off[0]
+                end = off[1]
+                rect = Rectangle(
+                    (data_index[start], 0),
+                    data_index[end - 1] - data_index[start],
+                    ratio,
+                    facecolor=sns.color_palette("tab10")[
+                        color_offset + motif_set_count + aaa],
+                    alpha=0.7
+                )
+
+                rx, ry = rect.get_xy()
+                cx = rx + rect.get_width() / 2.0
+                cy = ry + rect.get_height() / 2.0
+                axes[1, 0].annotate(column, (cx, cy),
+                                    color='black',
+                                    weight='bold',
+                                    fontsize=10,
+                                    ha='center', va='center')
+
+                axes[1, 0].add_patch(rect)
+    if ground_truth is not None and len(ground_truth) > 0:
+        gt_count = 1
+        y_labels.append("Ground Truth")
 
     if motifsets is not None:
-        y_labels = []
         for i, motiflet in enumerate(motifsets):
             if motiflet is not None:
-                for aa, pos in enumerate(motiflet):
+                for pos in motiflet:
                     ratio = 0.8
                     rect = Rectangle(
-                        (data_index[pos], -i),
+                        (data_index[pos], -i -gt_count),
                         data_index[pos + motif_length - 1] - data_index[pos],
                         ratio,
                         facecolor=sns.color_palette("tab10")[color_offset + i],
@@ -407,13 +454,18 @@ def plot_motifsets(
                     )
                     axes[1, 0].add_patch(rect)
 
-                y_labels.append("Motif Set" + str(i))
+                label = (("Motif Set " + str(i + 1)) if motifset_names is None
+                                 else motifset_names[i])
+                y_labels.append(label)
 
-        axes[1, 0].set_yticks(-np.arange(len(motifsets)) + 1.5)
-        axes[1, 0].set_yticklabels([], fontsize=12)
-        axes[1, 0].set_ylim([-abs(len(motifsets)) + 1, 1])
+    if len(y_labels) > 0:
+        axes[1, 0].set_yticks(-np.arange(len(y_labels)) + 0.5)
+        axes[1, 0].set_yticklabels(y_labels, fontsize=12)
+        axes[1, 0].set_ylim([-abs(len(y_labels)) + 1, 1])
         axes[1, 0].set_xlim(axes[0, 0].get_xlim())
-        axes[1, 0].set_title("Position of Motifsets", fontsize=20)
+
+        if motifsets is not None:
+            axes[1, 0].set_title("Position of Motif Sets", fontsize=20)
 
         for i in range(1, axes.shape[-1]):
             axes[1, i].remove()
@@ -428,6 +480,7 @@ def plot_motifsets(
 
     sns.despine()
     fig.tight_layout()
+
     if show:
         plt.show()
 

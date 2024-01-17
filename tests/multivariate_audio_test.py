@@ -3,7 +3,7 @@ import os
 
 from audio.lyrics import *
 from motiflets.competitors import *
-from motiflets.motiflets import read_audio_from_dataframe
+from motiflets.motiflets import read_audio_from_dataframe, read_ground_truth
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -88,8 +88,89 @@ def extract_motif_from_audio(
         print("No lyrics or audio file found.")
 
 
+
+def test_ground_truth():
+    audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    ground_truth = read_ground_truth(pandas_file_url, path="")
+
+    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6']
+    df = df.loc[channels]
+
+    # motif_length_range = np.int32(motif_length_range_in_s /
+    #                              audio_length_seconds * df.shape[1])
+
+    ml = Motiflets(ds_name, df,
+                   dimension_labels=df.index,
+                   n_dims=n_dims,
+                   ground_truth=ground_truth
+                   )
+
+    print("Positions:", index_range[ground_truth.loc[0][0]])
+
+    # positions = []
+    # # B1 - I see a red door and I want it painted black
+    # positions.append([[index_range.searchsorted(14.8), index_range.searchsorted(19.90)],
+    #                   [index_range.searchsorted(20.70), index_range.searchsorted(26)]])
+    #
+    # # C1 - I see the girls walk by, dressed in their summer clothes
+    # positions.append([[index_range.searchsorted(26.70), index_range.searchsorted(32.10)],
+    #                   [index_range.searchsorted(32.80), index_range.searchsorted(37.90)]])
+    #
+    # # B2 - I see a line of cars and they're all painted black
+    # positions.append([[index_range.searchsorted(38.90), index_range.searchsorted(44.20)],
+    #                   [index_range.searchsorted(44.90), index_range.searchsorted(50.10)]])
+    #
+    # # C2 - I see people turn their heads and quickly look away
+    # positions.append([[index_range.searchsorted(50.80), index_range.searchsorted(55.70)],
+    #                   [index_range.searchsorted(56.80), index_range.searchsorted(61.80)]])
+    #
+    # # B3 - I look inside myself and see my heart is black
+    # positions.append([[index_range.searchsorted(62.90), index_range.searchsorted(68.00)],
+    #                   [index_range.searchsorted(68.80), index_range.searchsorted(73.90)]])
+    #
+    # # C3 - Maybe then I'll fade away and not have to face the facts
+    # positions.append([[index_range.searchsorted(74.80), index_range.searchsorted(79.70)],
+    #                   [index_range.searchsorted(80.80), index_range.searchsorted(85.80)]])
+    #
+    # # D1 - No more will my green sea go turn a deeper blue
+    # positions.append([[index_range.searchsorted(86.90), index_range.searchsorted(92.10)],
+    #                   [index_range.searchsorted(93.30), index_range.searchsorted(98.50)]])
+    #
+    # # C4 - If I look hard enough into the setting sun
+    # positions.append([[index_range.searchsorted(99.40), index_range.searchsorted(104.40)],
+    #                   [index_range.searchsorted(105.40), index_range.searchsorted(110.60)]])
+    #
+    # # B1 - I see a red door and I want it painted black
+    # positions.append([[index_range.searchsorted(112.00), index_range.searchsorted(116.40)],
+    #                   [index_range.searchsorted(117.50), index_range.searchsorted(122.30)]])
+    #
+    # # C1 - I see the girls walk by, dressed in their summer clothes
+    # positions.append([[index_range.searchsorted(123.40), index_range.searchsorted(128.70)],
+    #                   [index_range.searchsorted(129.40), index_range.searchsorted(134.60)]])
+    #
+    # # F - Humming
+    # positions.append([[index_range.searchsorted(135.50), index_range.searchsorted(158.20)],
+    #                   [index_range.searchsorted(177.60), index_range.searchsorted(213.30)]])
+    #
+    # print(positions)
+
+    if os.path.isfile(audio_file_url):
+        # extract motiflets
+        for a, motif in enumerate(ground_truth.loc[0]):
+            motif_length = motif[0][1]-motif[0][0]
+            length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
+
+            extract_audio_segment(
+                df, ds_name, audio_file_url, "snippets",
+                length_in_seconds, index_range, motif_length,
+                np.array(motif)[:,0], id=(a + 1))
+
+    ml.plot_dataset()
+
+
 def test_audio():
     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    ground_truth = read_ground_truth(pandas_file_url, path="")
     channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5', 'MFCC 6']
     df = df.loc[channels]
 
@@ -99,6 +180,7 @@ def test_audio():
     ml = Motiflets(ds_name, df,
                    dimension_labels=df.index,
                    n_dims=n_dims,
+                   ground_truth=ground_truth
                    )
 
     motif_length, _ = ml.fit_motif_length(
@@ -119,7 +201,8 @@ def test_audio():
 
 
 def test_publication(use_PCA=False):
-    from sklearn.decomposition import PCA
+    # from sklearn.decomposition import PCA
+    ground_truth = read_ground_truth(pandas_file_url, path="")
 
     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
     channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
@@ -140,6 +223,7 @@ def test_publication(use_PCA=False):
     ml = Motiflets(ds_name, df_transform,
                    dimension_labels=df.index,
                    n_dims=n_dims,
+                   ground_truth=ground_truth
                    )
 
     motif_length, _ = ml.fit_motif_length(
@@ -187,6 +271,8 @@ def test_mstamp():
 
 def test_plot_all():
     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    ground_truth = read_ground_truth(pandas_file_url, path="")
+
     channels = ['MFCC 0', 'MFCC 1', 'MFCC 2',
                 'MFCC 3', 'MFCC 4', 'MFCC 5',
                 'MFCC 6']
@@ -223,7 +309,7 @@ def test_plot_all():
 
     motifset_names = ["mStamp + MDL",
                       "1st Motiflets", "2nd Motiflets",
-                      "1st PCA+Univ.", "2nd PCA+Univ."]
+                      "1st PCA", "2nd PCA"]
 
     plot_motifsets(
         ds_name,
@@ -233,6 +319,7 @@ def test_plot_all():
         motifset_names=motifset_names,
         # dist=self.dists[elbow_points],
         motif_length=motif_length,
+        ground_truth=ground_truth,
         show=path is None)
 
     if path is not None:
