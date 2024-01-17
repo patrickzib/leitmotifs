@@ -144,6 +144,7 @@ def test_mstamp():
 
 def test_plot_all():
     seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    df = df.iloc[:10] # use only 10 MFCCs
 
     motif_length = 50
 

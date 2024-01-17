@@ -2,7 +2,7 @@ from matplotlib.animation import FuncAnimation
 
 import amc.amc_parser as amc_parser
 from motiflets.plotting import *
-
+from motiflets.motiflets import read_ground_truth
 import matplotlib as mpl
 
 mpl.rcParams['figure.dpi'] = 150
@@ -118,7 +118,7 @@ datasets = {
         "amc_name": "93_08",  # Fancy Charleston
         "asf_path": '../datasets/motion_data/93.asf'
     },
-    "Charleston-Side-By-Side-Female": {
+    "Charleston - Side By Side Female": {
         "ks": 15,
         "motif_length": 120,
         "amc_name": "93_04",
@@ -134,7 +134,7 @@ datasets = {
 
 # dataset = datasets["Boxing"]
 # dataset = datasets["Stairs"]
-dataset = datasets["Charleston-Side-By-Side-Female"]
+dataset = datasets["Charleston - Side By Side Female"]
 k_max = dataset["ks"]
 motif_length = dataset["motif_length"]
 amc_name = dataset["amc_name"]
@@ -305,6 +305,8 @@ def test_publication():
                   ]
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
+    ground_truth = read_ground_truth(asf_path, path="")
+
 
     df = pd.DataFrame(
         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
@@ -317,10 +319,13 @@ def test_publication():
     length_range = np.arange(50, 200, 10)
     print(length_range)
 
-    ml = Motiflets("Charleston-Side-By-Side-Female", series,
-                   dimension_labels=df.index,
-                   n_dims=10
-                   )
+    ml = Motiflets(
+        "Charleston-Side-By-Side-Female",
+        series,
+        dimension_labels=df.index,
+        n_dims=10,
+        ground_truth=ground_truth
+    )
 
     m, all_minima = ml.fit_motif_length(
         k_max, length_range,
@@ -328,6 +333,12 @@ def test_publication():
         plot_best_only=True,
         plot_motifsets=True)
     ml.plot_motifset(path="images_paper/charleston.pdf")
+
+    print("Positions:")
+    for eb in ml.elbow_points:
+        motiflet = np.sort(ml.motiflets[eb])
+        print("\tpos\t:", repr(motiflet))
+        print("\tdims\t:", repr(ml.motiflets_dims[eb]))
 
     # for minimum in all_minima:
     #   motif_length = length_range[minimum]
@@ -338,33 +349,33 @@ def test_publication():
     #   dimensions = np.zeros(len(dists), dtype=object)
     #   dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
 
-    motif_length = ml.motif_length
-    elbow_points = ml.elbow_points
-    motiflets = ml.motiflets
-    dimensions = ml.motiflets_dims
+    if False:
+        motif_length = ml.motif_length
+        elbow_points = ml.elbow_points
+        motiflets = ml.motiflets
+        dimensions = ml.motiflets_dims
 
+        if len(elbow_points) >= 1:
+            for eb in elbow_points:
+                for i, pos in enumerate(motiflets[eb]):
+                    use_joints = df.index.values[dimensions[eb]]
+                    # strip the _x, _y, _z from the joint
+                    use_joints = [joint[:-2] for joint in use_joints]
+                    fig = plt.figure()
+                    ax = plt.axes(projection='3d')
 
-    if len(elbow_points) >= 1:
-        for eb in elbow_points:
-            for i, pos in enumerate(motiflets[eb]):
-                use_joints = df.index.values[dimensions[eb]]
-                # strip the _x, _y, _z from the joint
-                use_joints = [joint[:-2] for joint in use_joints]
-                fig = plt.figure()
-                ax = plt.axes(projection='3d')
+                    out_path = ('images_paper/charleston_'
+                                + amc_name + '_' + str(motif_length)
+                                + '_' + str(eb) + '_' + str(i) + '.gif')
 
-                out_path = ('images_paper/charleston_'
-                            + amc_name + '_' + str(motif_length)
-                            + '_' + str(eb) + '_' + str(i) + '.gif')
+                    FuncAnimation(fig,
+                                  lambda i: draw_frame(
+                                      ax, motions, joints, i,
+                                      joints_to_highlight=use_joints
+                                  ),
+                                  range(pos, pos + motif_length, 4)).save(
+                        out_path,
+                        bitrate=1000,
+                        fps=20)
 
-                FuncAnimation(fig,
-                              lambda i: draw_frame(
-                                  ax, motions, joints, i,
-                                  joints_to_highlight=use_joints
-                              ),
-                              range(pos, pos + motif_length, 4)).save(
-                    out_path,
-                    bitrate=1000,
-                    fps=20)
-
-                    # break
+                        # break

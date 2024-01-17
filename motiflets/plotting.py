@@ -297,11 +297,12 @@ def plot_motifsets(
                                  sharey="row",
                                  sharex=False,
                                  figsize=(
-                                     10 + 2 * len(motifsets), 5 + data.shape[0] // 2),
+                                     10 + 2 * len(motifsets),
+                                     5 + (data.shape[0]+len(motifsets)) // 2),
                                  squeeze=False,
                                  gridspec_kw={
                                      'width_ratios': git_ratio,
-                                     'height_ratios': [10, 2]})
+                                     'height_ratios': [10, 3]}) # 5 for rolling stone?
     elif ground_truth is not None:
         fig, axes = plt.subplots(2, 1,
                                  sharey="row",
