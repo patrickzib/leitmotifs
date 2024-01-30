@@ -1146,17 +1146,18 @@ def search_k_motiflets_elbow(
     # switch to sparse matrix representation when length is above 30_000
     # sparse matrix is 2x slower but needs less memory
     sparse_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
-    sparse = True # sparse_gb > 4.0
+    sparse = sparse_gb > 8.0
 
     # compute the distance matrix
     if D_full is None:
         if sparse:
-            print("sparse")
+            print("Using Sparse Backend", flush=True)
             D_knns, D_full, knns = compute_distance_matrix_sparse(
                 data_raw, m, k_max_,
                 n_jobs=n_jobs,
                 slack=slack)
         else:
+            print("Using Default Backend", flush=True)
             D_full, knns = compute_distance_matrix(
                 data_raw, m, k_max_,
                 n_jobs=n_jobs,
