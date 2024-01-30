@@ -280,7 +280,7 @@ def test_plot_all():
 
     motif_length = 232
 
-    path = "images_paper/audio/" + ds_name + "_2.pdf"
+    path = "images_paper/audio/" + ds_name + "_new.pdf"
 
     motifs = [  # mstamp
         [9317, 9382],
@@ -338,7 +338,10 @@ def plot_spectrogram(audio_file_urls):
             samplingFrequency, data = read_wave(audio_file_url)
             left, right = data[:, 0], data[:, 1]
 
-            ax[i].specgram(left, Fs=samplingFrequency, cmap='plasma')
+            ax[i].specgram(left,
+                           Fs=samplingFrequency, # cmap='Grays',
+                           # scale='dB', # vmin=-50, vmax=0
+                           )
             ax[i].set_ylabel("Freq.")
 
             ax[i].set_ylim([0, 5000])
@@ -348,7 +351,7 @@ def plot_spectrogram(audio_file_urls):
 
     ax[-1].set_xlabel('Time')
     plt.tight_layout()
-    plt.savefig("images_paper/audio/rolling-stones-spectrogram_2.pdf")
+    plt.savefig("images_paper/audio/rolling-stones-spectrogram_new.pdf")
 
 
 def test_plot_spectrogram():

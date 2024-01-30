@@ -264,6 +264,7 @@ def plot_motifsets(
         motiflet_dims=None,
         motif_length=None,
         ground_truth=None,
+        font_size=26,
         show=True):
     """Plots the data and the found motif sets.
 
@@ -285,6 +286,11 @@ def plot_motifsets(
         Outputs the plot
 
     """
+    # set_sns_style(font_size)
+    # sns.set(font_scale=3)
+    sns.set(font="Calibri")
+    sns.set_style("white")
+
     # turn into 2d array
     data = convert_to_2d(data)
 
@@ -324,7 +330,7 @@ def plot_motifsets(
     color_offset = 1
     offset = 0
     tick_offsets = []
-    axes[0, 0].set_title(ds_name, fontsize=20)
+    axes[0, 0].set_title(ds_name, fontsize=22)
 
     for dim in range(data_raw.shape[0]):
         dim_data_raw = zscore(data_raw[dim])
@@ -353,7 +359,7 @@ def plot_motifsets(
                                                      np.arange(pos, pos + motif_length)],
                                                  y=dim_data_raw[
                                                    pos:pos + motif_length] + offset,
-                                                 linewidth=2,
+                                                 linewidth=3,
                                                  color=sns.color_palette("tab10")[color_offset + i],
                                                  errorbar=("ci", None),
                                                  # alpha=0.9,
@@ -365,7 +371,7 @@ def plot_motifsets(
                                 "k=" + str(len(motifset)) +
                                 # ", d=" + str(np.round(dist[i], 2)) +
                                 ", l=" + str(motif_length),
-                                fontsize=16)
+                                fontsize=18)
 
                             df = pd.DataFrame()
                             df["time"] = range(0, motif_length)
@@ -433,7 +439,7 @@ def plot_motifsets(
                 axes[1, 0].annotate(column, (cx, cy),
                                     color='black',
                                     weight='bold',
-                                    fontsize=10,
+                                    fontsize=12,
                                     ha='center', va='center')
 
                 axes[1, 0].add_patch(rect)
@@ -461,23 +467,23 @@ def plot_motifsets(
 
     if len(y_labels) > 0:
         axes[1, 0].set_yticks(-np.arange(len(y_labels)) + 0.5)
-        axes[1, 0].set_yticklabels(y_labels, fontsize=12)
+        axes[1, 0].set_yticklabels(y_labels, fontsize=18)
         axes[1, 0].set_ylim([-abs(len(y_labels)) + 1, 1])
         axes[1, 0].set_xlim(axes[0, 0].get_xlim())
 
         if motifsets is not None:
-            axes[1, 0].set_title("Position of Motif Sets", fontsize=20)
+            axes[1, 0].set_title("Positions", fontsize=22)
 
         for i in range(1, axes.shape[-1]):
             axes[1, i].remove()
 
     if isinstance(data, pd.DataFrame):
         axes[0, 0].set_yticks(tick_offsets)
-        axes[0, 0].set_yticklabels(data.index, fontsize=12)
+        axes[0, 0].set_yticklabels(data.index, fontsize=18)
 
         if motifsets is not None:
             axes[0, 1].set_yticks(tick_offsets)
-            axes[0, 1].set_yticklabels(data.index, fontsize=12)
+            axes[0, 1].set_yticklabels(data.index, fontsize=18)
 
     sns.despine()
     fig.tight_layout()

@@ -107,7 +107,7 @@ datasets = {
         "asf_path": '../datasets/motion_data/13.asf'
     },
     "Boxing": {
-        "ks": 15,
+        "ks": 20,
         "motif_length": 100,
         "amc_name": "13_17",
         "asf_path": '../datasets/motion_data/13.asf'
@@ -132,9 +132,10 @@ datasets = {
     }
 }
 
-# dataset = datasets["Boxing"]
+ds_name = "Boxing"
+dataset = datasets[ds_name]
 # dataset = datasets["Stairs"]
-dataset = datasets["Charleston - Side By Side Female"]
+# dataset = datasets["Charleston - Side By Side Female"]
 k_max = dataset["ks"]
 motif_length = dataset["motif_length"]
 amc_name = dataset["amc_name"]
@@ -156,14 +157,17 @@ amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 # used_joints = [  'lhand', 'lfingers', 'lthumb'
 #               'rhand', 'rfingers', 'rthumb']
 
-# used_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
-#              'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
-#              ]
+# Boxing
+used_joints = [
+    # 'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers','rthumb',
+    # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
+    'rfemur', 'rtibia', 'rfoot', 'rtoes',
+]
 
 # Hands
-used_joints = [
-    'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
-    'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb']
+# used_joints = [
+#    'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+#    'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb']
 
 # footwork
 # used_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
@@ -247,14 +251,21 @@ def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     df = exclude_body_joints(df)
     df = include_joints(df, joints_to_use, add_xyz=add_xyz)
 
-    print("Used joints:", joints_to_use)
-    series = df.values
+    time = np.arange(0, df.shape[1]/120, 1/120)
+    df.columns = time
+    df.name = ds_name
 
-    ml = Motiflets(amc_name, series,
-                   # elbow_deviation=1.25,
-                   slack=0.5,
-                   dimension_labels=df.index
-                   )
+    print("Used joints:", joints_to_use)
+    # series = df.values
+
+    ml = Motiflets(
+        df.name, df,
+        # elbow_deviation=1.25,
+        slack=0.5,
+        dimension_labels=df.index,
+        n_dims=20,
+        # n_jobs=2
+    )
 
     dists, candidates, elbow_points = ml.fit_k_elbow(
         k_max,
@@ -297,7 +308,7 @@ def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
                 bitrate=1000,
                 fps=20)
 
-def test_publication():
+def test_publication_chaleston():
     use_joints2 = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
                   'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
                   #'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers',
@@ -314,14 +325,16 @@ def test_publication():
     df = include_joints(df, use_joints2)
 
     print("Data", df.shape)
-    series = df
+    time = np.arange(0, df.shape[1]/120, 1/120)
+    df.columns = time
+    df.name = ds_name
 
     length_range = np.arange(50, 200, 10)
     print(length_range)
 
     ml = Motiflets(
-        "Charleston-Side-By-Side-Female",
-        series,
+        "Charleston Side By Side - Female",
+        df,
         dimension_labels=df.index,
         n_dims=10,
         ground_truth=ground_truth

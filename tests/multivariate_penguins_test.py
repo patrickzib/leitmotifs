@@ -22,7 +22,7 @@ def read_penguin_data():
                                  "4", "5", "6",
                                  "7", "Pressure", "9"]),
                          delimiter="\t", header=None)
-    ds_name = "Penguins (Longer Snippet)"
+    ds_name = "Penguins"
 
     return ds_name, series
 
@@ -304,7 +304,7 @@ def test_plot_all():
     ds_name, B = read_penguin_data()
     for i, start in enumerate([0, 3000]):
         series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]]
-        path = "images_paper/penguins/penguins_" + str(start) + "_2.pdf"
+        path = "images_paper/penguins/penguins_" + str(start) + "_new.pdf"
 
         motifset_names = ["mStamp + MDL", "Motiflets", "PCA+Univariate"]
         motifs = motif_sets[i]

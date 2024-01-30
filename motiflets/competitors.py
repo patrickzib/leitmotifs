@@ -42,3 +42,5 @@ def run_mstamp(df, ds_name, motif_length):
         motifset_names=motifset_names,
         motif_length=motif_length,
         show=True)
+
+    return motif

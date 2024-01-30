@@ -19,14 +19,16 @@ def read_penguin_data():
 
     return ds_name, series
 
+def test_pca():
+    test_motiflets(True)
 
-def test_motiflets():
+def test_motiflets(use_PCA=False):
     lengths = [
-        1_000, 5_000,
-        # 10_000, 30_000,
-        # 50_000, 100_000,
-        # 150_000, 200_000,
-        # 250_000
+        #1_000, 5_000,
+        #10_000, 30_000,
+        #50_000, 100_000,
+        150_000, 200_000,
+        250_000
     ]
 
     ds_name, B = read_penguin_data()
@@ -36,7 +38,16 @@ def test_motiflets():
         print("Current", length)
         series = B.iloc[:length].T
 
-        ml = Motiflets(ds_name, series,
+        # make the signal uni-variate by applying PCA
+        if use_PCA:
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=1)
+            df_transform = pca.fit_transform(series.T).T
+        else:
+            df_transform = df
+
+        ml = Motiflets(ds_name,
+                       df_transform,
                        n_dims=2,
                        n_jobs=8,
                        )
@@ -56,9 +67,13 @@ def test_motiflets():
 
         dict = time_s
         df = pd.DataFrame(data=dict, columns=['Time'], index=lengths)
-        df["Method"] = "k-Motiflets"
         df.index.name = "Lengths"
-        df.to_csv('csv/scalability_motiflets_k5.csv')
+        if use_PCA:
+            df["Method"] = "PCA (Motiflets)"
+            df.to_csv('csv/scalability_motiflets_pca_k5.csv')
+        else:
+            df["Method"] = "Leitmotif"
+            df.to_csv('csv/scalability_motiflets_k5.csv')
 
 
 def test_mstamp():

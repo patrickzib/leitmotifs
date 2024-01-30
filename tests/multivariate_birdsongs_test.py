@@ -104,7 +104,12 @@ def plot_spectrogram(audio_file_urls):
             samplingFrequency, data = read_wave(audio_file_url)
             left, right = data[offset[i]:, 0], data[offset[i]:, 1]
 
-            ax[i].specgram(left, Fs=samplingFrequency, cmap='plasma')
+            ax[i].specgram(left,
+                           Fs=samplingFrequency,
+                           cmap='Grays',
+                           # scale='dB',
+                           vmin=-30, vmax=30
+                           )
             ax[i].set_ylabel("Freq.")
 
             ax[i].set_ylim([0, 10000])
@@ -119,10 +124,10 @@ def plot_spectrogram(audio_file_urls):
 
 def test_plot_spectrogram():
     audio_file_urls = \
-        ["images_paper/bird_songs/Common-Starling_Dims_20_Length_50_Motif_0.wav",
-         "images_paper/bird_songs/Common-Starling_Dims_20_Length_50_Motif_1.wav",
-         "images_paper/bird_songs/Common-Starling_Dims_20_Length_50_Motif_2.wav",
-         "images_paper/bird_songs/Common-Starling_Dims_20_Length_50_Motif_3.wav"]
+        ["images_paper/bird_songs/Common-Starling_Dims_10_Length_50_Motif_0.wav",
+         "images_paper/bird_songs/Common-Starling_Dims_10_Length_50_Motif_1.wav",
+         "images_paper/bird_songs/Common-Starling_Dims_10_Length_50_Motif_2.wav",
+         "images_paper/bird_songs/Common-Starling_Dims_10_Length_50_Motif_3.wav"]
 
     plot_spectrogram(audio_file_urls)
     plt.show()
@@ -148,7 +153,7 @@ def test_plot_all():
 
     motif_length = 50
 
-    path = "images_paper/bird_songs/" + ds_name + "_2.pdf"
+    path = "images_paper/bird_songs/" + ds_name + "_new.pdf"
 
     motifs = [
         # mstamp
@@ -167,7 +172,7 @@ def test_plot_all():
         [1, 2]
     ]
 
-    motifset_names = ["mStamp + MDL", "1st Motiflets", "PCA+Univariate"]
+    motifset_names = ["mStamp + MDL", "Leitmotif", "PCA+Univariate"]
 
     plot_motifsets(
         ds_name,

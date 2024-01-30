@@ -4,6 +4,7 @@ from motiflets.motiflets import read_audio_from_dataframe
 from motiflets.motiflets import read_ground_truth
 
 from audio.lyrics import *
+from motiflets.competitors import *
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -118,7 +119,7 @@ def test_publication():
         plot_motifsets=False,
         plot_best_only=True,
     )
-    ml.plot_motifset(path="images_paper/audio/" + ds_name + ".pdf")
+    ml.plot_motifset(path="images_paper/audio/" + ds_name + "_new.pdf")
 
     length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
     print("Found motif length", length_in_seconds, motif_length)
@@ -145,7 +146,8 @@ def plot_spectrogram(audio_file_urls):
         if os.path.isfile(audio_file_url):
             samplingFrequency, data = read_wave(audio_file_url)
             left, right = data[:, 0], data[:, 1]
-            ax[i].specgram(left, Fs=samplingFrequency, cmap='Spectral')
+            ax[i].specgram(left, Fs=samplingFrequency, cmap='Grays',
+                           scale='dB', vmin=-10)
             ax[i].set_ylabel("Freq.")
             ax[i].set_ylim([0, 5000])
         else:
@@ -154,6 +156,27 @@ def plot_spectrogram(audio_file_urls):
     ax[-1].set_xlabel('Time')
     plt.tight_layout()
     plt.savefig("images_paper/audio/lotr-spectrogram.pdf")
+
+
+def test_mstamp():
+    audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    # ground_truth = read_ground_truth(pandas_file_url, path="")
+    channels = [  # 'MFCC 0',
+        'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
+        'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
+        'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15'
+    ]
+    df = df.loc[channels]
+
+    m = 301  # As used by k-Motiflets
+    motif = run_mstamp(df, ds_name, motif_length=m)
+
+    if os.path.isfile(audio_file_url):
+        length_in_seconds = m * audio_length_seconds / df.shape[1]
+        extract_audio_segment(
+            df, ds_name, audio_file_url, "snippets",
+            length_in_seconds, index_range, m, motif)
+
 
 
 def test_plot_spectrogram():
@@ -167,3 +190,47 @@ def test_plot_spectrogram():
 
     plot_spectrogram(audio_file_urls)
     plt.show()
+
+
+def test_plot_all():
+    seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    ground_truth = read_ground_truth(pandas_file_url, path="")
+    channels = [  # 'MFCC 0',
+        'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
+        'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
+        'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15'
+    ]
+    df = df.loc[channels]
+
+    motif_length = 301
+
+    path = "images_paper/audio/" + ds_name + "_new.pdf"
+
+    motifs = [
+        # mstamp
+        [735, 5939],
+        # motiflets
+        [249, 628, 5372, 5826],
+    ]
+
+    dims = [  # mstamp
+        [6],
+        # motiflets
+        [3, 5, 8, 9, 12],
+    ]
+
+    motifset_names = ["mStamp + MDL", "Leitmotif"]
+
+    plot_motifsets(
+        ds_name,
+        df,
+        motifsets=motifs,
+        motiflet_dims=dims,
+        motifset_names=motifset_names,
+        motif_length=motif_length,
+        ground_truth=ground_truth,
+        show=path is None)
+
+    if path is not None:
+        plt.savefig(path)
+        plt.show()
