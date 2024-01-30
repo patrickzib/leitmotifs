@@ -107,7 +107,7 @@ datasets = {
         "asf_path": '../datasets/motion_data/13.asf'
     },
     "Boxing": {
-        "ks": 20,
+        "ks": 12,
         "motif_length": 100,
         "amc_name": "13_17",
         "asf_path": '../datasets/motion_data/13.asf'
@@ -159,8 +159,8 @@ amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 
 # Boxing
 used_joints = [
-    # 'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers','rthumb',
-    # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
+    'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers','rthumb',
+     # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
     'rfemur', 'rtibia', 'rfoot', 'rtoes',
 ]
 
@@ -261,9 +261,9 @@ def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     ml = Motiflets(
         df.name, df,
         # elbow_deviation=1.25,
-        slack=0.5,
+        # slack=0.5,
         dimension_labels=df.index,
-        n_dims=20,
+        n_dims=5,
         # n_jobs=2
     )
 
