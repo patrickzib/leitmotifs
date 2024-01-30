@@ -480,6 +480,7 @@ def compute_distance_matrix_sparse(time_series,
     # lowest_distance = 4 * lowest_distance * dims  # FIXME: depends on worst dimension
 
     # Parallelizm does not work, as Dict is not thread safe :(
+    # FIXME : given a large number of dimensions, the memory usage explodes
     for d in np.arange(dims):
         for order in np.arange(0, n):
             for ks in knns[d, order]:  # needed to compute the k-nn distances
