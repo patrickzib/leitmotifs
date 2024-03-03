@@ -340,8 +340,9 @@ def plot_motifsets(
         _ = sns.lineplot(x=data_index,
                          y=dim_data_raw + offset,
                          ax=axes[0, 0],
-                         linewidth=1,
-                         color=sns.color_palette("tab10")[0],
+                         linewidth=0.5,
+                         # color=sns.color_palette("tab10")[0],
+                         color="gray",
                          errorbar=("ci", None),
                          estimator=None
                          )
@@ -429,7 +430,8 @@ def plot_motifsets(
                     data_index[end - 1] - data_index[start],
                     ratio,
                     facecolor=sns.color_palette("tab10")[
-                        color_offset + motif_set_count + aaa],
+                        (color_offset + motif_set_count + aaa) %
+                        len(sns.color_palette("tab10"))],
                     alpha=0.7
                 )
 

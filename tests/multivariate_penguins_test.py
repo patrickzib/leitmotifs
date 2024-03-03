@@ -259,6 +259,25 @@ def test_mstamp():
         run_mstamp(series, ds_name, motif_length=lengths[i])
 
 
+def test_kmotifs():
+    length = 1_000
+    ds_name, B = read_penguin_data()
+    lengths = [23, 21]  # As used by k-Motiflets
+    targets = [35, 24]  # As used by k-Motiflets
+    for i, start in enumerate([0, 3000]):
+        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]].T
+
+        _ = run_kmotifs(
+            series,
+            ds_name,
+            lengths[i],
+            r_ranges=np.arange(1, 50, 0.5),
+            use_dims=10,
+            target_k=targets[i]
+        )
+
+
+
 def test_plot_all():
     lengths = [23, 21]
 

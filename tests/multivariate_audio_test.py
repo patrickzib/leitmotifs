@@ -88,7 +88,6 @@ def extract_motif_from_audio(
         print("No lyrics or audio file found.")
 
 
-
 def test_ground_truth():
     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
     ground_truth = read_ground_truth(pandas_file_url, path="")
@@ -157,13 +156,13 @@ def test_ground_truth():
     if os.path.isfile(audio_file_url):
         # extract motiflets
         for a, motif in enumerate(ground_truth.loc[0]):
-            motif_length = motif[0][1]-motif[0][0]
+            motif_length = motif[0][1] - motif[0][0]
             length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
 
             extract_audio_segment(
                 df, ds_name, audio_file_url, "snippets",
                 length_in_seconds, index_range, motif_length,
-                np.array(motif)[:,0], id=(a + 1))
+                np.array(motif)[:, 0], id=(a + 1))
 
     ml.plot_dataset()
 
@@ -266,7 +265,27 @@ def test_mstamp():
                 'MFCC 6']
     df = df.loc[channels]
 
-    run_mstamp(df, ds_name, motif_length=232)
+    m = 232
+    run_mstamp(df, ds_name, motif_length=m)
+
+
+def test_kmotifs():
+    audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    channels = ['MFCC 0', 'MFCC 1', 'MFCC 2',
+                'MFCC 3', 'MFCC 4', 'MFCC 5',
+                'MFCC 6']
+    df = df.loc[channels]
+
+    for target_k in [10, 14]:
+        m = 232
+        _ = run_kmotifs(
+            df,
+            ds_name,
+            m,
+            r_ranges=np.arange(100, 300, 5),
+            use_dims=8,
+            target_k=target_k,
+        )
 
 
 def test_plot_all():
@@ -282,34 +301,46 @@ def test_plot_all():
 
     path = "images_paper/audio/" + ds_name + "_new.pdf"
 
-    motifs = [  # mstamp
+    motifs = [
+        # mstamp
         [9317, 9382],
-        # motiflets
+        # LAMA
         [1146, 1408, 2183, 2442, 3217,
          3477, 4276, 4535, 5312, 5572],
         [5954, 6083, 6467, 6596, 6790,
          7081, 7210, 7519, 8018, 8147,
          8277, 8440, 8733, 8895],
-        # PCA+Motiflets
+        # EMD*
         [663, 921, 1702, 1960, 2736,
          2994, 4829, 5087],
         [979, 5937, 6450, 6612, 7064, 7486,
-         8001, 8147, 8260, 8439, 8781, 8927]
+         8001, 8147, 8260, 8439, 8781, 8927],
+        # K-Motif
+        [5848, 6074, 6360, 6588, 6878,
+         7104, 7234, 7381, 7655, 7911,
+         8171, 8398, 8691, 8951, 9212],
+
+
     ]
 
-    dims = [  # mstamp
+    dims = [
+        # mstamp
         [0],
-        # motiflets
+        # LAMA
         [0, 1, 2],
         [0, 1, 5],
-        # PCA+Motiflets
+        # EMD*
         [0, 1, 3],
-        [0, 1, 3]
+        [0, 1, 3],
+        # K-Motif
+        np.arange(10),
+        np.arange(10)
     ]
 
     motifset_names = ["mStamp + MDL",
-                      "1st Motiflets", "2nd Motiflets",
-                      "1st PCA", "2nd PCA"]
+                      "1st LAMA", "2nd LAMA",
+                      "1st EMD*", "2nd EMD*",
+                      "1st K-Motif", "2nd K-Motif"]
 
     plot_motifsets(
         ds_name,
@@ -339,7 +370,7 @@ def plot_spectrogram(audio_file_urls):
             left, right = data[:, 0], data[:, 1]
 
             ax[i].specgram(left,
-                           Fs=samplingFrequency, # cmap='Grays',
+                           Fs=samplingFrequency,  # cmap='Grays',
                            # scale='dB', # vmin=-50, vmax=0
                            )
             ax[i].set_ylabel("Freq.")

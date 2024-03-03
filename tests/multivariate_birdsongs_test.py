@@ -147,9 +147,22 @@ def test_mstamp():
     #    length_in_seconds, index_range, m, motif, id=1)
 
 
+def test_kmotifs():
+    seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    m = 50  # As used by k-Motiflets
+    motif = run_kmotifs(
+        df,
+        ds_name,
+        m,
+        r_ranges=np.arange(1, 50, 1),
+        use_dims=20,
+        target_k=4,
+    )
+
+
 def test_plot_all():
     seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
-    df = df.iloc[:10] # use only 10 MFCCs
+    df = df.iloc[:10]  # use only 10 MFCCs
 
     motif_length = 50
 
@@ -158,21 +171,26 @@ def test_plot_all():
     motifs = [
         # mstamp
         [2135, 2227],
-        # motiflets
+        # LAMA
         [509, 566, 2137, 2229],
-        # PCA + motiflets
+        # EMD*
+        [507, 564, 2135, 2227],
+        # K-Motif
         [507, 564, 2135, 2227]
     ]
 
-    dims = [  # mstamp
+    dims = [
+        # mstamp
         [1],
-        # motiflets
+        # LAMA
         [1, 3],
-        # PCA + motiflets
-        [1, 2]
+        # EMD*
+        [1, 2],
+        # K-Motif
+        np.arange(20)
     ]
 
-    motifset_names = ["mStamp + MDL", "Leitmotif", "PCA+Univariate"]
+    motifset_names = ["mStamp + MDL", "LAMA", "EMD*", "k-Motif"]
 
     plot_motifsets(
         ds_name,

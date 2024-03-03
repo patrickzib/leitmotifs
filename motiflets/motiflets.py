@@ -720,7 +720,7 @@ def get_approximate_k_motiflet(
 
     for order in np.arange(n, dtype=np.int32):
         # for dim in np.arange(ts.shape[0], dtype=np.int32):
-            # knn_idx = knns[dim_index[order, dim], order]
+        # knn_idx = knns[dim_index[order, dim], order]
 
         # Use the first (best) dimension for ordering of k-NNs
         knn_idx = knns[dim_index[order, 0], order]
@@ -1257,10 +1257,9 @@ def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
     return motiflet_candidate_dist
 
 
-@njit(fastmath=True, cache=True, parallel=True)
+# @njit(fastmath=True, cache=True, parallel=True)
 def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
     """Compute the full Distance Matrix between all pairs of subsequences.
-        # TODO only used for backwards compability
 
         Computes pairwise distances between n-m+1 subsequences, of length, extracted
         from the time series, of length n.
@@ -1289,11 +1288,11 @@ def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, sla
             The O(n^2) z-normed ED distances between all pairs of subsequences
 
     """
-    D, _ = compute_distance_matrix(ts,
-                                   m,
-                                   1,
-                                   exclude_trivial_match=exclude_trivial_match,
-                                   n_jobs=n_jobs,
-                                   slack=slack,
-                                   sum_dims=True)
-    return D[0]
+    return compute_distance_matrix(
+        ts,
+        m,
+        1,
+        exclude_trivial_match=exclude_trivial_match,
+        n_jobs=n_jobs,
+        slack=slack,
+        sum_dims=True)[0]

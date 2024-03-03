@@ -1,7 +1,7 @@
 import stumpy
 
 from motiflets.plotting import *
-
+from numba import njit
 
 def run_mstamp(df, ds_name, motif_length):
     series = df.values.astype(np.float64)
@@ -34,7 +34,7 @@ def run_mstamp(df, ds_name, motif_length):
     motifs = [[motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]]
     motifset_names = ["mStamp"]
 
-    fig, ax = plot_motifsets(
+    _ = plot_motifsets(
         ds_name,
         df,
         motifsets=motifs,
@@ -44,3 +44,70 @@ def run_mstamp(df, ds_name, motif_length):
         show=True)
 
     return motif
+
+
+@njit(cache=True, fastmath=True)
+def filter_non_trivial_matches(motif_set, m):
+    # filter trivial matches
+    non_trivial_matches = []
+    last_offset = - m
+    for offset in np.sort(motif_set):
+        if offset > last_offset + m / 2:
+            non_trivial_matches.append(offset)
+            last_offset = offset
+
+    return np.array(non_trivial_matches)
+
+
+def run_kmotifs(
+        series,
+        ds_name,
+        motif_length,
+        r_ranges,
+        use_dims,
+        target_k):
+
+    # D_full = np.zeros(series.shape[1] - motif_length + 1, dtype=np.float64)
+    # for data in series.iloc[:use_dims].values:
+    D_full = ml.compute_distances_full_univ(series.iloc[:use_dims].values, motif_length)
+    D_full = D_full.squeeze() / use_dims
+
+    for r in r_ranges:
+        cardinality = -1
+        k_motif_dist_var = -1
+        motifset = []
+        for order, dist in enumerate(D_full):
+            motif_set = np.argwhere(dist <= r).flatten()
+            if len(motif_set) > cardinality:
+                # filter trivial matches
+                motif_set = filter_non_trivial_matches(motif_set, motif_length)
+
+                # Break ties by variance of distances
+                dist_var = np.var(dist[motif_set])
+                if len(motif_set) > cardinality or \
+                        (dist_var < k_motif_dist_var and len(motif_set) == cardinality):
+                    cardinality = len(motif_set)
+                    motifset = motif_set
+                    k_motif_dist_var = dist_var
+        print(f"cardinality: {cardinality} for r={r}")
+
+        if cardinality >= target_k:
+            print(f"Radius: {r}, K: {cardinality}")
+            print(f"Pos: {motifset}")
+            motifset_names = ["K-Motif"]
+
+            dims = np.arange(use_dims).reshape(1, -1)
+            motifset = motifset.reshape(1, -1)
+
+            _ = plot_motifsets(
+                ds_name,
+                series,
+                motifsets=motifset,
+                motiflet_dims=dims,
+                motifset_names=motifset_names,
+                motif_length=motif_length,
+                show=True)
+
+            return motifset
+
+    return []

@@ -30,7 +30,7 @@ datasets = {
         "pandas_file_url": path + "Hans-Zimmer-Zoosters-Breakout.csv",
     },
     "Lord of the Rings Symphony - The Shire": {
-        "ks": 8,
+        "ks": 6,
         "channels": 5,
         "length_in_seconds": np.arange(7.0, 8.0, 0.25),
         "ds_name": "Lord of the Rings Symphony - The Shire",
@@ -49,10 +49,11 @@ ds_name = dataset["ds_name"]
 audio_file_url = dataset["audio_file_url"]
 pandas_file_url = dataset["pandas_file_url"]
 
-# def test_read_write():
-#    audio_length_seconds, df, index_range = read_mp3(audio_file_url)
-#    df.to_csv(pandas_file_url, compression='gzip')
-#    audio_length_seconds2, df2, index_range2 = read_from_dataframe(pandas_file_url)
+
+def test_read_write():
+    audio_length_seconds, df, index_range = read_mp3(audio_file_url)
+    df.to_csv(pandas_file_url, compression='gzip')
+    # audio_length_seconds2, df2, index_range2 = read_from_dataframe(pandas_file_url)
 
 
 # def test_ground_truth():
@@ -89,12 +90,12 @@ pandas_file_url = dataset["pandas_file_url"]
 #
 #     ml.plot_dataset()
 
-def test_publication():
+def test_publication(use_PCA=False):
     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
 
     ground_truth = read_ground_truth(pandas_file_url, path="")
 
-    channels = [  # 'MFCC 0',
+    channels = [  'MFCC 0',
         'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
         'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
         'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15'
@@ -103,6 +104,13 @@ def test_publication():
 
     motif_length_range = np.int32(motif_length_range_in_s /
                                   audio_length_seconds * df.shape[1])
+
+    # make the signal uni-variate by applying PCA
+    if use_PCA:
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=1)
+        series = pca.fit_transform(df.T).T
+        df = pd.DataFrame(series, index=["MFCC 0"], columns=df.columns)
 
     ml = Motiflets(ds_name, df,
                    dimension_labels=df.index,
@@ -124,16 +132,25 @@ def test_publication():
     length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
     print("Found motif length", length_in_seconds, motif_length)
 
-    if os.path.isfile(audio_file_url):
-        # extract motiflets
-        for a, eb in enumerate(ml.elbow_points):
-            motiflet = np.sort(ml.motiflets[eb])
-            print("Positions:", index_range[motiflet])
-            print("Positions:", list(zip(motiflet, motiflet+motif_length)))
+    for a, eb in enumerate(ml.elbow_points):
+        motiflet = np.sort(ml.motiflets[eb])
+        print("Positions:", index_range[motiflet])
+        print("Positions:", list(zip(motiflet, motiflet + motif_length)))
 
+        if os.path.isfile(audio_file_url):
+            # extract motiflets
             extract_audio_segment(
                 df, ds_name, audio_file_url, "snippets",
                 length_in_seconds, index_range, motif_length, motiflet, id=(a + 1))
+
+        if use_PCA:
+            print("\tdims\t:", repr(np.argsort(pca.components_[:])[:, :n_dims]))
+        else:
+            print("\tdims\t:", repr(ml.motiflets_dims[eb]))
+
+
+def test_univariate_pca():
+    test_publication(use_PCA=True)
 
 
 def plot_spectrogram(audio_file_urls):
@@ -161,7 +178,7 @@ def plot_spectrogram(audio_file_urls):
 def test_mstamp():
     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
     # ground_truth = read_ground_truth(pandas_file_url, path="")
-    channels = [  # 'MFCC 0',
+    channels = [  'MFCC 0',
         'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
         'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
         'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15'
@@ -177,6 +194,32 @@ def test_mstamp():
             df, ds_name, audio_file_url, "snippets",
             length_in_seconds, index_range, m, motif)
 
+
+def test_kmotifs():
+    audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
+    # ground_truth = read_ground_truth(pandas_file_url, path="")
+    channels = [
+        'MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4'
+    ]
+    df = df.loc[channels]
+
+    m = 301  # As used by k-Motiflets
+    _ = run_kmotifs(
+        df,
+        ds_name,
+        m,
+        r_ranges=np.arange(200, 1000, 1),
+        use_dims=5,
+        target_k=4,
+    )
+
+    length_in_seconds = m * audio_length_seconds / df.shape[1]
+    print(f"Length in seconds: {length_in_seconds}")
+
+    # if os.path.isfile(audio_file_url):
+    #     extract_audio_segment(
+    #         df, ds_name, audio_file_url, "snippets",
+    #         length_in_seconds, index_range, m, motif)
 
 
 def test_plot_spectrogram():
@@ -198,7 +241,7 @@ def test_plot_all():
     channels = [  # 'MFCC 0',
         'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
         'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
-        'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15'
+        'MFCC 11', 'MFCC 12', 'MFCC 13', # 'MFCC 14', 'MFCC 15'
     ]
     df = df.loc[channels]
 
@@ -208,18 +251,27 @@ def test_plot_all():
 
     motifs = [
         # mstamp
-        [735, 5939],
-        # motiflets
-        [249, 628, 5372, 5826],
+        [2666, 2860],
+        # LAMA
+        [287, 664, 5409, 5866],
+        # EMD*
+        [715, 2047, 2460, 4249, 5468, 5926],
+        # K-Motif,
+        [706, 4212, 5460, 5923]
     ]
 
-    dims = [  # mstamp
-        [6],
-        # motiflets
-        [3, 5, 8, 9, 12],
+    dims = [
+        # mstamp
+        [0],
+        # LAMA
+        [13,  7,  1, 10,  6],
+        # EMD*
+        [1, 0, 3, 9, 11],
+        # K-Motif
+        np.arange(5)
     ]
 
-    motifset_names = ["mStamp + MDL", "Leitmotif"]
+    motifset_names = ["mStamp + MDL", "LAMA", "EMD*", "K-Motif"]
 
     plot_motifsets(
         ds_name,
