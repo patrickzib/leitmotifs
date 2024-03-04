@@ -51,17 +51,13 @@ def _resample(data, sampling_factor=10000):
     return data, factor
 
 
-def read_ground_truth(
-        dataset,
-        path='../datasets/ground_truth/'):
+def read_ground_truth(dataset):
     """Reads the ground-truth data for the time series.
 
     Parameters
     ----------
     dataset : String
         Name of the dataset
-    path : String
-        Path to the ground-truth data
 
     Returns
     -------
@@ -81,12 +77,18 @@ def read_ground_truth(
     return None
 
 
-def read_audio_from_dataframe(pandas_file_url):
+def read_audio_from_dataframe(pandas_file_url, channels=None):
     """Reads a time series with an index (e.g. time) from a CSV with MFCC features."""
 
     df = pd.read_csv(pandas_file_url, index_col=0, compression='gzip')
     audio_length_seconds = 2 * float(df.columns[-1]) - float(df.columns[-2])
-    return audio_length_seconds, df, np.float64(df.columns)
+
+    if channels:
+        df = df.loc[channels]
+
+    ground_truth = read_ground_truth(pandas_file_url)
+
+    return audio_length_seconds, df, np.float64(df.columns), ground_truth
 
 
 def read_dataset_with_index(dataset, sampling_factor=10000):
@@ -357,6 +359,9 @@ def compute_distance_matrix(time_series,
                 else:
                     D_all[d, order] = dist
                 dot_prev = dot_rolled
+
+        if sum_dims:
+            D_all = D_all / dims
 
         # do not merge with previous loop, as we are adding distances
         # over dimensions, first
@@ -1178,6 +1183,8 @@ def search_k_motiflets_elbow(
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
 
+        if test_k == 6:
+            print("test")
         if not sum_dims:
             # k-th NN and it's distance along all dimensions
             knn_idx = knns[:, :, test_k - 1]
@@ -1208,7 +1215,7 @@ def search_k_motiflets_elbow(
             k_motiflet_dims[test_k] = np.arange(d)
 
         # compute a new upper bound
-        upper_bound = min(candidate_dist, upper_bound)
+        # FIXME: upper_bound = min(candidate_dist, upper_bound)
 
     # smoothen the line to make it monotonically increasing
     k_motiflet_distances[0:2] = k_motiflet_distances[2]

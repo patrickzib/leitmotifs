@@ -70,10 +70,8 @@ def run_kmotifs(
         slack=0.5,
         ground_truth=None):
 
-    # D_full = np.zeros(series.shape[1] - motif_length + 1, dtype=np.float64)
-    # for data in series.iloc[:use_dims].values:
-    D_full = ml.compute_distances_full_univ(series.iloc[:use_dims].values,
-                                            motif_length, slack=slack)
+    D_full = ml.compute_distances_full_univ(
+        series.iloc[:use_dims].values, motif_length, slack=slack)
     D_full = D_full.squeeze() / use_dims
 
     for r in r_ranges:

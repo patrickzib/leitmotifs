@@ -93,6 +93,7 @@ class Motiflets:
             subsample=subsample,
             plot_elbows=plot_elbows,
             plot_motif=plot_motifsets,
+            ground_truth=self.ground_truth,
             plot=plot,
             plot_best_only=plot_best_only)
 
@@ -168,7 +169,7 @@ class Motiflets:
 
         return fig, ax
 
-    def plot_motifset(self, elbow_points=None, path=None, motifset_names=None):
+    def plot_motifset(self, elbow_points=None, path=None, motifset_name=None):
 
         if self.dists is None or self.motiflets is None or self.elbow_points is None:
             raise Exception("Please call fit_k_elbow first.")
@@ -179,6 +180,9 @@ class Motiflets:
         # TODO
         # if elbow_point is None:
         #    elbow_point = self.elbow_points[-1]
+        motifset_names = None
+        if motifset_name is not None:
+            motifset_names = [motifset_name for _ in range(len(self.elbow_points))]
 
         fig, ax = plot_motifsets(
             self.ds_name,
@@ -704,6 +708,7 @@ def plot_motif_length_selection(
         slack=0.5,
         subsample=2,
         n_dims=2,
+        ground_truth=None,
         plot=True,
         plot_best_only=True,
         plot_elbows=True,
@@ -808,6 +813,7 @@ def plot_motif_length_selection(
                         motiflet_dims=top_motiflets_dims[a],
                         dist=dists[a][elbow_points],
                         motif_length=motif_length,
+                        ground_truth=ground_truth,
                         show=True)
 
     best_pos = np.argmin(au_ef)
