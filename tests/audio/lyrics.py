@@ -55,6 +55,7 @@ def extract_audio_segment(
         start = (index_range[motif]) * 1000  # ms
         end = start + length_in_seconds * 1000  # ms
         motif_audio = song[start:end]
+        print(start, end, motif_audio)
         motif_audio.export('audio/' + export_file_url + '/' + ds_name +
                            "_Dims_" + str(len(df.index)) +
                            "_Length_" + str(motif_length) +
