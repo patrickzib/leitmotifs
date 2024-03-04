@@ -1183,8 +1183,6 @@ def search_k_motiflets_elbow(
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
 
-        if test_k == 6:
-            print("test")
         if not sum_dims:
             # k-th NN and it's distance along all dimensions
             knn_idx = knns[:, :, test_k - 1]

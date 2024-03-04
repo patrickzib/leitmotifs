@@ -15,18 +15,19 @@ path = "../datasets/audio/"
 datasets = {
     "Hans Zimmer - He is a Pirate": {
         "ks": [10],
-        "n_dims": 5,
-        "motif_length": 301,
-        "length_range_in_seconds": np.arange(1.0, 5, 0.25),
+        "n_dims": 8,
+        "motif_length": 129,
+        "slack": 1.0,
+        "length_range_in_seconds": np.arange(3.0, 5, 0.25),
         "ds_name": "Hans Zimmer - He is a Pirate",
         "audio_file_url": path_to_wav + "Hans Zimmer - He is a Pirate.mp3",
         "pandas_file_url": path + "Hans-Zimmer-He-is-a-Pirate.csv",
     },
     "Hans Zimmer - Zoosters Breakout": {
         "ks": [10],
-        "n_dims": 8,
-        "motif_length": 301,
-        "length_range_in_seconds": np.arange(2.0, 6.0, 0.25),
+        "n_dims": 5,
+        "motif_length": 129,
+        "length_range_in_seconds": np.arange(3.0, 6.0, 0.25),
         "slack": 1.0,
         "ds_name": "Hans Zimmer - Zoosters Breakout",
         "audio_file_url": path_to_wav + "Hans Zimmer - Zoosters Breakout.mp3",
@@ -44,8 +45,8 @@ datasets = {
     },
 }
 
-# dataset = datasets["Lord of the Rings Symphony - The Shire"]
-dataset = datasets["Hans Zimmer - Zoosters Breakout"]
+dataset = datasets["Lord of the Rings Symphony - The Shire"]
+# dataset = datasets["Hans Zimmer - Zoosters Breakout"]
 # dataset = datasets["Hans Zimmer - He is a Pirate"]
 
 ks = dataset["ks"]
@@ -133,35 +134,35 @@ def test_lama(use_PCA=False):
                    ground_truth=ground_truth
                    )
 
-    motif_length_range = np.int32(motif_length_range_in_s /
-                                  audio_length_seconds * df.shape[1])
-    motif_length, _ = ml.fit_motif_length(
-        k_max,
-        motif_length_range,
-        plot=True,
-        plot_elbows=False,
-        plot_motifsets=False,
-        plot_best_only=True,
-    )
-
-    # ml.fit_k_elbow(
-    #     k_max=k_max,
-    #     motif_length=m,
+    # motif_length_range = np.int32(motif_length_range_in_s /
+    #                               audio_length_seconds * df.shape[1])
+    # motif_length, _ = ml.fit_motif_length(
+    #     k_max,
+    #     motif_length_range,
+    #     plot=True,
     #     plot_elbows=False,
     #     plot_motifsets=False,
+    #     plot_best_only=True,
     # )
 
+    ml.fit_k_elbow(
+        k_max=k_max,
+        motif_length=m,
+        plot_elbows=False,
+        plot_motifsets=False,
+    )
+
     ml.plot_motifset(
-        # elbow_points=ks,
+        elbow_points=ks,
         path="images_paper/audio/" + ds_name + "_new.pdf",
         motifset_name="LAMA")
 
-    m = motif_length
+    # m = motif_length
     length_in_seconds = m * audio_length_seconds / df.shape[1]
     print("Found motif length", length_in_seconds, m)
 
-    for a, eb in enumerate(ml.elbow_points):
-    # for a, eb in enumerate(ks):
+    # for a, eb in enumerate(ml.elbow_points):
+    for a, eb in enumerate(ks):
         motiflet = np.sort(ml.motiflets[eb])
         print("Positions:", index_range[motiflet])
         print("Positions:", list(zip(motiflet, motiflet + m)))
@@ -205,9 +206,10 @@ def test_kmotifs():
             df,
             ds_name,
             m,
-            r_ranges=np.arange(200, 1000, 1),
-            use_dims=n_dims,
+            r_ranges=np.arange(100, 1000, 1),
+            use_dims=n_dims, # df.shape[0],
             target_k=target_k,
+            slack=slack
         )
 
     length_in_seconds = m * audio_length_seconds / df.shape[1]
