@@ -150,7 +150,7 @@ def test_mstamp():
 def test_kmotifs():
     seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
     m = 50  # As used by k-Motiflets
-    motif = run_kmotifs(
+    _ = run_kmotifs(
         df,
         ds_name,
         m,

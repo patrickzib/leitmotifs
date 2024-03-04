@@ -3,7 +3,7 @@ import stumpy
 from motiflets.plotting import *
 from numba import njit
 
-def run_mstamp(df, ds_name, motif_length):
+def run_mstamp(df, ds_name, motif_length, ground_truth=None):
     series = df.values.astype(np.float64)
 
     # Find the Pair Motif
@@ -41,18 +41,19 @@ def run_mstamp(df, ds_name, motif_length):
         motiflet_dims=dims,
         motifset_names=motifset_names,
         motif_length=motif_length,
+        ground_truth=ground_truth,
         show=True)
 
     return motif
 
 
 @njit(cache=True, fastmath=True)
-def filter_non_trivial_matches(motif_set, m):
+def filter_non_trivial_matches(motif_set, m, slack=0.5):
     # filter trivial matches
     non_trivial_matches = []
     last_offset = - m
     for offset in np.sort(motif_set):
-        if offset > last_offset + m / 2:
+        if offset > last_offset + m * slack:
             non_trivial_matches.append(offset)
             last_offset = offset
 
@@ -65,11 +66,14 @@ def run_kmotifs(
         motif_length,
         r_ranges,
         use_dims,
-        target_k):
+        target_k,
+        slack=0.5,
+        ground_truth=None):
 
     # D_full = np.zeros(series.shape[1] - motif_length + 1, dtype=np.float64)
     # for data in series.iloc[:use_dims].values:
-    D_full = ml.compute_distances_full_univ(series.iloc[:use_dims].values, motif_length)
+    D_full = ml.compute_distances_full_univ(series.iloc[:use_dims].values,
+                                            motif_length, slack=slack)
     D_full = D_full.squeeze() / use_dims
 
     for r in r_ranges:
@@ -80,7 +84,7 @@ def run_kmotifs(
             motif_set = np.argwhere(dist <= r).flatten()
             if len(motif_set) > cardinality:
                 # filter trivial matches
-                motif_set = filter_non_trivial_matches(motif_set, motif_length)
+                motif_set = filter_non_trivial_matches(motif_set, motif_length, slack)
 
                 # Break ties by variance of distances
                 dist_var = np.var(dist[motif_set])
@@ -106,6 +110,7 @@ def run_kmotifs(
                 motiflet_dims=dims,
                 motifset_names=motifset_names,
                 motif_length=motif_length,
+                ground_truth=ground_truth,
                 show=True)
 
             return motifset

@@ -4,6 +4,7 @@ import amc.amc_parser as amc_parser
 from motiflets.plotting import *
 from motiflets.motiflets import read_ground_truth
 import matplotlib as mpl
+from motiflets.competitors import *
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -47,7 +48,7 @@ def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
 
     ax.set_xlim3d(-20, 10)
     ax.set_ylim3d(-20, 10)
-    #ax.set_zlim3d(-20, 40)
+    # ax.set_zlim3d(-20, 40)
 
     joints['root'].set_motion(motions[i])
 
@@ -159,10 +160,11 @@ amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 
 # Boxing
 used_joints = [
-    'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers','rthumb',
-     # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
+    'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+    # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
     'rfemur', 'rtibia', 'rfoot', 'rtoes',
 ]
+
 
 # Hands
 # used_joints = [
@@ -251,7 +253,7 @@ def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
     df = exclude_body_joints(df)
     df = include_joints(df, joints_to_use, add_xyz=add_xyz)
 
-    time = np.arange(0, df.shape[1]/120, 1/120)
+    time = np.arange(0, df.shape[1] / 120, 1 / 120)
     df.columns = time
     df.name = ds_name
 
@@ -308,16 +310,22 @@ def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
                 bitrate=1000,
                 fps=20)
 
+
 def test_publication_chaleston():
+    asf_path = '../datasets/motion_data/93.asf'
+    amc_name = "93_04"
+    amc_path = '../datasets/motion_data/' + amc_name + '.amc'
+    k_max = 10
+
     use_joints2 = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
-                  'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
-                  #'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers',
-                  #'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
-                  ]
+                   'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
+                   #'lclavicle', 'lhumerus', 'lradius', 'lwrist',
+                   #'lhand', 'lfingers', 'lthumb',
+                   #'lfemur', 'ltibia', 'lfoot', 'ltoes'
+                   ]
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
     ground_truth = read_ground_truth(asf_path, path="")
-
 
     df = pd.DataFrame(
         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
@@ -325,11 +333,11 @@ def test_publication_chaleston():
     df = include_joints(df, use_joints2)
 
     print("Data", df.shape)
-    time = np.arange(0, df.shape[1]/120, 1/120)
+    time = np.arange(0, df.shape[1] / 120, 1 / 120)
     df.columns = time
     df.name = ds_name
 
-    length_range = np.arange(50, 200, 10)
+    length_range = np.arange(100, 200, 10)
     print(length_range)
 
     ml = Motiflets(
@@ -362,7 +370,7 @@ def test_publication_chaleston():
     #   dimensions = np.zeros(len(dists), dtype=object)
     #   dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
 
-    if False:
+    if True:
         motif_length = ml.motif_length
         elbow_points = ml.elbow_points
         motiflets = ml.motiflets
@@ -391,4 +399,62 @@ def test_publication_chaleston():
                         bitrate=1000,
                         fps=20)
 
-                        # break
+                    # break
+
+
+
+
+# def test_mstamp():
+#     use_joints2 = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
+#                    'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
+#                    # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers',
+#                    # 'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
+#                    ]
+#     joints = amc_parser.parse_asf(asf_path)
+#     motions = amc_parser.parse_amc(amc_path)
+#     ground_truth = read_ground_truth(asf_path, path="")
+#
+#     df = pd.DataFrame(
+#         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+#     df = exclude_body_joints(df)
+#     df = include_joints(df, use_joints2)
+#
+#     print("Data", df.shape)
+#     time = np.arange(0, df.shape[1] / 120, 1 / 120)
+#     df.columns = time
+#     df.name = ds_name
+#
+#     m = 232
+#     run_mstamp(df, ds_name, motif_length=m)
+#
+#
+# def test_kmotifs():
+#     use_joints2 = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
+#                    'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
+#                    # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers',
+#                    # 'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
+#                    ]
+#     joints = amc_parser.parse_asf(asf_path)
+#     motions = amc_parser.parse_amc(amc_path)
+#     ground_truth = read_ground_truth(asf_path, path="")
+#
+#     df = pd.DataFrame(
+#         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+#     df = exclude_body_joints(df)
+#     df = include_joints(df, use_joints2)
+#
+#     print("Data", df.shape)
+#     time = np.arange(0, df.shape[1] / 120, 1 / 120)
+#     df.columns = time
+#     df.name = ds_name
+#
+#     for target_k in [10, 14]:
+#         m = 232
+#         _ = run_kmotifs(
+#             df,
+#             ds_name,
+#             m,
+#             r_ranges=np.arange(100, 300, 5),
+#             use_dims=8,
+#             target_k=target_k,
+#         )
