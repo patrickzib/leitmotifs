@@ -44,12 +44,36 @@ datasets = {
         "audio_file_url": path_to_wav + "The Rolling Stones - Paint It, Black.wav",
         "pandas_file_url": path + "The-Rolling-Stones-Paint-It-Black.csv",
         "lrc_url": path_to_wav + "The Rolling Stones - Paint It, Black.lrc"
+    },
+    "Vanilla Ice - Ice Ice Baby": {
+        "ks": [20],
+        "n_dims": 6,
+        "motif_length": 180,
+        "length_range_in_seconds": np.arange(170, 190, 10),
+        "slack": 0.6,
+        "ds_name": "Vanilla Ice - Ice Ice Baby",
+        "audio_file_url": path_to_wav + "Vanilla_Ice-Ice_Ice_Baby.mp3",
+        "pandas_file_url": path + "Vanilla_Ice-Ice_Ice_Baby.csv",
+        "lrc_url": None
+    },
+    "Queen David Bowie - Under Pressure": {
+        "ks": [16],
+        "n_dims": 5,
+        "motif_length": 180,
+        "length_range_in_seconds": np.arange(170, 190, 10),
+        "slack": 0.6,
+        "ds_name": "Queen David Bowie - Under Pressure",
+        "audio_file_url": path_to_wav + "Queen-David-Bowie-Under-Pressure.mp3",
+        "pandas_file_url": path + "Queen-David-Bowie-Under-Pressure.csv",
+        "lrc_url": None
     }
 }
 
 # dataset = datasets["The Rolling Stones - Paint It, Black"]
 # dataset = datasets["What I've Done - Linkin Park"]
-dataset = datasets["Numb - Linkin Park"]
+# dataset = datasets["Numb - Linkin Park"]
+# dataset = datasets["Vanilla Ice - Ice Ice Baby"]
+dataset = datasets["Queen David Bowie - Under Pressure"]
 
 ks = dataset["ks"]
 n_dims = dataset["n_dims"]
@@ -232,7 +256,8 @@ def test_lama(use_PCA=False):
     print("Found motif length", length_in_seconds, m)
 
     print("Positions:")
-    for eb in ml.elbow_points:
+    # for eb in ml.elbow_points:
+    for eb in ks:
         motiflet = np.sort(ml.motiflets[eb])
         print("\tMotif pos\t:", repr(motiflet))
         if use_PCA:
