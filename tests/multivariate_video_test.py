@@ -40,20 +40,41 @@ def include_joints(df, include, add_xyz=True):
     return df[df.index.isin(include_bones)]
 
 
+def read_motion_dataset(add_xyz=True):
+    joints = amc_parser.parse_asf(asf_path)
+    motions = amc_parser.parse_amc(amc_path)
+    ground_truth = read_ground_truth(amc_path)
+    df = pd.DataFrame(
+        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
+    df = include_joints(exclude_body_joints(df), used_joints, add_xyz=add_xyz)
+
+    # 120 FPS
+    time = np.arange(0, df.shape[1] / 120, 1 / 120)
+    df.columns = time[:len(df.columns)]
+    df.name = ds_name
+
+    return df, ground_truth, joints, motions
+
+
 def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
     ax.cla()
     ax.grid(False)
-    plt.grid(b=None)
+    plt.grid(visible=None)
     ax.set_axis_off()
 
-    ax.set_xlim3d(-20, 10)
-    ax.set_ylim3d(-20, 10)
+    # Wide
+    ax.set_xlim3d(-50, 30)
+    ax.set_ylim3d(-20, 40)
+
+    # Limited
+    # ax.set_xlim3d(-20, 10)
+    # ax.set_ylim3d(-20, 10)
+
     # ax.set_zlim3d(-20, 40)
 
     joints['root'].set_motion(motions[i])
 
     c_joints = joints['root'].to_dict()
-    # xs, ys, zs, color = [], [], [], []
     for joint in c_joints.values():
         xs = (joint.coordinate[0, 0])
         ys = (joint.coordinate[1, 0])
@@ -101,172 +122,266 @@ def plot_multivariate_motiflet(
 # http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
 
 datasets = {
-    "Stairs": {
-        "ks": 5,
-        "motif_length": 100,
-        "amc_name": "13_34",
-        "asf_path": '../datasets/motion_data/13.asf'
+    "Swordplay": {
+        "ks": [6],
+        "n_dims": 10,
+        "motif_length": 120,
+        "amc_name": "02_07",
+        "asf_path": '../datasets/motion_data/02.asf',
+        "slack": 1.0,
+        "used_joints": [
+            'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+            'rfemur', 'rtibia', 'rfoot', 'rtoes'
+        ]
+    },
+    "Basketball": {
+        "ks": [5],
+        "n_dims": 10,
+        "motif_length": 50,
+        "amc_name": "06_02",
+        "asf_path": '../datasets/motion_data/06.asf',
+        "slack": 1.0,
+        "used_joints": [
+            'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+            'rfemur', 'rtibia', 'rfoot', 'rtoes'
+        ]
     },
     "Boxing": {
-        "ks": 12,
+        "ks": [10],
         "motif_length": 100,
         "amc_name": "13_17",
-        "asf_path": '../datasets/motion_data/13.asf'
+        "n_dims": 7,
+        "slack": 0.5,
+        "asf_path": '../datasets/motion_data/13.asf',
+        "used_joints": [
+            'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+            'rfemur', 'rtibia', 'rfoot', 'rtoes'
+        ]
     },
     "Charleston-Fancy": {
-        "ks": 15,
+        "ks": [3],
         "motif_length": 120,
+        "n_dims": 10,
+        "slack": 0.5,
         "amc_name": "93_08",  # Fancy Charleston
         "asf_path": '../datasets/motion_data/93.asf'
     },
     "Charleston - Side By Side Female": {
-        "ks": 15,
-        "motif_length": 120,
+        "ks": [3],
+        "motif_length": 140,
+        "n_dims": 10,
         "amc_name": "93_04",
-        "asf_path": '../datasets/motion_data/93.asf'
+        "slack": 0.5,
+        "asf_path": '../datasets/motion_data/93.asf',
+        "used_joints": [
+            'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand',
+            'rfingers', 'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
+            # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand',
+            # 'lfingers', 'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
+        ]
     },
     "Charleston-Side-By-Side-Male": {
-        "ks": 15,
-        "motif_length": 120,
+        "ks": [3],
+        "motif_length": 140,
+        "n_dims": 10,
         "amc_name": "93_05",
-        "asf_path": '../datasets/motion_data/93.asf'
+        "slack": 0.5,
+        "asf_path": '../datasets/motion_data/93.asf',
+        "used_joints": [
+            # 'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand',
+            # 'rfingers', 'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
+            'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand',
+            'lfingers', 'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
+        ]
     }
 }
 
-ds_name = "Boxing"
-dataset = datasets[ds_name]
-# dataset = datasets["Stairs"]
-# dataset = datasets["Charleston - Side By Side Female"]
-k_max = dataset["ks"]
-motif_length = dataset["motif_length"]
-amc_name = dataset["amc_name"]
-asf_path = dataset["asf_path"]
-amc_path = '../datasets/motion_data/' + amc_name + '.amc'
 
+def get_ds_parameters(name):
+    global ds_name, dataset, ks, m, used_joints, n_dims, slack
+    global motif_length, amc_name, asf_path, amc_path, k_max
+
+    ds_name = name
+    dataset = datasets[ds_name]
+    ks = dataset["ks"]
+    used_joints = dataset["used_joints"]
+    n_dims = dataset["n_dims"]
+    motif_length = dataset["motif_length"]
+    slack = dataset["slack"]
+    amc_name = dataset["amc_name"]
+    asf_path = dataset["asf_path"]
+    amc_path = '../datasets/motion_data/' + amc_name + '.amc'
+
+    # for learning parameters
+    k_max = np.max(dataset["ks"]) + 2
+    m = dataset["motif_length"]
+
+
+# All joints
 # use_joints = np.asarray(
 #    ['root', 'lowerback', 'upperback', 'thorax', 'lowerneck', 'upperneck', 'head',
 #     'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
 #     'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
 #     'rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes'])
-
+#
 # Body
 # used_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
-
+#
 # Right
 # used_joints = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb']
-
-# used_joints = [  'lhand', 'lfingers', 'lthumb'
-#               'rhand', 'rfingers', 'rthumb']
-
-# Boxing
-used_joints = [
-    'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
-    # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb',
-    'rfemur', 'rtibia', 'rfoot', 'rtoes',
-]
-
-
+#
+# Right Body
+# used_joints = [
+#    'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
+#    'rfemur', 'rtibia', 'rfoot', 'rtoes'
+# ]
+#
 # Hands
 # used_joints = [
 #    'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers', 'rthumb',
 #    'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers', 'lthumb']
-
 # footwork
 # used_joints = ['rfemur', 'rtibia', 'rfoot', 'rtoes', 'lfemur', 'ltibia', 'lfoot', 'ltoes']
 
 
-# def test_plotting():
-#     joints = amc_parser.parse_asf(asf_path)
-#     motions = amc_parser.parse_amc(amc_path)
-#
-#     df = pd.DataFrame(
-#         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-#     df = exclude_body_joints(df)
-#     df = include_joints(df, used_joints)
-#
-#     print("Data", df.shape)
-#
-#     series = df
-#
-#     length_range = np.arange(50, 200, 10)
-#     print(length_range)
-#
-#     ml = Motiflets(amc_name, series,
-#                    dimension_labels=df.index,
-#                    n_dims=5
-#                    )
-#
-#     m, all_minima = ml.fit_motif_length(
-#         k_max, length_range,
-#         plot=True,
-#         plot_best_only=True,
-#         plot_motifsets=True)
-#
-#     for minimum in all_minima:
-#         motif_length = length_range[minimum]
-#         dists = ml.all_dists[minimum]
-#         elbow_points = ml.all_elbows[minimum]
-#
-#         # motiflets = ml.all_top_motiflets[minimum]
-#         motiflets = np.zeros(len(dists), dtype=object)
-#         motiflets[elbow_points] = ml.all_top_motiflets[minimum]
-#
-#         dimensions = np.zeros(len(dists), dtype=object)
-#         dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
-#
-#         video = True
-#         if video:
-#             if len(elbow_points) > 1:
-#                 for eb in elbow_points:
-#                     for i, pos in enumerate(motiflets[eb]):
-#                         use_joints = df.index.values[dimensions[eb]]  # FIXME!?
-#                         # strip the _x, _y, _z from the joint
-#                         use_joints = [joint[:-2] for joint in use_joints]
-#                         fig = plt.figure()
-#                         ax = plt.axes(projection='3d')
-#
-#                         out_path = ('video/motiflet_' + amc_name + '_' + str(
-#                             motif_length)
-#                                     + '_' + str(eb) + '_' + str(i) + '.gif')
-#
-#                         FuncAnimation(fig,
-#                                       lambda i: draw_frame(
-#                                           ax, motions, joints, i,
-#                                           joints_to_highlight=use_joints
-#                                       ),
-#                                       range(pos, pos + motif_length, 4)).save(
-#                             out_path,
-#                             bitrate=1000,
-#                             fps=20)
+def test_ground_truth():
+    get_ds_parameters("Swordplay")
+    df, ground_truth, joints, motions = read_motion_dataset()
+
+    pos = np.array([1.5, 3.5, 5.5, 7.7, 9.6, 16.9])
+    length = 120 / 120
+
+    positions = []
+    for p in pos:
+        positions.append(np.int32([p * 120, (p + length) * 120]))
+    positions = np.array([positions], dtype=np.int32)
+    print(positions)
+
+    filtered_joints = list(set([joint[:-2] for joint in used_joints]))
+    for j, pos in enumerate(positions[0][:, 0]):
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+        out_path = 'video/anim/motiflet_' + amc_name + '_' + str(j) + '.gif'
+
+        FuncAnimation(fig,
+                      lambda i: draw_frame(ax, motions, joints, i,
+                                           joints_to_highlight=filtered_joints),
+                      range(pos, pos + motif_length, 4)).save(
+            out_path,
+            bitrate=100,
+            fps=20)
+
+    ground_truth = read_ground_truth(amc_path)
+    ml = Motiflets(ds_name, df,
+                   dimension_labels=df.index,
+                   ground_truth=ground_truth
+                   )
+    ml.plot_dataset()
+
+
+def test_lama():
+    get_ds_parameters("Swordplay")
+    df, ground_truth, joints, motions = read_motion_dataset()
+
+    m = 120
+    ks = 6
+    k_max = ks + 2
+    n_dims = 10
+
+    ml = Motiflets(
+        amc_name, df,
+        dimension_labels=df.index,
+        n_dims=n_dims,
+        ground_truth=ground_truth,
+        slack=slack
+    )
+
+    # length_range = np.arange(50, 200, 10)
+    # print(length_range)
+    # m, all_minima = ml.fit_motif_length(
+    #     k_max, length_range,
+    #     plot=True,
+    #     plot_best_only=True,
+    #     plot_motifsets=True)
+
+    dists, candidates, elbow_points = ml.fit_k_elbow(
+        k_max,
+        motif_length=m,
+        plot_elbows=False,
+        plot_motifsets=False)
+
+    print("Positions (Frame):", np.sort(candidates[ks]))
+    print("Time:", np.sort(candidates[ks]) / 120)  # 120 FPS
+    ml.plot_motifset(elbow_points=[ks], motifset_name="LAMA")
+
+    for i in np.arange(6, 7):
+        motiflet = candidates[i]
+        use_joints = df.index.values[ml.motiflets_dims[i]]
+        filtered_joints = list(set([joint[:-2] for joint in use_joints]))
+
+        print("Positions (Frame):", np.sort(motiflet))
+        print("Time:", np.sort(motiflet) / 120)  # 120 FPS
+        ml.plot_motifset(elbow_points=[i])
+
+        for j, pos in enumerate(motiflet):
+            fig = plt.figure()
+            ax = plt.axes(projection='3d')
+
+            out_path = 'video/anim/motiflet_' + amc_name + '_' + str(i) + "_" + str(
+                j) + '.gif'
+
+            FuncAnimation(fig,
+                          lambda i: draw_frame(ax, motions, joints, i,
+                                               joints_to_highlight=filtered_joints),
+                          range(pos, pos + motif_length, 4)).save(
+                out_path,
+                bitrate=100,
+                fps=20)
+
+    # for minimum in all_minima:
+    #   motif_length = length_range[minimum]
+    #   dists = ml.all_dists[minimum]
+    #   elbow_points = ml.all_elbows[minimum]
+
+    #   motiflets = ml.all_top_motiflets[minimum]
+    #   motiflets = np.zeros(len(dists), dtype=object)
+    #   motiflets[elbow_points] = ml.all_top_motiflets[minimum]
+
+    #   dimensions = np.zeros(len(dists), dtype=object)
+    #   dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
+    # if len(elbow_points) > 1:
+    #     for eb in elbow_points:
+    #         for i, pos in enumerate(motiflets[eb]):
+    #             use_joints = df.index.values[dimensions[eb]]  # FIXME!?
+    #             # strip the _x, _y, _z from the joint
+    #             use_joints = [joint[:-2] for joint in use_joints]
+    #             fig = plt.figure()
+    #             ax = plt.axes(projection='3d')
+    #
+    #             out_path = ('video/motiflet_' + amc_name + '_' + str(
+    #                 motif_length)
+    #                         + '_' + str(eb) + '_' + str(i) + '.gif')
+    #
+    #             FuncAnimation(fig,
+    #                           lambda i: draw_frame(
+    #                               ax, motions, joints, i,
+    #                               joints_to_highlight=use_joints
+    #                           ),
+    #                           range(pos, pos + motif_length, 4)).save(
+    #                 out_path,
+    #                 bitrate=1000,
+    #                 fps=20)
 
 
 def test_motion_capture():
-    _generate_motion_capture(used_joints)
-
-
-def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
-    joints = amc_parser.parse_asf(asf_path)
-    motions = amc_parser.parse_amc(amc_path)
-
-    df = pd.DataFrame(
-        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-    df = exclude_body_joints(df)
-    df = include_joints(df, joints_to_use, add_xyz=add_xyz)
-
-    time = np.arange(0, df.shape[1] / 120, 1 / 120)
-    df.columns = time
-    df.name = ds_name
-
-    print("Used joints:", joints_to_use)
-    # series = df.values
+    get_ds_parameters("Stairs")
+    df, ground_truth, joints, motions = read_motion_dataset()
 
     ml = Motiflets(
         df.name, df,
-        # elbow_deviation=1.25,
-        # slack=0.5,
         dimension_labels=df.index,
-        n_dims=5,
-        # n_jobs=2
+        n_dims=n_dims,
+        slack=slack
     )
 
     dists, candidates, elbow_points = ml.fit_k_elbow(
@@ -282,25 +397,18 @@ def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
 
     path_ = "video/motiflet_" + amc_name + "_Channels_" + str(
         len(df.index)) + "_Motif.pdf"
-    ml.plot_motifset(path=path_)
+    ml.plot_motifset(path=path_, motifset_name="LAMA")
 
     motiflets = candidates[elbow_points]
-    if add_xyz:
-        filtered_joints = joints_to_use
-    else:
-        filtered_joints = list(set([joint[:-2] for joint in joints_to_use]))
+    filtered_joints = list(set([joint[:-2] for joint in used_joints]))
 
     for i, motiflet in enumerate(motiflets):
         for j, pos in enumerate(motiflet):
             fig = plt.figure()
             ax = plt.axes(projection='3d')
 
-            if prefix:
-                out_path = 'video/motiflet_' + amc_name + '_' + prefix + '_' \
-                           + str(i) + '_' + str(j) + '.gif'
-            else:
-                out_path = 'video/motiflet_' + amc_name + '_' \
-                           + str(i) + '_' + str(j) + '.gif'
+            out_path = 'video/motiflet_' + amc_name + '_' + str(i) + '_' + str(
+                j) + '.gif'
 
             FuncAnimation(fig,
                           lambda i: draw_frame(ax, motions, joints, i,
@@ -311,31 +419,9 @@ def _generate_motion_capture(joints_to_use, prefix=None, add_xyz=True):
                 fps=20)
 
 
-def test_publication_chaleston():
-    asf_path = '../datasets/motion_data/93.asf'
-    amc_name = "93_04"
-    amc_path = '../datasets/motion_data/' + amc_name + '.amc'
-    k_max = 10
-
-    use_joints2 = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
-                   'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
-                   #'lclavicle', 'lhumerus', 'lradius', 'lwrist',
-                   #'lhand', 'lfingers', 'lthumb',
-                   #'lfemur', 'ltibia', 'lfoot', 'ltoes'
-                   ]
-    joints = amc_parser.parse_asf(asf_path)
-    motions = amc_parser.parse_amc(amc_path)
-    ground_truth = read_ground_truth(asf_path, path="")
-
-    df = pd.DataFrame(
-        [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-    df = exclude_body_joints(df)
-    df = include_joints(df, use_joints2)
-
-    print("Data", df.shape)
-    time = np.arange(0, df.shape[1] / 120, 1 / 120)
-    df.columns = time
-    df.name = ds_name
+def test_lama_chaleston():
+    get_ds_parameters("Charleston - Side By Side Female")
+    df, ground_truth, joints, motions = read_motion_dataset()
 
     length_range = np.arange(100, 200, 10)
     print(length_range)
@@ -344,8 +430,9 @@ def test_publication_chaleston():
         "Charleston Side By Side - Female",
         df,
         dimension_labels=df.index,
-        n_dims=10,
-        ground_truth=ground_truth
+        n_dims=n_dims,
+        ground_truth=ground_truth,
+        slack=slack
     )
 
     m, all_minima = ml.fit_motif_length(
@@ -353,7 +440,7 @@ def test_publication_chaleston():
         plot=False,
         plot_best_only=True,
         plot_motifsets=True)
-    ml.plot_motifset(path="images_paper/charleston.pdf")
+    ml.plot_motifset(path="images_paper/charleston.pdf", motifset_name="LAMA")
 
     print("Positions:")
     for eb in ml.elbow_points:
@@ -402,59 +489,40 @@ def test_publication_chaleston():
                     # break
 
 
+def test_mstamp():
+    get_ds_parameters("Basketball")
+    df, ground_truth, joints, motions = read_motion_dataset()
+    run_mstamp(df, ds_name, motif_length=m, ground_truth=ground_truth)
 
 
-# def test_mstamp():
-#     use_joints2 = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
-#                    'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
-#                    # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers',
-#                    # 'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
-#                    ]
-#     joints = amc_parser.parse_asf(asf_path)
-#     motions = amc_parser.parse_amc(amc_path)
-#     ground_truth = read_ground_truth(asf_path, path="")
-#
-#     df = pd.DataFrame(
-#         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-#     df = exclude_body_joints(df)
-#     df = include_joints(df, use_joints2)
-#
-#     print("Data", df.shape)
-#     time = np.arange(0, df.shape[1] / 120, 1 / 120)
-#     df.columns = time
-#     df.name = ds_name
-#
-#     m = 232
-#     run_mstamp(df, ds_name, motif_length=m)
-#
-#
-# def test_kmotifs():
-#     use_joints2 = ['rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand', 'rfingers',
-#                    'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
-#                    # 'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand', 'lfingers',
-#                    # 'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
-#                    ]
-#     joints = amc_parser.parse_asf(asf_path)
-#     motions = amc_parser.parse_amc(amc_path)
-#     ground_truth = read_ground_truth(asf_path, path="")
-#
-#     df = pd.DataFrame(
-#         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
-#     df = exclude_body_joints(df)
-#     df = include_joints(df, use_joints2)
-#
-#     print("Data", df.shape)
-#     time = np.arange(0, df.shape[1] / 120, 1 / 120)
-#     df.columns = time
-#     df.name = ds_name
-#
-#     for target_k in [10, 14]:
-#         m = 232
-#         _ = run_kmotifs(
-#             df,
-#             ds_name,
-#             m,
-#             r_ranges=np.arange(100, 300, 5),
-#             use_dims=8,
-#             target_k=target_k,
-#         )
+def test_kmotifs():
+    # get_ds_parameters("Charleston-Side-By-Side-Male")
+    # get_ds_parameters("Basketball")
+    get_ds_parameters("Swordplay")
+    df, ground_truth, joints, motions = read_motion_dataset()
+
+    for target_k in ks:
+        motif = run_kmotifs(
+            df,
+            ds_name,
+            m,
+            slack=slack,
+            r_ranges=np.arange(10, 300, 1),
+            use_dims=n_dims,
+            target_k=target_k,
+            ground_truth=ground_truth
+        )
+
+        filtered_joints = list(set([joint[:-2] for joint in used_joints]))
+        for j, pos in enumerate(motif[-1]):
+            fig = plt.figure()
+            ax = plt.axes(projection='3d')
+
+            out_path = 'video/anim/motiflet_' + amc_name + "_" + str(j) + '.gif'
+            FuncAnimation(fig,
+                          lambda i: draw_frame(ax, motions, joints, i,
+                                               joints_to_highlight=filtered_joints),
+                          range(pos, pos + motif_length, 4)).save(
+                out_path,
+                bitrate=100,
+                fps=20)

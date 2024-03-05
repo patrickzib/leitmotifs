@@ -43,11 +43,36 @@ datasets = {
         "audio_file_url": path_to_wav + "Lord of the Rings Symphony - The Shire.mp3",
         "pandas_file_url": path + "Lord-of-the-Rings-Symphony-The-Shire.csv",
     },
+
+    "Star Wars - The Imperial March": {
+        "ks": [5],
+        "n_dims": 3,
+        "motif_length": 357,
+        "length_range_in_seconds": np.arange(3.0, 7.0, 0.25),
+        "slack": 1.0,
+        "ds_name": "Star Wars - The Imperial March",
+        "audio_file_url": path_to_wav + "Star_Wars_The_Imperial_March_Theme_Song.mp3",
+        "pandas_file_url": path + "Star_Wars_The_Imperial_March_Theme_Song.csv",
+    },
+    "Harry Potter - Hedwigs Theme": {
+        "ks": [10],
+        "n_dims": 3,
+        "motif_length": 357,
+        "length_range_in_seconds": np.arange(3.0, 7.0, 0.25),
+        "slack": 1.0,
+        "ds_name": "Harry Potter - Hedwigs Theme",
+        "audio_file_url": path_to_wav + "Harry Potter - Hedwigs Theme.mp3",
+        "pandas_file_url": path + "Harry-Potter-Hedwigs-Theme.csv",
+    },
 }
 
 dataset = datasets["Lord of the Rings Symphony - The Shire"]
+# dataset = datasets["Star Wars - The Imperial March"]
+
 # dataset = datasets["Hans Zimmer - Zoosters Breakout"]
 # dataset = datasets["Hans Zimmer - He is a Pirate"]
+# dataset = datasets["Harry Potter - Hedwigs Theme"]
+
 
 ks = dataset["ks"]
 n_dims = dataset["n_dims"]
@@ -64,50 +89,54 @@ motif_length_range_in_s = dataset["length_range_in_seconds"]
 channels = [
     'MFCC 0',
     'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
-    'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
-    'MFCC 11', 'MFCC 12', 'MFCC 13' # , 'MFCC 14', 'MFCC 15'
+    # 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
+    # 'MFCC 11', 'MFCC 12', 'MFCC 13'
 ]
 
 
 # def test_read_write():
-#    audio_length_seconds, df, index_range = read_mp3(audio_file_url)
-#    df.to_csv(pandas_file_url, compression='gzip')
-#    # audio_length_seconds2, df2, index_range2 = read_from_dataframe(pandas_file_url)
+#     audio_length_seconds, df, index_range = read_mp3(audio_file_url)
+#     df.to_csv(pandas_file_url, compression='gzip')
+# #   # read_audio_from_dataframe(pandas_file_url)
 
 
-# def test_ground_truth():
-#     audio_length_seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
-#
-#     ground_truth = read_ground_truth(pandas_file_url, path="")
-#
-#     channels = [  # 'MFCC 0',
-#         'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
-#         'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
-#         'MFCC 11', 'MFCC 12', 'MFCC 13', 'MFCC 14', 'MFCC 15'
-#     ]
-#     df = df.loc[channels]
-#
-#     ml = Motiflets(ds_name, df,
-#                    dimension_labels=df.index,
-#                    n_dims=n_dims,
-#                    slack=1.0,
-#                    ground_truth=ground_truth
-#                    )
-#
-#     print("Positions:", index_range[ground_truth.loc[0][0]])
-#
-#     if os.path.isfile(audio_file_url):
-#         # extract motiflets
-#         for a, motif in enumerate(ground_truth.loc[0]):
-#             motif_length = motif[0][1]-motif[0][0]
-#             length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
-#
-#             extract_audio_segment(
-#                 df, ds_name, audio_file_url, "snippets",
-#                 length_in_seconds, index_range, motif_length,
-#                 np.array(motif)[:,0], id=(a + 1))
-#
-#     ml.plot_dataset()
+def test_ground_truth():
+    audio_length_seconds, df, index_range, ground_truth \
+        = read_audio_from_dataframe(pandas_file_url, channels)
+
+    # motif_length_range = np.int32(motif_length_range_in_s /
+    #                              audio_length_seconds * df.shape[1])
+
+    # print("Positions:", index_range[ground_truth.loc[0][0]])
+
+    pos = [19.4, 28.5, 116.8, 126.0, 144.6]
+    length = 8.3
+
+    positions = []
+    for p in pos:
+        positions.append([index_range.searchsorted(p),
+                          index_range.searchsorted(p+length)])
+    print(positions)
+    positions = np.array([positions])
+
+    if os.path.isfile(audio_file_url):
+        # extract motiflets
+        for a, motif in enumerate(positions):
+            motif_length = motif[a, 1] - motif[a, 0]
+            print(motif_length)
+            length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
+
+            extract_audio_segment(
+                df, ds_name, audio_file_url, "snippets",
+                length_in_seconds, index_range, motif_length,
+                np.array(motif)[:, 0], id=(a + 1))
+
+    ml = Motiflets(ds_name, df,
+                   dimension_labels=df.index,
+                   n_dims=n_dims,
+                   ground_truth=ground_truth
+                   )
+    ml.plot_dataset()
 
 def test_publication():
     test_lama()
@@ -134,35 +163,35 @@ def test_lama(use_PCA=False):
                    ground_truth=ground_truth
                    )
 
-    # motif_length_range = np.int32(motif_length_range_in_s /
-    #                               audio_length_seconds * df.shape[1])
-    # motif_length, _ = ml.fit_motif_length(
+    motif_length_range = np.int32(motif_length_range_in_s /
+                                  audio_length_seconds * df.shape[1])
+    # m, _ = ml.fit_motif_length(
     #     k_max,
     #     motif_length_range,
     #     plot=True,
     #     plot_elbows=False,
-    #     plot_motifsets=False,
-    #     plot_best_only=True,
+    #     plot_motifsets=True,
+    #     plot_best_only=False,
     # )
 
+    m = 290
+    ks = [6]
     ml.fit_k_elbow(
-        k_max=k_max,
-        motif_length=m,
-        plot_elbows=False,
-        plot_motifsets=False,
+       k_max=k_max,
+       motif_length=m,
+       plot_elbows=False,
+       plot_motifsets=False,
     )
-
+    ml.elbow_points = ks
     ml.plot_motifset(
-        elbow_points=ks,
-        path="images_paper/audio/" + ds_name + "_new.pdf",
-        motifset_name="LAMA")
+       path="images_paper/audio/" + ds_name + "_new.pdf",
+       motifset_name="LAMA")
 
     # m = motif_length
     length_in_seconds = m * audio_length_seconds / df.shape[1]
     print("Found motif length", length_in_seconds, m)
 
-    # for a, eb in enumerate(ml.elbow_points):
-    for a, eb in enumerate(ks):
+    for a, eb in enumerate(ml.elbow_points):
         motiflet = np.sort(ml.motiflets[eb])
         print("Positions:", index_range[motiflet])
         print("Positions:", list(zip(motiflet, motiflet + m)))
@@ -188,7 +217,7 @@ def test_mstamp():
     audio_length_seconds, df, index_range, ground_truth \
         = read_audio_from_dataframe(pandas_file_url, channels)
 
-    motif = run_mstamp(df, ds_name, motif_length=m)
+    motif = run_mstamp(df, ds_name, motif_length=m, ground_truth=ground_truth)
 
     if os.path.isfile(audio_file_url):
         length_in_seconds = m * audio_length_seconds / df.shape[1]
@@ -202,23 +231,24 @@ def test_kmotifs():
         = read_audio_from_dataframe(pandas_file_url, channels)
 
     for target_k in ks:
-        _ = run_kmotifs(
+        motif = run_kmotifs(
             df,
             ds_name,
             m,
-            r_ranges=np.arange(100, 1000, 1),
+            r_ranges=np.arange(10, 1000, 10),
             use_dims=n_dims, # df.shape[0],
             target_k=target_k,
-            slack=slack
+            slack=slack,
+            ground_truth=ground_truth
         )
 
-    length_in_seconds = m * audio_length_seconds / df.shape[1]
-    print(f"Length in seconds: {length_in_seconds}")
+        length_in_seconds = m * audio_length_seconds / df.shape[1]
+        print(f"Length in seconds: {length_in_seconds}")
 
-    # if os.path.isfile(audio_file_url):
-    #     extract_audio_segment(
-    #         df, ds_name, audio_file_url, "snippets",
-    #         length_in_seconds, index_range, m, motif)
+        if os.path.isfile(audio_file_url):
+            extract_audio_segment(
+                df, ds_name, audio_file_url, "snippets",
+                length_in_seconds, index_range, m, motif[-1])
 
 
 def test_plot_spectrogram():
@@ -236,7 +266,7 @@ def test_plot_spectrogram():
 
 def test_plot_all():
     audio_length_seconds, df, index_range, ground_truth \
-        = read_audio_from_dataframe(pandas_file_url)
+        = read_audio_from_dataframe(pandas_file_url, channels)
 
     path = "images_paper/audio/" + ds_name + "_new.pdf"
 

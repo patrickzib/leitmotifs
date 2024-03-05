@@ -23,22 +23,30 @@ datasets = {
     "House-Sparrow": {
         "ks": 20,
         "channels": 10,
-        "length_range": np.arange(25, 50, 5),
+        "length_range": np.arange(25, 100, 5),
         "ds_name": "House-Sparrow",
         "audio_file_url": path_to_wav + "house-sparrow-passer-domesticus-audio.mp3",
         "pandas_file_url": path + "house-sparrow-passer-domesticus.csv"
     }
 }
 
-dataset = datasets["Common-Starling"]
-# dataset = datasets["House-Sparrow"]
+
+# dataset = datasets["Common-Starling"]
+dataset = datasets["House-Sparrow"]
 k_max = dataset["ks"]
-channels = dataset["channels"]
+n_channels = dataset["channels"]
 length_range = dataset["length_range"]
 ds_name = dataset["ds_name"]
 audio_file_url = dataset["audio_file_url"]
 pandas_file_url = dataset["pandas_file_url"]
+n_dims = 2
 
+channels = [
+    'MFCC 0',
+    'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4', 'MFCC 5',
+    'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
+    'MFCC 11', 'MFCC 12', 'MFCC 13' # , 'MFCC 14', 'MFCC 15'
+]
 
 # def test_read_write():
 #    audio_length_seconds, df, index_range = read_from_wav(audio_file_url)
@@ -47,15 +55,14 @@ pandas_file_url = dataset["pandas_file_url"]
 
 
 def test_publication(use_PCA=False):
-    seconds, df, index_range = read_audio_from_dataframe(pandas_file_url)
-    df = df.iloc[:channels, :]
-    n_dims = 2
+    audio_length_seconds, df, index_range, ground_truth \
+        = read_audio_from_dataframe(pandas_file_url, channels[:n_channels])
 
     # make the signal uni-variate by applying PCA
     if use_PCA:
         from sklearn.decomposition import PCA
         pca = PCA(n_components=1)
-        df_transform = pca.fit_transform(df.T).T
+        df = pca.fit_transform(df.T).T
     else:
         df_transform = df
 

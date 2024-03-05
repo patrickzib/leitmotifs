@@ -93,9 +93,9 @@ channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4',
 
 
 # def test_read_write():
-# audio_length_seconds, df, index_range = read_from_wav(read_from_wav)
-# df.to_csv(pandas_file_url, compression='gzip')
-# audio_length_seconds2, df2, index_range2 = read_from_dataframe(pandas_file_url)
+#     audio_length_seconds, df, index_range = read_from_wav(read_from_wav)
+#     df.to_csv(pandas_file_url, compression='gzip')
+#     audio_length_seconds2, df2, index_range2 = read_audio_from_dataframe(pandas_file_url)
 
 
 def extract_motif_from_audio(
@@ -128,9 +128,7 @@ def extract_motif_from_audio(
 
 def test_ground_truth():
     audio_length_seconds, df, index_range, ground_truth \
-        = read_audio_from_dataframe(pandas_file_url)
-
-    df = df.loc[channels]
+        = read_audio_from_dataframe(pandas_file_url, channels)
 
     # motif_length_range = np.int32(motif_length_range_in_s /
     #                              audio_length_seconds * df.shape[1])
