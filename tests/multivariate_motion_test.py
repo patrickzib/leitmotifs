@@ -135,14 +135,6 @@ datasets = {
             'rfemur', 'rtibia', 'rfoot', 'rtoes'
         ]
     },
-    "Charleston-Fancy": {
-        "ks": [3],
-        "motif_length": 120,
-        "n_dims": 10,
-        "slack": 0.5,
-        "amc_name": "93_08",  # Fancy Charleston
-        "asf_path": '../datasets/motion_data/93.asf'
-    },
     "Charleston - Side By Side Female": {
         "ks": [3],
         "motif_length": 140,
@@ -157,20 +149,28 @@ datasets = {
             # 'lfingers', 'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
         ]
     },
-    "Charleston-Side-By-Side-Male": {
-        "ks": [3],
-        "motif_length": 140,
-        "n_dims": 10,
-        "amc_name": "93_05",
-        "slack": 0.5,
-        "asf_path": '../datasets/motion_data/93.asf',
-        "used_joints": [
-            # 'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand',
-            # 'rfingers', 'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
-            'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand',
-            'lfingers', 'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
-        ]
-    }
+    # "Charleston-Fancy": {
+    #     "ks": [3],
+    #     "motif_length": 120,
+    #     "n_dims": 10,
+    #     "slack": 0.5,
+    #     "amc_name": "93_08",  # Fancy Charleston
+    #     "asf_path": '../datasets/motion_data/93.asf'
+    # },
+    # "Charleston-Side-By-Side-Male": {
+    #     "ks": [3],
+    #     "motif_length": 140,
+    #     "n_dims": 10,
+    #     "amc_name": "93_05",
+    #     "slack": 0.5,
+    #     "asf_path": '../datasets/motion_data/93.asf',
+    #     "used_joints": [
+    #         # 'rclavicle', 'rhumerus', 'rradius', 'rwrist', 'rhand',
+    #         # 'rfingers', 'rthumb', 'rfemur', 'rtibia', 'rfoot', 'rtoes',
+    #         'lclavicle', 'lhumerus', 'lradius', 'lwrist', 'lhand',
+    #         'lfingers', 'lthumb', 'lfemur', 'ltibia', 'lfoot', 'ltoes'
+    #     ]
+    # }
 }
 
 # Switch to write videos to disc
@@ -304,18 +304,22 @@ def test_lama(dataset_name="Boxing", use_PCA=False, motifset_name="LAMA", plot=T
     print("Time:", np.sort(motif_sets[ks]) / 120)  # 120 FPS
     # ml.plot_motifset(elbow_points=ks, motifset_name=motifset_name)
 
-    for i in ks:
+    if use_PCA:
+        dims = np.argsort(pca.components_[:])[:, :n_dims]
+    else:
+        dims = ml.motiflets_dims[ks]
+
+    for a, i in enumerate(ks):
         motif = motif_sets[i]
         use_joints = df.index.values[ml.motiflets_dims[i]]
-        filtered_joints = list(set([joint[:-2] for joint in use_joints]))
 
         print("Positions (Frame):", np.sort(motif))
         print("Time:", np.sort(motif) / 120)  # 120 FPS
 
         if use_PCA:
-            print("\tdims\t:", repr(np.argsort(pca.components_[:])[:, :n_dims]))
+            print("\tdims\t:", dims)
         else:
-            print("\tdims\t:", repr(ml.motiflets_dims[i]))
+            print("\tdims\t:", dims[a])
 
         if plot:
             ml.plot_motifset(elbow_points=[i], motifset_name=motifset_name)
@@ -339,7 +343,7 @@ def test_lama(dataset_name="Boxing", use_PCA=False, motifset_name="LAMA", plot=T
     #             motif = motiflets[eb]
     #             generate_gif(motif, m, motions, joints)
 
-    return motif_sets[ks], ml.motiflets_dims[ks]
+    return motif_sets[ks], dims
 
 
 def test_emd_pca(dataset_name="Boxing", plot=True):
@@ -358,8 +362,9 @@ def test_kmotifs(dataset_name="Boxing", first_dims=True, plot=True):
     df, ground_truth, joints, motions = read_motion_dataset()
 
     motif_sets = []
+    used_dims = []
     for target_k in ks:
-        motif = run_kmotifs(
+        motif, dims = run_kmotifs(
             df,
             ds_name,
             motif_length=motif_length,
@@ -370,13 +375,13 @@ def test_kmotifs(dataset_name="Boxing", first_dims=True, plot=True):
             ground_truth=ground_truth,
             plot=plot
         )
-
+        used_dims.append(np.arange(dims))
         motif_sets.append(motif)
 
         if write_video:
             generate_gif(motif, motif_length, motions, joints)
 
-    return motif_sets
+    return motif_sets, used_dims
 
 
 def generate_gif(motif, m, motions, joints):
@@ -397,41 +402,131 @@ def generate_gif(motif, m, motions, joints):
 
 
 def test_publication():
-    dataset_names = ["Boxing"]
+    dataset_names = [
+        # "Boxing",
+        "Swordplay",
+        "Basketball",
+        "Charleston - Side By Side Female"
+    ]
 
     plot = False
 
     for dataset_name in dataset_names:
-
         motifA, dimsA = test_lama(dataset_name, plot=plot)
-
         motifB, dimsB = test_emd_pca(dataset_name, plot=plot)
-
         motifC, dimsC = test_mstamp(dataset_name, plot=plot)
-
-        motifD, dimsD = test_kmotifs(dataset_name, plot=plot)
-
+        motifD, dimsD = test_kmotifs(dataset_name, first_dims=True, plot=plot)
         motifE, dimsE = test_kmotifs(dataset_name, first_dims=False, plot=plot)
 
         df = pd.DataFrame(columns=[
             "dataset", "k",
             "LAMA", "EMD", "mSTAMP", "K-Motifs (1st dims)", "K-Motifs (all dims)",
-            "LAMA_dims", "EMD_dims", "mSTAMP_dims", "K-Motifs (1st dims)_dims", "K-Motifs (all dims)_dims"])
+            "LAMA_dims", "EMD_dims", "mSTAMP_dims", "K-Motifs (1st dims)_dims",
+            "K-Motifs (all dims)_dims"])
 
         for i, k in enumerate(ks):
             df.loc[len(df.index)] \
                 = [dataset_name, k,
-                   motifA[i], motifB, motifC[i], motifD[i], motifE[i],
-                   dimsA[i], dimsB, dimsC, dimsD[i], dimsE[i]]
+                   motifA[i].tolist(), motifB[i].tolist(), motifC[0],
+                   motifD[i].tolist(), motifE[i].tolist(),
+                   dimsA[i].tolist(), dimsB[i].tolist(), dimsC[0].tolist(),
+                   dimsD[i].tolist(), dimsE[i].tolist()]
 
         print("--------------------------")
         print("LAMA:    \t", motifA, dimsA)
-        print("EMD:     \t", motifB, dimsB)
+        print("EMD*:     \t", motifB, dimsB)
         print("mSTAMP:  \t", motifC, dimsC)
         print("K-Motifs (1st dims):\t", motifD, dimsD)
         print("K-Motifs (all dims):\t", motifE, dimsE)
 
         from datetime import datetime
-        currentDateTime = datetime.now().strftime("%m-%d-%Y %H-%M-%S %p")
-        df.to_csv(
-            f'results/results_motion_{dataset_name}_{currentDateTime}.csv')
+        currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
+        df.to_parquet(
+            f'results/results_motion_{dataset_name}.gzip',  # _{currentDateTime}
+            compression='gzip')
+
+
+def compute_precision(pred, gt, motif_length):
+    gt_found = np.zeros(len(gt))
+    for start in pred:
+        for i, g_start in enumerate(gt):
+            end = start+motif_length
+            if start <= g_start[1] and end <= g_start[0]:
+                gt_found[i] = 1
+                break
+
+    return np.average(gt_found)
+
+
+def test_plot_results():
+    dataset_names = [
+        "Boxing",
+        #"Swordplay",
+        #"Basketball",
+        #"Charleston - Side By Side Female"
+    ]
+
+    for dataset_name in dataset_names:
+        get_ds_parameters(dataset_name)
+        df, ground_truth, joints, motions = read_motion_dataset()
+
+        df_loc = pd.read_parquet(
+            f"results/results_motion_{dataset_name}.gzip")
+
+        id = df_loc.shape[0] - 1  # last index
+        motifs = [
+            # mSTAMP
+            df_loc.loc[id]["mSTAMP"],
+            # LAMA
+            df_loc.loc[id]["LAMA"],
+            # EMD*
+            df_loc.loc[id]["EMD"],
+            # K-Motif
+            df_loc.loc[id]["K-Motifs (1st dims)"],
+            df_loc.loc[id]["K-Motifs (all dims)"],
+        ]
+
+        dims = [
+            # mSTAMP
+            df_loc.loc[id]["mSTAMP_dims"],
+            # LAMA
+            df_loc.loc[id]["LAMA_dims"],
+            # EMD*
+            df_loc.loc[id]["EMD_dims"],
+            # K-Motif
+            df_loc.loc[id]["K-Motifs (1st dims)_dims"],
+            df_loc.loc[id]["K-Motifs (all dims)_dims"],
+        ]
+
+        results = []
+        for method, motif_set in zip(
+            ["mStamp", "LAMA", "EMD*", "K-Motifs (1st)", "K-Motifs (all)"], motifs):
+
+            precision = compute_precision(
+                np.sort(motif_set),
+                ground_truth.values[0,0], motif_length)
+            results.append([ds_name, method, precision])
+
+        print(results)
+
+        # motifset_names = ["mStamp+MDL",
+        #                   "LAMA",
+        #                   "EMD*",
+        #                   "K-Motifs (1st)",
+        #                   "K-Motifs (all)"]
+        #
+        # out_path = "results/images/" + dataset_name + "_new.pdf"
+        #
+        # plot_motifsets(
+        #     ds_name,
+        #     df,
+        #     motifsets=motifs,
+        #     motiflet_dims=dims,
+        #     motifset_names=motifset_names,
+        #     motif_length=motif_length,
+        #     ground_truth=ground_truth,
+        #     show=out_path is None)
+        #
+        # if out_path is not None:
+        #     plt.savefig(out_path)
+        #     plt.show()

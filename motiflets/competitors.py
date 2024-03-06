@@ -105,20 +105,17 @@ def run_kmotifs(
             print(f"Pos: {motifset}")
             motifset_names = ["K-Motif"]
 
-            dims = np.arange(use_dims).reshape(1, -1)
-            motifset = motifset.reshape(1, -1)
-
             if plot:
                 plot_motifsets(
                     ds_name,
                     series,
-                    motifsets=motifset,
-                    motiflet_dims=dims,
+                    motifsets=motifset.reshape(1, -1),
+                    motiflet_dims=np.arange(use_dims).reshape(1, -1),
                     motifset_names=motifset_names,
                     motif_length=motif_length,
                     ground_truth=ground_truth,
                     show=True)
 
-            return motifset, dims
+            return motifset, use_dims
 
-    return []
+    return [], []
