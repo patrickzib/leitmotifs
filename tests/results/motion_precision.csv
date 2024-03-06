@@ -1,0 +1,21 @@
+,Dataset,Method,Precision,Recall
+0,Boxing,mStamp,1.0,0.2
+1,Boxing,LAMA,0.9,0.9
+2,Boxing,EMD*,0.8,0.8
+3,Boxing,K-Motifs (TOP-N),0.7,0.7
+4,Boxing,K-Motifs (all),0.7,0.6
+5,Swordplay,mStamp,0.0,0.0
+6,Swordplay,LAMA,1.0,1.0
+7,Swordplay,EMD*,0.0,0.0
+8,Swordplay,K-Motifs (TOP-N),0.16666666666666666,0.16666666666666666
+9,Swordplay,K-Motifs (all),0.0,0.0
+10,Basketball,mStamp,0.0,0.0
+11,Basketball,LAMA,1.0,1.0
+12,Basketball,EMD*,0.6,0.6
+13,Basketball,K-Motifs (TOP-N),0.4,0.4
+14,Basketball,K-Motifs (all),0.8,0.8
+15,Charleston - Side By Side Female,mStamp,1.0,0.6666666666666666
+16,Charleston - Side By Side Female,LAMA,1.0,1.0
+17,Charleston - Side By Side Female,EMD*,1.0,1.0
+18,Charleston - Side By Side Female,K-Motifs (TOP-N),1.0,1.0
+19,Charleston - Side By Side Female,K-Motifs (all),1.0,1.0

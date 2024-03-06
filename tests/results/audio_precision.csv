@@ -1,0 +1,21 @@
+,Dataset,Method,Precision,Recall
+0,What I've Done - Linkin Park,mStamp,0.0,0.0
+1,What I've Done - Linkin Park,LAMA,1.0,1.0
+2,What I've Done - Linkin Park,EMD*,0.8333333333333334,1.0
+3,What I've Done - Linkin Park,K-Motifs (TOP-N),1.0,1.0
+4,What I've Done - Linkin Park,K-Motifs (all),0.8333333333333334,1.0
+5,Numb - Linkin Park,mStamp,0.0,0.0
+6,Numb - Linkin Park,LAMA,1.0,1.0
+7,Numb - Linkin Park,EMD*,0.8,0.8
+8,Numb - Linkin Park,K-Motifs (TOP-N),1.0,1.0
+9,Numb - Linkin Park,K-Motifs (all),1.0,1.0
+10,Vanilla Ice - Ice Ice Baby,mStamp,1.0,0.4
+11,Vanilla Ice - Ice Ice Baby,LAMA,0.65,0.8
+12,Vanilla Ice - Ice Ice Baby,EMD*,0.65,0.8
+13,Vanilla Ice - Ice Ice Baby,K-Motifs (TOP-N),0.95,1.0
+14,Vanilla Ice - Ice Ice Baby,K-Motifs (all),0.95,1.0
+15,Queen David Bowie - Under Pressure,mStamp,1.0,1.0
+16,Queen David Bowie - Under Pressure,LAMA,0.375,1.0
+17,Queen David Bowie - Under Pressure,EMD*,0.4375,1.0
+18,Queen David Bowie - Under Pressure,K-Motifs (TOP-N),0.375,1.0
+19,Queen David Bowie - Under Pressure,K-Motifs (all),0.5294117647058824,1.0

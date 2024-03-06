@@ -119,3 +119,24 @@ def run_kmotifs(
             return motifset, use_dims
 
     return [], []
+
+
+def compute_precision_recall(pred, gt, motif_length):
+    gt_found = np.zeros(len(gt))
+    pred_correct = np.zeros(len(pred))
+    for a, start in enumerate(pred):
+        for i, g_start in enumerate(gt):
+            end = start + motif_length
+            length_interval1 = end - start
+            length_interval2 = g_start[1] - g_start[0]
+
+            # Calculate overlapping portion
+            overlap_start = max(start, g_start[0])
+            overlap_end = min(end, g_start[1])
+            overlap_length = max(0, overlap_end - overlap_start)
+
+            if overlap_length >= 0.5 * min(length_interval1, length_interval2):
+                gt_found[i] = 1
+                pred_correct[a] = 1
+
+    return np.average(pred_correct), np.average(gt_found)

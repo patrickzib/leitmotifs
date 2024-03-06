@@ -311,15 +311,14 @@ def test_lama(dataset_name="Boxing", use_PCA=False, motifset_name="LAMA", plot=T
 
     for a, i in enumerate(ks):
         motif = motif_sets[i]
-        use_joints = df.index.values[ml.motiflets_dims[i]]
 
         print("Positions (Frame):", np.sort(motif))
         print("Time:", np.sort(motif) / 120)  # 120 FPS
 
         if use_PCA:
-            print("\tdims\t:", dims)
+            print("\tdims\t:", repr(dims))
         else:
-            print("\tdims\t:", dims[a])
+            print("\tdims\t:", repr(dims[a]))
 
         if plot:
             ml.plot_motifset(elbow_points=[i], motifset_name=motifset_name)
@@ -439,30 +438,11 @@ def test_publication():
         print("K-Motifs (1st dims):\t", motifD, dimsD)
         print("K-Motifs (all dims):\t", motifE, dimsE)
 
-        from datetime import datetime
-        currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
+        # from datetime import datetime
+        # currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
         df.to_parquet(
             f'results/results_motion_{dataset_name}.gzip',  # _{currentDateTime}
             compression='gzip')
-
-
-def compute_precision(pred, gt, motif_length):
-    gt_found = np.zeros(len(gt))
-    for start in pred:
-        for i, g_start in enumerate(gt):
-            end = start + motif_length
-            length_interval1 = end - start
-            length_interval2 = g_start[1] - g_start[0]
-
-            # Calculate overlapping portion
-            overlap_start = max(start, g_start[0])
-            overlap_end = min(end, g_start[1])
-            overlap_length = max(0, overlap_end - overlap_start)
-
-            if overlap_length >= 0.5 * min(length_interval1, length_interval2):
-                gt_found[i] = 1
-
-    return np.average(gt_found)
 
 
 def test_plot_results():
@@ -510,10 +490,9 @@ def test_plot_results():
         for method, motif_set in zip(
             ["mStamp", "LAMA", "EMD*", "K-Motifs (TOP-N)", "K-Motifs (all)"], motifs):
 
-            precision = compute_precision(
-                np.sort(motif_set),
-                ground_truth.values[0,0], motif_length)
-            results.append([ds_name, method, precision])
+            precision, recall = compute_precision_recall(
+                np.sort(motif_set), ground_truth.values[0,0], motif_length)
+            results.append([ds_name, method, precision, recall])
 
         print(results)
 
@@ -542,4 +521,4 @@ def test_plot_results():
 
     pd.DataFrame(
         data=np.array(results),
-        columns=["Dataset", "Method", "Precision"]).to_csv("results/motion_precision.csv")
+        columns=["Dataset", "Method", "Precision", "Recall"]).to_csv("results/motion_precision.csv")

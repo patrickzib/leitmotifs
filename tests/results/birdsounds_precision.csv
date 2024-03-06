@@ -1,0 +1,6 @@
+,Dataset,Method,Precision,Recall
+0,Common-Starling,mStamp,1.0,0.5
+1,Common-Starling,LAMA,1.0,1.0
+2,Common-Starling,EMD*,1.0,1.0
+3,Common-Starling,K-Motifs (TOP-N),1.0,1.0
+4,Common-Starling,K-Motifs (all),1.0,1.0
