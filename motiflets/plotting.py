@@ -359,7 +359,8 @@ def plot_motifsets(
                         (motiflet_dims[i] is not None and dim in motiflet_dims[i])):
                     if motifset is not None:
                         for a, pos in enumerate(motifset):
-                            if motifset_names is None or "PCA" not in motifset_names[i]:
+                            # Do not plot, if all dimensions are covered
+                            if motiflet_dims is None or motiflet_dims[i].shape[0] < data.shape[0]:
                                 _ = sns.lineplot(ax=axes[0, 0],
                                                  x=data_index[
                                                      np.arange(pos, pos + motif_length)],
@@ -383,8 +384,8 @@ def plot_motifsets(
                             df["time"] = range(0, motif_length)
 
                             for aa, pos in enumerate(motifset):
-                                df[str(aa)] = zscore(
-                                    dim_data_raw[pos:pos + motif_length]) + offset
+                                values = dim_data_raw[pos:pos + motif_length]
+                                df[str(aa)] = (values - values.mean()) / (values.std()+1e-4) + offset
 
                             df_melt = pd.melt(df, id_vars="time")
                             _ = sns.lineplot(ax=axes[0, 1 + i],

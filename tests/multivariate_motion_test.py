@@ -434,7 +434,7 @@ def test_publication():
 
         print("--------------------------")
         print("LAMA:    \t", motifA, dimsA)
-        print("EMD*:     \t", motifB, dimsB)
+        print("EMD*:    \t", motifB, dimsB)
         print("mSTAMP:  \t", motifC, dimsC)
         print("K-Motifs (1st dims):\t", motifD, dimsD)
         print("K-Motifs (all dims):\t", motifE, dimsE)
@@ -450,10 +450,17 @@ def compute_precision(pred, gt, motif_length):
     gt_found = np.zeros(len(gt))
     for start in pred:
         for i, g_start in enumerate(gt):
-            end = start+motif_length
-            if start <= g_start[1] and end <= g_start[0]:
+            end = start + motif_length
+            length_interval1 = end - start
+            length_interval2 = g_start[1] - g_start[0]
+
+            # Calculate overlapping portion
+            overlap_start = max(start, g_start[0])
+            overlap_end = min(end, g_start[1])
+            overlap_length = max(0, overlap_end - overlap_start)
+
+            if overlap_length >= 0.5 * min(length_interval1, length_interval2):
                 gt_found[i] = 1
-                break
 
     return np.average(gt_found)
 
@@ -461,10 +468,12 @@ def compute_precision(pred, gt, motif_length):
 def test_plot_results():
     dataset_names = [
         "Boxing",
-        #"Swordplay",
-        #"Basketball",
-        #"Charleston - Side By Side Female"
+        "Swordplay",
+        "Basketball",
+        "Charleston - Side By Side Female"
     ]
+
+    results = []
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -498,9 +507,8 @@ def test_plot_results():
             df_loc.loc[id]["K-Motifs (all dims)_dims"],
         ]
 
-        results = []
         for method, motif_set in zip(
-            ["mStamp", "LAMA", "EMD*", "K-Motifs (1st)", "K-Motifs (all)"], motifs):
+            ["mStamp", "LAMA", "EMD*", "K-Motifs (TOP-N)", "K-Motifs (all)"], motifs):
 
             precision = compute_precision(
                 np.sort(motif_set),
@@ -509,24 +517,29 @@ def test_plot_results():
 
         print(results)
 
-        # motifset_names = ["mStamp+MDL",
-        #                   "LAMA",
-        #                   "EMD*",
-        #                   "K-Motifs (1st)",
-        #                   "K-Motifs (all)"]
-        #
-        # out_path = "results/images/" + dataset_name + "_new.pdf"
-        #
-        # plot_motifsets(
-        #     ds_name,
-        #     df,
-        #     motifsets=motifs,
-        #     motiflet_dims=dims,
-        #     motifset_names=motifset_names,
-        #     motif_length=motif_length,
-        #     ground_truth=ground_truth,
-        #     show=out_path is None)
-        #
-        # if out_path is not None:
-        #     plt.savefig(out_path)
-        #     plt.show()
+        if False:
+            motifset_names = ["mStamp+MDL",
+                              "LAMA",
+                              "EMD*",
+                              "K-Motifs (TOP-N)",
+                              "K-Motifs (all)"]
+
+            out_path = "results/images/" + dataset_name + "_new.pdf"
+
+            plot_motifsets(
+                ds_name,
+                df,
+                motifsets=motifs,
+                motiflet_dims=dims,
+                motifset_names=motifset_names,
+                motif_length=motif_length,
+                ground_truth=ground_truth,
+                show=out_path is None)
+
+            if out_path is not None:
+                plt.savefig(out_path)
+                plt.show()
+
+    pd.DataFrame(
+        data=np.array(results),
+        columns=["Dataset", "Method", "Precision"]).to_csv("results/motion_precision.csv")
