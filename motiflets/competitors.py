@@ -3,7 +3,8 @@ import stumpy
 from motiflets.plotting import *
 from numba import njit
 
-def run_mstamp(df, ds_name, motif_length, ground_truth=None):
+
+def run_mstamp(df, ds_name, motif_length, ground_truth=None, plot=True):
     series = df.values.astype(np.float64)
 
     # Find the Pair Motif
@@ -15,12 +16,13 @@ def run_mstamp(df, ds_name, motif_length, ground_truth=None):
     mdls, subspaces = stumpy.mdl(series, motif_length, motifs_idx, nn_idx)
     k = np.argmin(mdls)
 
-    plt.plot(np.arange(len(mdls)), mdls, c='red', linewidth='2')
-    plt.xlabel('k (zero-based)')
-    plt.ylabel('Bit Size')
-    plt.xticks(range(mps.shape[0]))
-    plt.tight_layout()
-    plt.show()
+    if plot:
+        plt.plot(np.arange(len(mdls)), mdls, c='red', linewidth='2')
+        plt.xlabel('k (zero-based)')
+        plt.ylabel('Bit Size')
+        plt.xticks(range(mps.shape[0]))
+        plt.tight_layout()
+        plt.show()
 
     print("Best dimensions", df.index[subspaces[k]])
 
@@ -34,17 +36,18 @@ def run_mstamp(df, ds_name, motif_length, ground_truth=None):
     motifs = [[motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]]
     motifset_names = ["mStamp"]
 
-    _ = plot_motifsets(
-        ds_name,
-        df,
-        motifsets=motifs,
-        motiflet_dims=dims,
-        motifset_names=motifset_names,
-        motif_length=motif_length,
-        ground_truth=ground_truth,
-        show=True)
+    if plot:
+        _ = plot_motifsets(
+            ds_name,
+            df,
+            motifsets=motifs,
+            motiflet_dims=dims,
+            motifset_names=motifset_names,
+            motif_length=motif_length,
+            ground_truth=ground_truth,
+            show=True)
 
-    return motif
+    return motifs, dims
 
 
 @njit(cache=True, fastmath=True)
@@ -68,12 +71,13 @@ def run_kmotifs(
         use_dims,
         target_k,
         slack=0.5,
-        ground_truth=None):
-
+        ground_truth=None,
+        plot=True):
     D_full = ml.compute_distances_full_univ(
         series.iloc[:use_dims].values, motif_length, slack=slack)
     D_full = D_full.squeeze() / use_dims
 
+    last_cardinality = 0
     for r in r_ranges:
         cardinality = -1
         k_motif_dist_var = -1
@@ -91,7 +95,10 @@ def run_kmotifs(
                     cardinality = len(motif_set)
                     motifset = motif_set
                     k_motif_dist_var = dist_var
-        print(f"cardinality: {cardinality} for r={r}")
+
+        if cardinality != last_cardinality:
+            print(f"cardinality: {cardinality} for r={r}")
+            last_cardinality = cardinality
 
         if cardinality >= target_k:
             print(f"Radius: {r}, K: {cardinality}")
@@ -101,16 +108,17 @@ def run_kmotifs(
             dims = np.arange(use_dims).reshape(1, -1)
             motifset = motifset.reshape(1, -1)
 
-            _ = plot_motifsets(
-                ds_name,
-                series,
-                motifsets=motifset,
-                motiflet_dims=dims,
-                motifset_names=motifset_names,
-                motif_length=motif_length,
-                ground_truth=ground_truth,
-                show=True)
+            if plot:
+                plot_motifsets(
+                    ds_name,
+                    series,
+                    motifsets=motifset,
+                    motiflet_dims=dims,
+                    motifset_names=motifset_names,
+                    motif_length=motif_length,
+                    ground_truth=ground_truth,
+                    show=True)
 
-            return motifset
+            return motifset, dims
 
     return []

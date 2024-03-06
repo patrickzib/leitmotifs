@@ -96,29 +96,6 @@ def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
             ax.plot(zs, xs, ys, color)
 
 
-# plot multi-variat motiflet
-def plot_multivariate_motiflet(
-        data, motifset, m, d=[], names=[]
-):
-    fig, axes = plt.subplots(len(data) + 1, 1, figsize=(14, 2 * len(data)))
-
-    for i in range(len(data)):
-        ax = axes[i]
-        # plt.subplot(len(data) + 1, 1, i + 1)
-        if len(names) == len(data):
-            ax.set_title('${{{0}}}$'.format(names[i]))
-        else:
-            ax.set_title('$T_{{{0}}}$'.format(i + 1))
-
-        for idx, pos in enumerate(motifset):
-            ax.plot(range(0, m), data[i, :][pos:pos + m])  # c=color[idx])
-
-        ax.set_xlim((0, m))
-
-    plt.tight_layout()
-    plt.show()
-
-
 # http://mocap.cs.cmu.edu/search.php?subjectnumber=13&motion=%
 
 datasets = {
@@ -148,7 +125,7 @@ datasets = {
     },
     "Boxing": {
         "ks": [10],
-        "motif_length": 100,
+        "motif_length": 130,
         "amc_name": "13_17",
         "n_dims": 7,
         "slack": 0.5,
@@ -196,9 +173,12 @@ datasets = {
     }
 }
 
+# Switch to write videos to disc
+write_video = False
+
 
 def get_ds_parameters(name):
-    global ds_name, dataset, ks, m, used_joints, n_dims, slack
+    global ds_name, dataset, ks, used_joints, n_dims, slack
     global motif_length, amc_name, asf_path, amc_path, k_max
 
     ds_name = name
@@ -257,11 +237,12 @@ def test_ground_truth():
     positions = np.array([positions], dtype=np.int32)
     print(positions)
 
+    motif = positions[0][:, 0]
     filtered_joints = list(set([joint[:-2] for joint in used_joints]))
-    for j, pos in enumerate(positions[0][:, 0]):
+    for j, pos in enumerate(motif):
         fig = plt.figure()
         ax = plt.axes(projection='3d')
-        out_path = 'video/anim/motiflet_' + amc_name + '_' + str(j) + '.gif'
+        out_path = 'video/anim/motif_' + amc_name + '_' + str(j) + '.gif'
 
         FuncAnimation(fig,
                       lambda i: draw_frame(ax, motions, joints, i,
@@ -279,23 +260,32 @@ def test_ground_truth():
     ml.plot_dataset()
 
 
-def test_lama():
-    get_ds_parameters("Swordplay")
+def test_lama(dataset_name="Boxing", use_PCA=False, motifset_name="LAMA", plot=True):
+    get_ds_parameters(dataset_name)
     df, ground_truth, joints, motions = read_motion_dataset()
 
-    m = 120
-    ks = 6
-    k_max = ks + 2
-    n_dims = 10
+    # make the signal uni-variate by applying PCA
+    if use_PCA:
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=1)
+        df_transform = pca.fit_transform(df.T).T
+    else:
+        df_transform = df
+
+    # m = 120
+    # ks = 6
+    # k_max = ks + 2
+    # n_dims = 10
 
     ml = Motiflets(
-        amc_name, df,
+        amc_name, df_transform,
         dimension_labels=df.index,
         n_dims=n_dims,
         ground_truth=ground_truth,
         slack=slack
     )
 
+    # learn parameters
     # length_range = np.arange(50, 200, 10)
     # print(length_range)
     # m, all_minima = ml.fit_motif_length(
@@ -304,225 +294,144 @@ def test_lama():
     #     plot_best_only=True,
     #     plot_motifsets=True)
 
-    dists, candidates, elbow_points = ml.fit_k_elbow(
+    dists, motif_sets, elbow_points = ml.fit_k_elbow(
         k_max,
-        motif_length=m,
+        motif_length=motif_length,
         plot_elbows=False,
         plot_motifsets=False)
 
-    print("Positions (Frame):", np.sort(candidates[ks]))
-    print("Time:", np.sort(candidates[ks]) / 120)  # 120 FPS
-    ml.plot_motifset(elbow_points=[ks], motifset_name="LAMA")
+    print("Positions (Frame):", np.sort(motif_sets[ks]))
+    print("Time:", np.sort(motif_sets[ks]) / 120)  # 120 FPS
+    # ml.plot_motifset(elbow_points=ks, motifset_name=motifset_name)
 
-    for i in np.arange(6, 7):
-        motiflet = candidates[i]
+    for i in ks:
+        motif = motif_sets[i]
         use_joints = df.index.values[ml.motiflets_dims[i]]
         filtered_joints = list(set([joint[:-2] for joint in use_joints]))
 
-        print("Positions (Frame):", np.sort(motiflet))
-        print("Time:", np.sort(motiflet) / 120)  # 120 FPS
-        ml.plot_motifset(elbow_points=[i])
+        print("Positions (Frame):", np.sort(motif))
+        print("Time:", np.sort(motif) / 120)  # 120 FPS
 
-        for j, pos in enumerate(motiflet):
-            fig = plt.figure()
-            ax = plt.axes(projection='3d')
+        if use_PCA:
+            print("\tdims\t:", repr(np.argsort(pca.components_[:])[:, :n_dims]))
+        else:
+            print("\tdims\t:", repr(ml.motiflets_dims[i]))
 
-            out_path = 'video/anim/motiflet_' + amc_name + '_' + str(i) + "_" + str(
-                j) + '.gif'
+        if plot:
+            ml.plot_motifset(elbow_points=[i], motifset_name=motifset_name)
 
-            FuncAnimation(fig,
-                          lambda i: draw_frame(ax, motions, joints, i,
-                                               joints_to_highlight=filtered_joints),
-                          range(pos, pos + motif_length, 4)).save(
-                out_path,
-                bitrate=100,
-                fps=20)
+        if write_video:
+            generate_gif(motif, motif_length, motions, joints)
 
     # for minimum in all_minima:
-    #   motif_length = length_range[minimum]
-    #   dists = ml.all_dists[minimum]
-    #   elbow_points = ml.all_elbows[minimum]
-
-    #   motiflets = ml.all_top_motiflets[minimum]
-    #   motiflets = np.zeros(len(dists), dtype=object)
-    #   motiflets[elbow_points] = ml.all_top_motiflets[minimum]
-
-    #   dimensions = np.zeros(len(dists), dtype=object)
-    #   dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
-    # if len(elbow_points) > 1:
-    #     for eb in elbow_points:
-    #         for i, pos in enumerate(motiflets[eb]):
-    #             use_joints = df.index.values[dimensions[eb]]  # FIXME!?
-    #             # strip the _x, _y, _z from the joint
-    #             use_joints = [joint[:-2] for joint in use_joints]
-    #             fig = plt.figure()
-    #             ax = plt.axes(projection='3d')
+    #     m = length_range[minimum]
+    #     dists = ml.all_dists[minimum]
+    #     elbow_points = ml.all_elbows[minimum]
     #
-    #             out_path = ('video/motiflet_' + amc_name + '_' + str(
-    #                 motif_length)
-    #                         + '_' + str(eb) + '_' + str(i) + '.gif')
+    #     motiflets = ml.all_top_motiflets[minimum]
+    #     motiflets = np.zeros(len(dists), dtype=object)
+    #     motiflets[elbow_points] = ml.all_top_motiflets[minimum]
     #
-    #             FuncAnimation(fig,
-    #                           lambda i: draw_frame(
-    #                               ax, motions, joints, i,
-    #                               joints_to_highlight=use_joints
-    #                           ),
-    #                           range(pos, pos + motif_length, 4)).save(
-    #                 out_path,
-    #                 bitrate=1000,
-    #                 fps=20)
+    #     dimensions = np.zeros(len(dists), dtype=object)
+    #     dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
+    #     if len(elbow_points) > 1:
+    #         for eb in elbow_points:
+    #             motif = motiflets[eb]
+    #             generate_gif(motif, m, motions, joints)
+
+    return motif_sets[ks], ml.motiflets_dims[ks]
 
 
-def test_motion_capture():
-    get_ds_parameters("Stairs")
+def test_emd_pca(dataset_name="Boxing", plot=True):
+    return test_lama(dataset_name, use_PCA=True, motifset_name="PCA", plot=plot)
+
+
+def test_mstamp(dataset_name="Boxing", plot=True):
+    get_ds_parameters(dataset_name)
+    df, ground_truth, joints, motions = read_motion_dataset()
+    return run_mstamp(df, ds_name, motif_length=motif_length,
+                      ground_truth=ground_truth, plot=plot)
+
+
+def test_kmotifs(dataset_name="Boxing", first_dims=True, plot=True):
+    get_ds_parameters(dataset_name)
     df, ground_truth, joints, motions = read_motion_dataset()
 
-    ml = Motiflets(
-        df.name, df,
-        dimension_labels=df.index,
-        n_dims=n_dims,
-        slack=slack
-    )
-
-    dists, candidates, elbow_points = ml.fit_k_elbow(
-        k_max,
-        plot_elbows=True,
-        motif_length=motif_length)
-
-    print("----")
-    print(dists)
-    print(elbow_points)
-    print(list(candidates[elbow_points]))
-    print("----")
-
-    path_ = "video/motiflet_" + amc_name + "_Channels_" + str(
-        len(df.index)) + "_Motif.pdf"
-    ml.plot_motifset(path=path_, motifset_name="LAMA")
-
-    motiflets = candidates[elbow_points]
-    filtered_joints = list(set([joint[:-2] for joint in used_joints]))
-
-    for i, motiflet in enumerate(motiflets):
-        for j, pos in enumerate(motiflet):
-            fig = plt.figure()
-            ax = plt.axes(projection='3d')
-
-            out_path = 'video/motiflet_' + amc_name + '_' + str(i) + '_' + str(
-                j) + '.gif'
-
-            FuncAnimation(fig,
-                          lambda i: draw_frame(ax, motions, joints, i,
-                                               joints_to_highlight=filtered_joints),
-                          range(pos, pos + motif_length, 4)).save(
-                out_path,
-                bitrate=1000,
-                fps=20)
-
-
-def test_lama_chaleston():
-    get_ds_parameters("Charleston - Side By Side Female")
-    df, ground_truth, joints, motions = read_motion_dataset()
-
-    length_range = np.arange(100, 200, 10)
-    print(length_range)
-
-    ml = Motiflets(
-        "Charleston Side By Side - Female",
-        df,
-        dimension_labels=df.index,
-        n_dims=n_dims,
-        ground_truth=ground_truth,
-        slack=slack
-    )
-
-    m, all_minima = ml.fit_motif_length(
-        k_max, length_range,
-        plot=False,
-        plot_best_only=True,
-        plot_motifsets=True)
-    ml.plot_motifset(path="images_paper/charleston.pdf", motifset_name="LAMA")
-
-    print("Positions:")
-    for eb in ml.elbow_points:
-        motiflet = np.sort(ml.motiflets[eb])
-        print("\tpos\t:", repr(motiflet))
-        print("\tdims\t:", repr(ml.motiflets_dims[eb]))
-
-    # for minimum in all_minima:
-    #   motif_length = length_range[minimum]
-    #   dists = ml.all_dists[minimum]
-    #   elbow_points = ml.all_elbows[minimum]
-    #   motiflets = np.zeros(len(dists), dtype=object)
-    #   motiflets[elbow_points] = ml.all_top_motiflets[minimum]
-    #   dimensions = np.zeros(len(dists), dtype=object)
-    #   dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
-
-    if True:
-        motif_length = ml.motif_length
-        elbow_points = ml.elbow_points
-        motiflets = ml.motiflets
-        dimensions = ml.motiflets_dims
-
-        if len(elbow_points) >= 1:
-            for eb in elbow_points:
-                for i, pos in enumerate(motiflets[eb]):
-                    use_joints = df.index.values[dimensions[eb]]
-                    # strip the _x, _y, _z from the joint
-                    use_joints = [joint[:-2] for joint in use_joints]
-                    fig = plt.figure()
-                    ax = plt.axes(projection='3d')
-
-                    out_path = ('images_paper/charleston_'
-                                + amc_name + '_' + str(motif_length)
-                                + '_' + str(eb) + '_' + str(i) + '.gif')
-
-                    FuncAnimation(fig,
-                                  lambda i: draw_frame(
-                                      ax, motions, joints, i,
-                                      joints_to_highlight=use_joints
-                                  ),
-                                  range(pos, pos + motif_length, 4)).save(
-                        out_path,
-                        bitrate=1000,
-                        fps=20)
-
-                    # break
-
-
-def test_mstamp():
-    get_ds_parameters("Basketball")
-    df, ground_truth, joints, motions = read_motion_dataset()
-    run_mstamp(df, ds_name, motif_length=m, ground_truth=ground_truth)
-
-
-def test_kmotifs():
-    # get_ds_parameters("Charleston-Side-By-Side-Male")
-    # get_ds_parameters("Basketball")
-    get_ds_parameters("Swordplay")
-    df, ground_truth, joints, motions = read_motion_dataset()
-
+    motif_sets = []
     for target_k in ks:
         motif = run_kmotifs(
             df,
             ds_name,
-            m,
+            motif_length=motif_length,
             slack=slack,
             r_ranges=np.arange(10, 300, 1),
-            use_dims=n_dims,
+            use_dims=n_dims if first_dims else df.shape[0],  # first dims or all dims
             target_k=target_k,
-            ground_truth=ground_truth
+            ground_truth=ground_truth,
+            plot=plot
         )
 
-        filtered_joints = list(set([joint[:-2] for joint in used_joints]))
-        for j, pos in enumerate(motif[-1]):
-            fig = plt.figure()
-            ax = plt.axes(projection='3d')
+        motif_sets.append(motif)
 
-            out_path = 'video/anim/motiflet_' + amc_name + "_" + str(j) + '.gif'
-            FuncAnimation(fig,
-                          lambda i: draw_frame(ax, motions, joints, i,
-                                               joints_to_highlight=filtered_joints),
-                          range(pos, pos + motif_length, 4)).save(
-                out_path,
-                bitrate=100,
-                fps=20)
+        if write_video:
+            generate_gif(motif, motif_length, motions, joints)
+
+    return motif_sets
+
+
+def generate_gif(motif, m, motions, joints):
+    filtered_joints = list(set([joint[:-2] for joint in used_joints]))
+    for j, pos in enumerate(motif):
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+
+        out_path = 'video/anim/motif_' + amc_name + "_" + str(j) + '.gif'
+        FuncAnimation(
+            fig,
+            lambda i: draw_frame(ax, motions, joints, i,
+                                 joints_to_highlight=filtered_joints),
+            range(pos, pos + m, 4)).save(
+            out_path,
+            bitrate=100,
+            fps=20)
+
+
+def test_publication():
+    dataset_names = ["Boxing"]
+
+    plot = False
+
+    for dataset_name in dataset_names:
+
+        motifA, dimsA = test_lama(dataset_name, plot=plot)
+
+        motifB, dimsB = test_emd_pca(dataset_name, plot=plot)
+
+        motifC, dimsC = test_mstamp(dataset_name, plot=plot)
+
+        motifD, dimsD = test_kmotifs(dataset_name, plot=plot)
+
+        motifE, dimsE = test_kmotifs(dataset_name, first_dims=False, plot=plot)
+
+        df = pd.DataFrame(columns=[
+            "dataset", "k",
+            "LAMA", "EMD", "mSTAMP", "K-Motifs (1st dims)", "K-Motifs (all dims)",
+            "LAMA_dims", "EMD_dims", "mSTAMP_dims", "K-Motifs (1st dims)_dims", "K-Motifs (all dims)_dims"])
+
+        for i, k in enumerate(ks):
+            df.loc[len(df.index)] \
+                = [dataset_name, k,
+                   motifA[i], motifB, motifC[i], motifD[i], motifE[i],
+                   dimsA[i], dimsB, dimsC, dimsD[i], dimsE[i]]
+
+        print("--------------------------")
+        print("LAMA:    \t", motifA, dimsA)
+        print("EMD:     \t", motifB, dimsB)
+        print("mSTAMP:  \t", motifC, dimsC)
+        print("K-Motifs (1st dims):\t", motifD, dimsD)
+        print("K-Motifs (all dims):\t", motifE, dimsE)
+
+        from datetime import datetime
+        currentDateTime = datetime.now().strftime("%m-%d-%Y %H-%M-%S %p")
+        df.to_csv(
+            f'results/results_motion_{dataset_name}_{currentDateTime}.csv')
