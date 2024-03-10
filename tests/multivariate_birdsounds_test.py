@@ -1,5 +1,7 @@
 import os
+
 import matplotlib as mpl
+
 from motiflets.motiflets import read_audio_from_dataframe
 
 mpl.rcParams['figure.dpi'] = 150
@@ -101,6 +103,7 @@ def test_ground_truth():
 
 def test_lama(
         dataset_name="Common-Starling",
+        minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
         plot=True):
@@ -116,11 +119,12 @@ def test_lama(
     else:
         df_transform = df
 
-    ml = Motiflets(ds_name,
-                   df_transform,
-                   slack=slack,
+    ml = Motiflets(ds_name, df_transform,
                    dimension_labels=df.index,
                    n_dims=n_dims,
+                   slack=slack,
+                   minimize_pairwise_dist=minimize_pairwise_dist,
+                   ground_truth=ground_truth,
                    )
 
     # learn parameters
@@ -144,7 +148,7 @@ def test_lama(
         ml.plot_motifset(motifset_name=motifset_name)
 
     if use_PCA:
-        dims = np.argsort(pca.components_[:])[:, :n_dims]
+        dims = [np.argsort(pca.components_[:])[:, :n_dims][0] for _ in ks]
     else:
         dims = ml.motiflets_dims[ks]
 
@@ -209,13 +213,13 @@ def test_emd_pca(dataset_name="Common-Starling", plot=True):
     return test_lama(dataset_name, use_PCA=True, motifset_name="PCA", plot=plot)
 
 
-def test_mstamp(dataset_name="Common-Starling", plot=True):
+def test_mstamp(dataset_name="Common-Starling", plot=True, use_mdl=True):
     get_ds_parameters(dataset_name)
     audio_length_seconds, df, index_range, ground_truth \
         = read_audio_from_dataframe(pandas_file_url, channels)
-
     return run_mstamp(df, ds_name, motif_length=motif_length,
-                      ground_truth=ground_truth, plot=plot)
+                      ground_truth=ground_truth, plot=plot,
+                      use_mdl=use_mdl, use_dims=n_dims)
 
 
 def test_kmotifs(dataset_name="Common-Starling", first_dims=True, plot=True):
@@ -248,35 +252,43 @@ def test_publication():
         "Common-Starling"
     ]
 
-    plot = True
-
+    plot = False
     for dataset_name in dataset_names:
         motifA, dimsA = test_lama(dataset_name, plot=plot)
+        motifG, dimsG = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
         motifB, dimsB = test_emd_pca(dataset_name, plot=plot)
-        motifC, dimsC = test_mstamp(dataset_name, plot=plot)
+        motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
+        motifF, dimsF = test_mstamp(dataset_name, plot=plot, use_mdl=False)
         motifD, dimsD = test_kmotifs(dataset_name, first_dims=True, plot=plot)
         motifE, dimsE = test_kmotifs(dataset_name, first_dims=False, plot=plot)
 
         df = pd.DataFrame(columns=[
             "dataset", "k",
-            "LAMA", "EMD", "mSTAMP", "K-Motifs (1st dims)", "K-Motifs (all dims)",
-            "LAMA_dims", "EMD_dims", "mSTAMP_dims", "K-Motifs (1st dims)_dims",
-            "K-Motifs (all dims)_dims"])
+            "LAMA", "EMD", "mSTAMP+MDL", "mSTAMP",
+            "K-Motifs (1st dims)", "K-Motifs (all dims)",
+            "LAMA (naive)",
+            "LAMA_dims", "EMD_dims", "mSTAMP_MDL_dims", "mSTAMP_dims",
+            "K-Motifs (1st dims)_dims",
+            "K-Motifs (all dims)_dims",
+            "LAMA (naive)_dims"])
 
         for i, k in enumerate(ks):
             df.loc[len(df.index)] \
                 = [dataset_name, k,
-                   motifA[i].tolist(), motifB[i].tolist(), motifC[0],
-                   motifD[i].tolist(), motifE[i].tolist(),
+                   motifA[i].tolist(), motifB[i].tolist(), motifC[0], motifF[0],
+                   motifD[i].tolist(), motifE[i].tolist(), motifG[i].tolist(),
                    dimsA[i].tolist(), dimsB[i].tolist(), dimsC[0].tolist(),
-                   dimsD[i].tolist(), dimsE[i].tolist()]
+                   dimsF[0].tolist(),
+                   dimsD[i].tolist(), dimsE[i].tolist(), dimsG[i].tolist()]
 
         print("--------------------------")
-        print("LAMA:    \t", motifA, dimsA)
-        print("EMD*:    \t", motifB, dimsB)
-        print("mSTAMP:  \t", motifC, dimsC)
+        print("LAMA:        \t", motifA, dimsA)
+        print("EMD*:        \t", motifB, dimsB)
+        print("mSTAMP+MDL:  \t", motifC, dimsC)
+        print("mSTAMP:      \t", motifF, dimsF)
         print("K-Motifs (1st dims):\t", motifD, dimsD)
         print("K-Motifs (all dims):\t", motifE, dimsE)
+        print("LAMA (naive): \t", motifG, dimsG)
 
         # from datetime import datetime
         # currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
@@ -302,10 +314,14 @@ def test_plot_results():
 
         id = df_loc.shape[0] - 1  # last index
         motifs = [
-            # mSTAMP
+            # mSTAMP+MDL
+            df_loc.loc[id]["mSTAMP+MDL"],
+            # mSTAMP using top f dims
             df_loc.loc[id]["mSTAMP"],
             # LAMA
             df_loc.loc[id]["LAMA"],
+            # LAMA + with naive
+            df_loc.loc[id]["LAMA (naive)"],
             # EMD*
             df_loc.loc[id]["EMD"],
             # K-Motif
@@ -314,10 +330,14 @@ def test_plot_results():
         ]
 
         dims = [
-            # mSTAMP
+            # mSTAMP+MDL
+            df_loc.loc[id]["mSTAMP_MDL_dims"],
+            # mSTAMP using top f dims
             df_loc.loc[id]["mSTAMP_dims"],
             # LAMA
             df_loc.loc[id]["LAMA_dims"],
+            # LAMA + with naive
+            df_loc.loc[id]["LAMA (naive)_dims"],
             # EMD*
             df_loc.loc[id]["EMD_dims"],
             # K-Motif
@@ -326,8 +346,8 @@ def test_plot_results():
         ]
 
         for method, motif_set in zip(
-                ["mStamp", "LAMA", "EMD*", "K-Motifs (TOP-N)", "K-Motifs (all)"],
-                motifs):
+                ["mSTAMP+MDL", "mSTAMP", "LAMA", "LAMA (naive)", "EMD*", "K-Motifs (TOP-f)",
+                 "K-Motifs (all)"], motifs):
             precision, recall = compute_precision_recall(
                 np.sort(motif_set), ground_truth.values[0, 0], motif_length)
             results.append([ds_name, method, precision, recall])
@@ -335,11 +355,14 @@ def test_plot_results():
         print(results)
 
         if False:
-            motifset_names = ["mStamp+MDL",
-                              "LAMA",
-                              "EMD*",
-                              "K-Motifs (TOP-N)",
-                              "K-Motifs (all)"]
+            motifset_names = [
+                "mSTAMP+MDL",
+                "mSTAMP",
+                "LAMA",
+                "LAMA (naive)",
+                "EMD*",
+                "K-Motifs (TOP-f)",
+                "K-Motifs (all)"]
 
             out_path = "results/images/" + dataset_name + "_new.pdf"
 

@@ -15,6 +15,12 @@ mpl.rcParams['figure.dpi'] = 150
 
 path = "../datasets/experiments/"
 
+# Ground Truth Parameters
+lengths = [23, 21]  # As used by k-Motiflets
+targets = [35, 24]  # As used by k-Motiflets
+channels = [0, 1, 2, 3, 4, 5, 7]
+ts_length = 1_000
+
 
 def read_penguin_data():
     series = pd.read_csv(path + "penguin.txt",
@@ -66,13 +72,12 @@ def test_univariate():
 
 
 def test_multivariate():
-    length = 1_000
     ds_name, B = read_penguin_data()
 
     for start in [0, 2000]:
         series = B.iloc[
-                 497699 + start:497699 + start + length,
-                 [0, 1, 2, 3, 4, 5, 7]
+                 497699 + start:497699 + start + ts_length,
+                 channels
                  ].T
 
         ml = Motiflets(ds_name, series,
@@ -160,7 +165,6 @@ def test_fit_dimensions():
     ds_name, B = read_penguin_data()
 
     for start in [0]:  # , 2000
-        dists = np.zeros(5)
         series = B.iloc[497699 + start:497699 + start + length].T
 
         ml = Motiflets(ds_name, series)
@@ -202,13 +206,12 @@ def test_full():
     _, _ = ml.compute_distance_matrix(series, m=m, k=k)
 
 
-def test_publication(use_PCA=False):
-    length = 1_000
+def test_lama(use_PCA=False):
     ds_name, B = read_penguin_data()
     n_dims = 2
 
     for start in [0, 3000]:
-        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]].T
+        series = B.iloc[497699 + start:497699 + start + ts_length, channels].T
 
         # make the signal uni-variate by applying PCA
         if use_PCA:
@@ -246,35 +249,41 @@ def test_publication(use_PCA=False):
                 print("\tdims\t:", repr(ml.motiflets_dims[eb]))
 
 
-def test_univariate_pca():
-    test_publication(use_PCA=True)
+def test_emd_pca():
+    test_lama(use_PCA=True)
 
 
 def test_mstamp():
-    length = 1_000
     ds_name, B = read_penguin_data()
-    lengths = [23, 21]  # As used by k-Motiflets
     for i, start in enumerate([0, 3000]):
-        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]].T
-        run_mstamp(series, ds_name, motif_length=lengths[i])
+        series = B.iloc[497699 + start:497699 + start + ts_length, channels].T
+
+        for use_mdl in [True, False]:
+            run_mstamp(series, ds_name, motif_length=lengths[i],
+                          plot=True,
+                          use_mdl=True, use_dims=2)
+
 
 
 def test_kmotifs():
-    length = 1_000
     ds_name, B = read_penguin_data()
-    lengths = [23, 21]  # As used by k-Motiflets
-    targets = [35, 24]  # As used by k-Motiflets
     for i, start in enumerate([0, 3000]):
-        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]].T
+        series = B.iloc[497699 + start:497699 + start + ts_length, channels].T
 
-        _ = run_kmotifs(
-            series,
-            ds_name,
-            lengths[i],
-            r_ranges=np.arange(1, 50, 0.5),
-            use_dims=10,
-            target_k=targets[i]
-        )
+        for first_dims in [True, False]:
+            motif, dims = run_kmotifs(
+                series,
+                ds_name,
+                motif_length=lengths[i],
+                r_ranges=np.arange(0.1, 100, 0.5),
+                use_dims=2 if first_dims else series.shape[0],  # first dims or all dims
+                target_k=targets[i],
+                plot=True
+            )
+
+            print("Name", "TOP-f" if first_dims else "all dims")
+            print("Motif:\t", repr(motif))
+            print("Dims: \t", repr(dims))
 
 
 
@@ -288,7 +297,8 @@ def test_plot_all():
             [190, 209, 228, 247, 267, 287, 306, 326, 346, 366, 386, 406, 426, 446, 466,
              486, 506, 527, 547, 567, 587, 607, 628, 648, 669, 689, 710, 730, 768, 788,
              809, 851, 871, 936, 957],
-            # PCA + motiflets
+            #
+            # EMD*
             [91, 109]
 
         ],
@@ -297,7 +307,7 @@ def test_plot_all():
             # motiflets
             [22, 56, 92, 125, 158, 191, 227, 260, 291, 323, 357, 385, 418, 452, 479,
              511, 542, 573, 599, 620, 662, 706, 758, 792],
-            # PCA + motiflets
+            # EMD*
             [21, 92]
         ]
     ]
@@ -319,10 +329,9 @@ def test_plot_all():
         ]
     ]
 
-    length = 1_000
     ds_name, B = read_penguin_data()
     for i, start in enumerate([0, 3000]):
-        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]]
+        series = B.iloc[497699 + start:497699 + start + ts_length, channels]
         path = "images_paper/penguins/penguins_" + str(start) + "_new.pdf"
 
         motifset_names = ["mStamp + MDL", "Motiflets", "PCA+Univariate"]
@@ -340,23 +349,3 @@ def test_plot_all():
         if path is not None:
             plt.savefig(path)
             plt.show()
-
-
-def test_map():
-    import scipy.stats
-    length = 1_000
-    ds_name, B = read_penguin_data()
-    for i, start in enumerate([0, 3000]):
-        series = B.iloc[497699 + start:497699 + start + length, [0, 1, 2, 3, 4, 5, 7]]
-
-        # print(scipy.stats.median_absolute_deviation(series, axis=0))
-
-        print("Normal\t",
-              scipy.stats.median_abs_deviation(series, axis=0, scale="normal"))
-
-        print("Constant\t",
-              scipy.stats.median_abs_deviation(series, axis=0, scale=1 / 1.4826))
-
-        print("Default\t", scipy.stats.median_abs_deviation(series, axis=0))
-
-        print("...")

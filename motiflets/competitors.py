@@ -4,19 +4,25 @@ from motiflets.plotting import *
 from numba import njit
 
 
-def run_mstamp(df, ds_name, motif_length, ground_truth=None, plot=True):
+def run_mstamp(df, ds_name, motif_length,
+               ground_truth=None, plot=True,
+               use_mdl=True, use_dims=None):
     series = df.values.astype(np.float64)
 
     # Find the Pair Motif
     mps, indices = stumpy.mstump(series, m=motif_length)
     motifs_idx = np.argmin(mps, axis=1)
     nn_idx = indices[np.arange(len(motifs_idx)), motifs_idx]
-
-    # Find the optimal dimensionality by minimizing the MDL
     mdls, subspaces = stumpy.mdl(series, motif_length, motifs_idx, nn_idx)
-    k = np.argmin(mdls)
 
-    if plot:
+    if use_mdl:
+        # Find the optimal dimensionality by minimizing the MDL
+        k = np.argmin(mdls)
+    else:
+        # Use a pre-defined dimensionality
+        k = use_dims - 1
+
+    if plot and use_mdl:
         plt.plot(np.arange(len(mdls)), mdls, c='red', linewidth='2')
         plt.xlabel('k (zero-based)')
         plt.ylabel('Bit Size')
@@ -97,12 +103,12 @@ def run_kmotifs(
                     k_motif_dist_var = dist_var
 
         if cardinality != last_cardinality:
-            print(f"cardinality: {cardinality} for r={r}")
+            # print(f"cardinality: {cardinality} for r={r}")
             last_cardinality = cardinality
 
         if cardinality >= target_k:
             print(f"Radius: {r}, K: {cardinality}")
-            print(f"Pos: {motifset}")
+            # print(f"Pos: {motifset}")
             motifset_names = ["K-Motif"]
 
             if plot:

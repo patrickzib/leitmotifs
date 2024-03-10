@@ -885,6 +885,7 @@ def select_subdimensions(
         k_max,
         motif_length,
         dim_range,
+        minimize_pairwise_dist=False,
         n_jobs=4,
         elbow_deviation=1.00,
         slack=0.5):
@@ -944,6 +945,7 @@ def select_subdimensions(
                 elbow_deviation=elbow_deviation,
                 slack=slack,
                 return_distances=True,
+                minimize_pairwise_dist=minimize_pairwise_dist,
                 D_full=D_full,
                 knns=knns,  # reuse distances from last runs
                 n_jobs=n_jobs
@@ -967,6 +969,7 @@ def find_au_ef_motif_length(
         k_max,
         motif_length_range,
         n_dims=None,
+        minimize_pairwise_dist=False,
         n_jobs=4,
         elbow_deviation=1.00,
         slack=0.5,
@@ -1033,6 +1036,7 @@ def find_au_ef_motif_length(
                 n_dims=n_dims,
                 n_jobs=n_jobs,
                 elbow_deviation=elbow_deviation,
+                minimize_pairwise_dist=minimize_pairwise_dist,
                 slack=slack)
 
             dists_ = dist[(~np.isinf(dist)) & (~np.isnan(dist))]
@@ -1091,6 +1095,7 @@ def search_k_motiflets_elbow(
         return_distances=False,
         D_full=None,
         knns=None,
+        minimize_pairwise_dist=False,
         n_jobs=4,
 ):
     """Computes the elbow-function.
@@ -1156,7 +1161,14 @@ def search_k_motiflets_elbow(
 
     # compute the distance matrix
     if D_full is None:
-        if sparse:
+        if minimize_pairwise_dist:
+            print("Sort along dimension axis", flush=True)
+            D_full, knns = compute_distance_matrix(
+                data_raw, m, k_max_,
+                n_jobs=n_jobs,
+                slack=slack,
+                sum_dims=False)
+        elif sparse:
             print("Using Sparse Backend", flush=True)
             D_knns, D_full, knns = compute_distance_matrix_sparse(
                 data_raw, m, k_max_,
@@ -1170,7 +1182,7 @@ def search_k_motiflets_elbow(
                 slack=slack,
                 sum_dims=sum_dims)
 
-    # non-overlapping motifs only
+            # non-overlapping motifs only
     k_motiflet_distances = np.zeros(k_max_ + 1)
     k_motiflet_candidates = np.empty(k_max_ + 1, dtype=object)
     k_motiflet_dims = np.empty(k_max_ + 1, dtype=object)
@@ -1178,12 +1190,24 @@ def search_k_motiflets_elbow(
     # order dimensions by increasing distance
     use_dim = min(n_dims, len(D_full))  # dimensions indexed by 0
 
+    if minimize_pairwise_dist:      # FIXME: find better name
+        # this has the drawback, that each pair of subsequences may
+        # have different smallest dimensions
+        D_full = np.sort(D_full, axis=0)[:use_dim].sum(axis=0, dtype=np.float32)
+        knns = _argknns(D_full, k_max_, m, n, slack)
+
+        D_full = D_full.reshape(1, D_full.shape[0], D_full.shape[1])
+        knns = knns.reshape(1, knns.shape[0], knns.shape[1])
+
     upper_bound = np.inf
     for test_k in tqdm(range(k_max_, 1, -1),
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
 
-        if not sum_dims:
+        if minimize_pairwise_dist:
+            # Do nothing
+            dim_index = np.zeros((n, 1), dtype=np.int32)
+        elif not sum_dims:
             # k-th NN and it's distance along all dimensions
             knn_idx = knns[:, :, test_k - 1]
             if isinstance(D_full, List) or isinstance(D_full, list):
@@ -1207,12 +1231,18 @@ def search_k_motiflets_elbow(
         k_motiflet_distances[test_k] = candidate_dist
         k_motiflet_candidates[test_k] = candidate
 
-        if not sum_dims:
+        if minimize_pairwise_dist:
+            k_motiflet_dims[test_k] = np.arange(d)
+        elif not sum_dims:
             k_motiflet_dims[test_k] = candidate_dims
         else:
             k_motiflet_dims[test_k] = np.arange(d)
 
         # compute a new upper bound
+        # compute a new upper bound
+        # if candidate is not None:
+        #    dist_new = get_pairwise_extent(D_full, candidate[:test_k])
+        #    upper_bound = min(upper_bound, dist_new)
         # FIXME: upper_bound = min(candidate_dist, upper_bound)
 
     # smoothen the line to make it monotonically increasing
@@ -1234,6 +1264,18 @@ def search_k_motiflets_elbow(
     else:
         return (k_motiflet_distances, k_motiflet_candidates, k_motiflet_dims,
                 elbow_points, m)
+
+
+@njit(fastmath=True, cache=True)
+def _argknns(D_full, k_max_, m, n, slack):
+    # compute knns from new distance matrix
+    knns = np.zeros((n, k_max_), dtype=np.int32)
+    for order in range(0, D_full.shape[0]):
+        knn = _argknn(D_full[order], k_max_, m, slack=slack)
+        knns[order, :len(knn)] = knn
+        knns[order, len(knn):] = -1
+
+    return knns
 
 
 @njit(fastmath=True, cache=True, parallel=True)
