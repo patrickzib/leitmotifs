@@ -534,7 +534,7 @@ def test_plot_results():
 
         print(results)
 
-        if False:
+        if True:
             motifset_names = [
                 "mSTAMP+MDL",
                 "mSTAMP",

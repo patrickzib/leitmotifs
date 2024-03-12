@@ -12,6 +12,7 @@ path_to_wav = "../../motiflets_use_cases/audio/"
 path = "../datasets/audio/"
 write_audio = False
 
+
 datasets = {
     "Numb - Linkin Park": {
         "ks": [5],
@@ -48,10 +49,10 @@ datasets = {
     },
     "Vanilla Ice - Ice Ice Baby": {
         "ks": [20],
-        "n_dims": 6,
+        "n_dims": 2,
         "motif_length": 180,
         "length_range_in_seconds": np.arange(170, 190, 10),
-        "slack": 0.6,
+        "slack": 0.5,
         "ds_name": "Vanilla Ice - Ice Ice Baby",
         "audio_file_url": path_to_wav + "Vanilla_Ice-Ice_Ice_Baby.mp3",
         "pandas_file_url": path + "Vanilla_Ice-Ice_Ice_Baby.csv",
@@ -59,17 +60,16 @@ datasets = {
     },
     "Queen David Bowie - Under Pressure": {
         "ks": [16],
-        "n_dims": 5,
+        "n_dims": 3,
         "motif_length": 180,
         "length_range_in_seconds": np.arange(170, 190, 10),
-        "slack": 0.6,
+        "slack": 0.5,
         "ds_name": "Queen David Bowie - Under Pressure",
         "audio_file_url": path_to_wav + "Queen-David-Bowie-Under-Pressure.mp3",
         "pandas_file_url": path + "Queen-David-Bowie-Under-Pressure.csv",
         "lrc_url": None
     }
 }
-
 
 # dataset = datasets["The Rolling Stones - Paint It, Black"]
 # dataset = datasets["What I've Done - Linkin Park"]
@@ -98,7 +98,8 @@ def get_ds_parameters(name):
 
 
 channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4',
-            'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10']
+            'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
+            ]
 
 
 # def test_read_write():
@@ -197,7 +198,7 @@ def test_publication():
 
 
 def test_lama(
-        dataset_name="The Rolling Stones - Paint It, Black",
+        dataset_name="Vanilla Ice - Ice Ice Baby",
         minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
@@ -314,10 +315,10 @@ def test_kmotifs(dataset_name="The Rolling Stones - Paint It, Black",
 def test_publication():
     dataset_names = [
         # "The Rolling Stones - Paint It, Black",
-        "What I've Done - Linkin Park",
-        "Numb - Linkin Park",
+        # "What I've Done - Linkin Park",
+        # "Numb - Linkin Park",
         "Vanilla Ice - Ice Ice Baby",
-        "Queen David Bowie - Under Pressure"
+        # "Queen David Bowie - Under Pressure"
     ]
 
     plot = False
