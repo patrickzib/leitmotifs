@@ -1,29 +1,29 @@
 ,Dataset,Method,Precision,Recall
-0,What I've Done - Linkin Park,mSTAMP+MDL,0.0,0.0
-1,What I've Done - Linkin Park,mSTAMP,0.0,0.0
-2,What I've Done - Linkin Park,LAMA,1.0,1.0
-3,What I've Done - Linkin Park,LAMA (naive),0.8333333333333334,1.0
+0,What I've Done - Linkin Park,LAMA,1.0,1.0
+1,What I've Done - Linkin Park,LAMA (naive),0.8333333333333334,1.0
+2,What I've Done - Linkin Park,mSTAMP+MDL,0.0,0.0
+3,What I've Done - Linkin Park,mSTAMP,0.0,0.0
 4,What I've Done - Linkin Park,EMD*,0.8333333333333334,1.0
 5,What I've Done - Linkin Park,K-Motifs (TOP-f),1.0,1.0
 6,What I've Done - Linkin Park,K-Motifs (all),0.8333333333333334,1.0
-7,Numb - Linkin Park,mSTAMP+MDL,0.0,0.0
-8,Numb - Linkin Park,mSTAMP,0.0,0.0
-9,Numb - Linkin Park,LAMA,1.0,1.0
-10,Numb - Linkin Park,LAMA (naive),1.0,1.0
+7,Numb - Linkin Park,LAMA,1.0,1.0
+8,Numb - Linkin Park,LAMA (naive),1.0,1.0
+9,Numb - Linkin Park,mSTAMP+MDL,0.0,0.0
+10,Numb - Linkin Park,mSTAMP,0.0,0.0
 11,Numb - Linkin Park,EMD*,0.8,0.8
 12,Numb - Linkin Park,K-Motifs (TOP-f),1.0,1.0
 13,Numb - Linkin Park,K-Motifs (all),1.0,1.0
-14,Vanilla Ice - Ice Ice Baby,mSTAMP+MDL,1.0,0.4
-15,Vanilla Ice - Ice Ice Baby,mSTAMP,1.0,0.4
-16,Vanilla Ice - Ice Ice Baby,LAMA,0.7,1.0
-17,Vanilla Ice - Ice Ice Baby,LAMA (naive),0.75,1.0
+14,Vanilla Ice - Ice Ice Baby,LAMA,0.7,1.0
+15,Vanilla Ice - Ice Ice Baby,LAMA (naive),0.75,1.0
+16,Vanilla Ice - Ice Ice Baby,mSTAMP+MDL,1.0,0.4
+17,Vanilla Ice - Ice Ice Baby,mSTAMP,1.0,0.4
 18,Vanilla Ice - Ice Ice Baby,EMD*,0.65,0.8
 19,Vanilla Ice - Ice Ice Baby,K-Motifs (TOP-f),0.2,0.8
-20,Vanilla Ice - Ice Ice Baby,K-Motifs (all),0.95,1.0
-21,Queen David Bowie - Under Pressure,mSTAMP+MDL,1.0,1.0
-22,Queen David Bowie - Under Pressure,mSTAMP,1.0,1.0
-23,Queen David Bowie - Under Pressure,LAMA,0.8125,1.0
-24,Queen David Bowie - Under Pressure,LAMA (naive),0.8125,1.0
+20,Vanilla Ice - Ice Ice Baby,K-Motifs (all),1.0,1.0
+21,Queen David Bowie - Under Pressure,LAMA,0.8125,1.0
+22,Queen David Bowie - Under Pressure,LAMA (naive),0.8125,1.0
+23,Queen David Bowie - Under Pressure,mSTAMP+MDL,1.0,1.0
+24,Queen David Bowie - Under Pressure,mSTAMP,1.0,1.0
 25,Queen David Bowie - Under Pressure,EMD*,0.3125,1.0
 26,Queen David Bowie - Under Pressure,K-Motifs (TOP-f),0.75,1.0
 27,Queen David Bowie - Under Pressure,K-Motifs (all),0.8125,1.0

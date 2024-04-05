@@ -1,29 +1,29 @@
 ,Dataset,Method,Precision,Recall
-0,Boxing,mSTAMP+MDL,1.0,0.2
-1,Boxing,mSTAMP,1.0,0.2
-2,Boxing,LAMA,0.9,0.9
-3,Boxing,LAMA (naive),0.8,0.8
+0,Boxing,LAMA,0.9,0.9
+1,Boxing,LAMA (naive),0.8,0.8
+2,Boxing,mSTAMP+MDL,1.0,0.2
+3,Boxing,mSTAMP,1.0,0.2
 4,Boxing,EMD*,0.8,0.8
 5,Boxing,K-Motifs (TOP-f),0.7,0.7
 6,Boxing,K-Motifs (all),0.7,0.6
-7,Swordplay,mSTAMP+MDL,0.0,0.0
-8,Swordplay,mSTAMP,0.0,0.0
-9,Swordplay,LAMA,1.0,1.0
-10,Swordplay,LAMA (naive),1.0,1.0
+7,Swordplay,LAMA,1.0,1.0
+8,Swordplay,LAMA (naive),1.0,1.0
+9,Swordplay,mSTAMP+MDL,0.0,0.0
+10,Swordplay,mSTAMP,0.0,0.0
 11,Swordplay,EMD*,0.0,0.0
 12,Swordplay,K-Motifs (TOP-f),0.16666666666666666,0.16666666666666666
 13,Swordplay,K-Motifs (all),0.0,0.0
-14,Basketball,mSTAMP+MDL,0.0,0.0
-15,Basketball,mSTAMP,0.0,0.0
-16,Basketball,LAMA,1.0,1.0
-17,Basketball,LAMA (naive),1.0,1.0
+14,Basketball,LAMA,1.0,1.0
+15,Basketball,LAMA (naive),1.0,1.0
+16,Basketball,mSTAMP+MDL,0.0,0.0
+17,Basketball,mSTAMP,0.0,0.0
 18,Basketball,EMD*,0.6,0.6
 19,Basketball,K-Motifs (TOP-f),0.4,0.4
 20,Basketball,K-Motifs (all),0.8,0.8
-21,Charleston - Side By Side Female,mSTAMP+MDL,1.0,0.6666666666666666
-22,Charleston - Side By Side Female,mSTAMP,1.0,0.6666666666666666
-23,Charleston - Side By Side Female,LAMA,1.0,1.0
-24,Charleston - Side By Side Female,LAMA (naive),1.0,1.0
+21,Charleston - Side By Side Female,LAMA,1.0,1.0
+22,Charleston - Side By Side Female,LAMA (naive),1.0,1.0
+23,Charleston - Side By Side Female,mSTAMP+MDL,1.0,0.6666666666666666
+24,Charleston - Side By Side Female,mSTAMP,1.0,0.6666666666666666
 25,Charleston - Side By Side Female,EMD*,1.0,1.0
 26,Charleston - Side By Side Female,K-Motifs (TOP-f),1.0,1.0
 27,Charleston - Side By Side Female,K-Motifs (all),1.0,1.0

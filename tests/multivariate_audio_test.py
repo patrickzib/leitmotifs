@@ -50,8 +50,8 @@ datasets = {
     "Vanilla Ice - Ice Ice Baby": {
         "ks": [20],
         "n_dims": 2,
-        "motif_length": 180,
-        "length_range_in_seconds": np.arange(170, 190, 10),
+        "motif_length": 170,
+        "length_range_in_seconds": np.arange(160, 190, 10),
         "slack": 0.5,
         "ds_name": "Vanilla Ice - Ice Ice Baby",
         "audio_file_url": path_to_wav + "Vanilla_Ice-Ice_Ice_Baby.mp3",
@@ -314,50 +314,44 @@ def test_kmotifs(dataset_name="The Rolling Stones - Paint It, Black",
 
 def test_publication():
     dataset_names = [
-        # "The Rolling Stones - Paint It, Black",
-        # "What I've Done - Linkin Park",
-        # "Numb - Linkin Park",
+        "The Rolling Stones - Paint It, Black",
+        "What I've Done - Linkin Park",
+        "Numb - Linkin Park",
         "Vanilla Ice - Ice Ice Baby",
-        # "Queen David Bowie - Under Pressure"
+        "Queen David Bowie - Under Pressure"
     ]
-
+    method_names = [
+        "LAMA",
+        "LAMA (naive)",
+        "mSTAMP+MDL",
+        "mSTAMP",
+        "EMD*",
+        "K-Motifs (TOP-f)",
+        "K-Motifs (all)"
+    ]
     plot = False
     for dataset_name in dataset_names:
         motifA, dimsA = test_lama(dataset_name, plot=plot)
-        motifG, dimsG = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
-        motifB, dimsB = test_emd_pca(dataset_name, plot=plot)
+        motifB, dimsB = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
         motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
-        motifF, dimsF = test_mstamp(dataset_name, plot=plot, use_mdl=False)
-        motifD, dimsD = test_kmotifs(dataset_name, first_dims=True, plot=plot)
-        motifE, dimsE = test_kmotifs(dataset_name, first_dims=False, plot=plot)
+        motifD, dimsD = test_mstamp(dataset_name, plot=plot, use_mdl=False)
+        motifE, dimsE = test_emd_pca(dataset_name, plot=plot)
+        motifF, dimsF = test_kmotifs(dataset_name, first_dims=True, plot=plot)
+        motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
 
-        df = pd.DataFrame(columns=[
-            "dataset", "k",
-            "LAMA", "EMD", "mSTAMP+MDL", "mSTAMP",
-            "K-Motifs (1st dims)", "K-Motifs (all dims)",
-            "LAMA (naive)",
-            "LAMA_dims", "EMD_dims", "mSTAMP_MDL_dims", "mSTAMP_dims",
-            "K-Motifs (1st dims)_dims",
-            "K-Motifs (all dims)_dims",
-            "LAMA (naive)_dims"])
+        method_names_dims = [name+"_dims" for name in method_names]
+        columns = ["dataset", "k"]
+        columns.extend(method_names)
+        columns.extend(method_names_dims)
+        df = pd.DataFrame(columns=columns)
 
         for i, k in enumerate(ks):
             df.loc[len(df.index)] \
                 = [dataset_name, k,
-                   motifA[i].tolist(), motifB[i].tolist(), motifC[0], motifF[0],
-                   motifD[i].tolist(), motifE[i].tolist(), motifG[i].tolist(),
-                   dimsA[i].tolist(), dimsB[i].tolist(), dimsC[0].tolist(),
-                   dimsF[0].tolist(),
-                   dimsD[i].tolist(), dimsE[i].tolist(), dimsG[i].tolist()]
-
-        print("--------------------------")
-        print("LAMA:        \t", motifA, dimsA)
-        print("EMD*:        \t", motifB, dimsB)
-        print("mSTAMP+MDL:  \t", motifC, dimsC)
-        print("mSTAMP:      \t", motifF, dimsF)
-        print("K-Motifs (1st dims):\t", motifD, dimsD)
-        print("K-Motifs (all dims):\t", motifE, dimsE)
-        print("LAMA (naive): \t", motifG, dimsG)
+                   motifA[i].tolist(), motifB[i].tolist(), motifC[0], motifD[0],
+                   motifE[i].tolist(), motifF[i].tolist(), motifG[i].tolist(),
+                   dimsA[i].tolist(), dimsB[i].tolist(), dimsC[0].tolist(), dimsD[0].tolist(),
+                   dimsE[i].tolist(), dimsF[i].tolist(), dimsG[i].tolist()]
 
         # from datetime import datetime
         # currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
@@ -368,11 +362,20 @@ def test_publication():
 
 def test_plot_results():
     dataset_names = [
-        # "The Rolling Stones - Paint It, Black",
+        "The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
         "Numb - Linkin Park",
         "Vanilla Ice - Ice Ice Baby",
         "Queen David Bowie - Under Pressure"
+    ]
+    method_names = [
+        "LAMA",
+        "LAMA (naive)",
+        "mSTAMP+MDL",
+        "mSTAMP",
+        "EMD*",
+        "K-Motifs (TOP-f)",
+        "K-Motifs (all)"
     ]
     results = []
 
@@ -387,71 +390,51 @@ def test_plot_results():
         motifs = []
         dims = []
         for id in range(df_loc.shape[0]):
-            motifs.extend([
-                # mSTAMP+MDL
-                df_loc.loc[id]["mSTAMP+MDL"],
-                # mSTAMP using top f dims
-                df_loc.loc[id]["mSTAMP"],
-                # LAMA
-                df_loc.loc[id]["LAMA"],
-                # LAMA + with naive
-                df_loc.loc[id]["LAMA (naive)"],
-                # EMD*
-                df_loc.loc[id]["EMD"],
-                # K-Motif
-                df_loc.loc[id]["K-Motifs (1st dims)"],
-                df_loc.loc[id]["K-Motifs (all dims)"],
-            ])
+            for motif_method in method_names:
+                motifs.append(df_loc.loc[id][motif_method])
+                dims.append(df_loc.loc[id][motif_method + "_dims"])
 
-            dims.extend([
-                # mSTAMP+MDL
-                df_loc.loc[id]["mSTAMP_MDL_dims"],
-                # mSTAMP using top f dims
-                df_loc.loc[id]["mSTAMP_dims"],
-                # LAMA
-                df_loc.loc[id]["LAMA_dims"],
-                # LAMA + with naive
-                df_loc.loc[id]["LAMA (naive)_dims"],
-                # EMD*
-                df_loc.loc[id]["EMD_dims"],
-                # K-Motif
-                df_loc.loc[id]["K-Motifs (1st dims)_dims"],
-                df_loc.loc[id]["K-Motifs (all dims)_dims"],
-            ])
-
-        methods = ["mSTAMP+MDL", "mSTAMP", "LAMA", "LAMA (naive)", "EMD*", "K-Motifs (TOP-f)",
-                   "K-Motifs (all)"]
+        # write results to file
         for id in range(df_loc.shape[0]):
             for method, motif_set in zip(
-                    methods,
-                    motifs[id * len(methods): (id + 1) * len(methods)]):
+                    method_names,
+                    motifs[id * len(method_names): (id + 1) * len(method_names)]
+            ):
                 precision, recall = compute_precision_recall(
                     np.sort(motif_set), ground_truth.values[0, 0], motif_length)
                 results.append([ds_name, method, precision, recall])
 
+        #pd.DataFrame(
+        #    data=np.array(results),
+        #    columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
+        #    "results/audio_precision.csv")
+
         print(results)
 
-        if False:
+        if True:
+            plot_names = [
+                "mSTAMP+MDL",
+                "mSTAMP",
+                "EMD*",
+                "K-Motifs (all)",
+                "LAMA",
+            ]
+
             motifset_names = []
-            for id in range(df_loc.shape[0]):  # last index
-                motifset_names.extend([
-                    "mSTAMP+MDL",
-                    "mSTAMP",
-                    "LAMA",
-                    "LAMA (naive)",
-                    "EMD*",
-                    "K-Motifs (TOP-f)",
-                    "K-Motifs (all)"
-                ])
+            positions = []
+
+            for a, id in enumerate(range(df_loc.shape[0])):  # last index
+                motifset_names.extend(method_names)
+                pos = np.array([method_names.index(name) for name in plot_names])
+                positions.extend(pos + len(method_names) * a)
 
             out_path = "results/images/" + dataset_name + "_new.pdf"
-
             plot_motifsets(
                 ds_name,
                 df,
-                motifsets=motifs,
-                motiflet_dims=dims,
-                motifset_names=motifset_names,
+                motifsets=[motifs[pos] for pos in positions],
+                motiflet_dims=[dims[pos] for pos in positions],
+                motifset_names=plot_names,
                 motif_length=motif_length,
                 ground_truth=ground_truth,
                 show=out_path is None)
@@ -459,11 +442,6 @@ def test_plot_results():
             if out_path is not None:
                 plt.savefig(out_path)
                 plt.show()
-
-    pd.DataFrame(
-        data=np.array(results),
-        columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        "results/audio_precision.csv")
 
 
 def plot_spectrogram(audio_file_urls):

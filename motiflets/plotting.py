@@ -384,7 +384,7 @@ def plot_motifsets(
 
                             axes[0, 1 + i].set_title(
                                 (("Motif Set " + str(i + 1)) if motifset_names is None
-                                 else motifset_names[i]) + "\n" +
+                                 else motifset_names[i%len(motifset_names)]) + "\n" +
                                 "k=" + str(len(motifset)) +
                                 # ", d=" + str(np.round(dist[i], 2)) +
                                 ", l=" + str(motif_length),
@@ -485,7 +485,7 @@ def plot_motifsets(
                     axes[1, 0].add_patch(rect)
 
                 label = (("Motif Set " + str(i + 1)) if motifset_names is None
-                         else motifset_names[i])
+                         else motifset_names[i % len(motifset_names)])
                 y_labels.append(label)
 
     if len(y_labels) > 0:
