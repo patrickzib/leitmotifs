@@ -479,9 +479,9 @@ def test_publication():
 def test_plot_results():
     dataset_names = [
         "Boxing",
-        "Swordplay",
-        "Basketball",
-        "Charleston - Side By Side Female"
+        #"Swordplay",
+        #"Basketball",
+        #"Charleston - Side By Side Female"
     ]
 
     method_names = [
@@ -531,7 +531,7 @@ def test_plot_results():
                 "mSTAMP+MDL",
                 "mSTAMP",
                 "EMD*",
-                "K-Motifs (TOP-f)",
+                # "K-Motifs (TOP-f)",
                 "K-Motifs (all)",
                 "LAMA",
             ]

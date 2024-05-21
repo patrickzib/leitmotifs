@@ -163,6 +163,7 @@ def test_plot():
     sns.lineplot(x="Lengths", y="Time", hue="Method", style="Method", markers=True,
                  data=df.reset_index(), ax=ax)
 
+    # plt.yscale('log',base=2)
     ax.set_ylabel("Walltime in s")
     ax.set_xlabel("Time Series Length")
     plt.tight_layout()

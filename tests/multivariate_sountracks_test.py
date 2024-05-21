@@ -411,7 +411,6 @@ def test_plot_results():
                 "mSTAMP+MDL",
                 "mSTAMP",
                 "EMD*",
-                "K-Motifs (TOP-f)",
                 "K-Motifs (all)",
                 "LAMA",
             ]
