@@ -7,12 +7,28 @@ Supporting Material
 - `tests`: Please see the python tests for use cases
 - `notebooks`: Please see the Jupyter Notebooks for use cases
 - `csvs`: The results of the scalability experiments
-- `motiflets`: Code implementing multidimensonal k-Motiflet
+- `leitmotifs`: Code implementing multidimensonal leitmotif discovery using LAMA
 - `datasets`: Use cases in the paper
 
-# Showcase
+# Leitmotif Use Case
 
-TODO 
+<img src="images/leitmotifs.png" width="500">
+
+A **leitmotif** (*leading motif*) is a recurring theme or motif that carries 
+symbolic significance in various forms of art, particularly literature, movies, 
+and music. The distinct feature of any leitmotif is that humans associate them to 
+meaning, which enhances narrative cohesion and establishes emotional connections 
+with the audience. The use of (leit)motifs thus eases perception, interpretation, 
+and identification with the underlying narrative. 
+A genre that often uses leitmotifs are soundtracks, for instance in the compositions of 
+Hans Zimmer or Howard Shore. The above figure shows a suite from *The Shire* with 14 
+channels arranged by Howard Shore for Lord of the Rings. The suite opens and ends with 
+the Hobbits' leitmotif, which is played by a solo tin whistle, and manifests in a 
+distinct pattern in several, but not all channels of the piece.
+
+Our LAMA (in purple) is the only method to correctly identify **4** 
+occurrences within the leitmotif using a distinctive subset of channels. 
+Other than EMD*, LAMA's occurrences show high pairwise similarity, too.
 
 # Installation
 
@@ -39,24 +55,24 @@ pip install .
 
 # Usage
 
-The parameters of motiflets are:
+The parameters of LAMA are:
 
 - *n_dims* : Number of subdimensions to use
-- *k_max* : The largest expected number of repeats. Motiflets will search from  to  for motif sets
+- *k_max* : The largest expected number of repeats. LAMA will search from  to  for motif sets
 - *motif_length_range*
 
-Motiflets have a simple OO-API.
+LAMA has a simple OO-API.
 
-    ml = Motiflets(
+    ml = LAMA(
         ds_name,     # Name of the dataset
         series,      # Multidimensional time series
-        n_dims,      # Number of subdimensions to use
+        n_dims,      # Number of sub-dimensions to use
         n_jobs,      # number of parallel jobs
     )
   
-Motiflets have a unique feature to automatically find suitable values for the motif length  and set size  so, that meaningful Leitmotifs of an input TS can be found without domain knowledge. The methods for determining values for  and  are based on an analysis of the extent function for different .
+LAMA has a unique feature to automatically find suitable values for the motif length  and set size  so, that meaningful Leitmotifs of an input TS can be found without domain knowledge. The methods for determining values for  and  are based on an analysis of the extent function for different .
 
-## Learning the motif length 
+## Learning the leitmotif length 
 
 To learn the motif length, we may simply call:
 
@@ -93,12 +109,6 @@ highlights a use case used in the paper, and shows the unique ability
 to learn its parameters from the data and find interesting motif sets.
 
 - All other use cases can be found in the <a href="tests">test folder</a>
-
-- Jupyter-Notebook from the univariate paper
-<a href="notebooks/use_cases_paper.ipynb">Univariate Use Cases</a>:
-highlights all use cases used in the paper and shows the unique ability 
-to learn its parameters from the data and find interesting motif sets.
-
 
 
 ## Citation
