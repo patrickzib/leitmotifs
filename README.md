@@ -72,7 +72,7 @@ LAMA has a simple OO-API.
   
 LAMA has a unique feature to automatically find suitable values for the motif length  and set size  so, that meaningful Leitmotifs of an input TS can be found without domain knowledge. The methods for determining values for  and  are based on an analysis of the extent function for different .
 
-## Learning the leitmotif length 
+## Learning the Leitmotif length 
 
 To learn the motif length, we may simply call:
 
