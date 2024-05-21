@@ -45,7 +45,7 @@ You can also install the project from source.
 
 First, download the repository.
 ```
-git clone https://github.com/patrickzib/leitmotif.git
+git clone https://github.com/patrickzib/leitmotifs.git
 ```
 
 Change into the directory and build the package from source.
