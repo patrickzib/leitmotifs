@@ -1,6 +1,6 @@
 import scipy.io as sio
 
-from motiflets.competitors import *
+from leitmotifs.competitors import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -44,14 +44,14 @@ def test_plot_data():
     ds_name, series = read_penguin_data()
     series = series.iloc[497699 - 5000: 497699 + 5000, np.array([0, 7])].T
 
-    ml = Motiflets(ds_name, series)
+    ml = LAMA(ds_name, series)
     ml.plot_dataset()
 
 
 def test_univariate():
     ds_name, series = read_penguin_data_short()
 
-    ml = Motiflets(
+    ml = LAMA(
         ds_name, series,
         elbow_deviation=1,
         slack=0.8
@@ -80,10 +80,10 @@ def test_multivariate():
                  channels
                  ].T
 
-        ml = Motiflets(ds_name, series,
-                       n_dims=2,
-                       n_jobs=8,
-                       )
+        ml = LAMA(ds_name, series,
+                  n_dims=2,
+                  n_jobs=8,
+                  )
 
         k_max = 40
         motif_length_range = np.arange(20, 30, 1)
@@ -124,7 +124,7 @@ def test_univariate_profile():
     ds_name = "Penguins"
     df = B.iloc[497699: 497699 + length, 0:7].T
 
-    ml = Motiflets(ds_name, df, elbow_deviation=1.25, slack=0.3)
+    ml = LAMA(ds_name, df, elbow_deviation=1.25, slack=0.3)
     # ml.plot_dataset()
 
     k_max = 50
@@ -143,7 +143,7 @@ def test_multivariate_all():
     ds_name, B = read_penguin_data()
 
     series = B.iloc[497699:497699 + length, 0:3].T
-    ml = Motiflets(ds_name, series)
+    ml = LAMA(ds_name, series)
 
     k_max = 30
     motif_length_range = np.arange(20, 35, 1)
@@ -167,7 +167,7 @@ def test_fit_dimensions():
     for start in [0]:  # , 2000
         series = B.iloc[497699 + start:497699 + start + length].T
 
-        ml = Motiflets(ds_name, series)
+        ml = LAMA(ds_name, series)
         k_max = 40
         ml.fit_dimensions(
             k_max,
@@ -219,11 +219,11 @@ def test_lama(use_PCA=False):
             pca = PCA(n_components=1)
             series = pca.fit_transform(series.T).T
 
-        ml = Motiflets(ds_name, series,
-                       n_dims=n_dims,
-                       n_jobs=8,
-                       elbow_deviation=1.25,
-                       )
+        ml = LAMA(ds_name, series,
+                  n_dims=n_dims,
+                  n_jobs=8,
+                  elbow_deviation=1.25,
+                  )
 
         k_max = 40
         motif_length_range = np.arange(20, 30, 1)
@@ -240,13 +240,13 @@ def test_lama(use_PCA=False):
 
         print("Positions:")
         for eb in ml.elbow_points:
-            motiflet = np.sort(ml.motiflets[eb])
+            motiflet = np.sort(ml.leitmotifs[eb])
             print("\tpos\t:", repr(motiflet))
 
             if use_PCA:
                 print("\tdims\t:", repr(np.argsort(pca.components_[:])[:, :n_dims]))
             else:
-                print("\tdims\t:", repr(ml.motiflets_dims[eb]))
+                print("\tdims\t:", repr(ml.leitmotif_dims[eb]))
 
 
 def test_emd_pca():
@@ -293,7 +293,7 @@ def test_plot_all():
     motif_sets = [
         [  # mstamp
             [346, 366],
-            # motiflets
+            # leitmotifs
             [190, 209, 228, 247, 267, 287, 306, 326, 346, 366, 386, 406, 426, 446, 466,
              486, 506, 527, 547, 567, 587, 607, 628, 648, 669, 689, 710, 730, 768, 788,
              809, 851, 871, 936, 957],
@@ -304,7 +304,7 @@ def test_plot_all():
         ],
         [  # mstamp
             [346, 366],
-            # motiflets
+            # leitmotifs
             [22, 56, 92, 125, 158, 191, 227, 260, 291, 323, 357, 385, 418, 452, 479,
              511, 542, 573, 599, 620, 662, 706, 758, 792],
             # EMD*
@@ -315,16 +315,16 @@ def test_plot_all():
     dims = [
         [  # mstamp
             [6],
-            # motiflets
+            # leitmotifs
             [2, 0],
-            # PCA + motiflets
+            # PCA + leitmotifs
             [0, 5]
         ],
         [  # mstamp
             [6],
-            # motiflets
+            # leitmotifs
             [2, 0],
-            # PCA + motiflets
+            # PCA + leitmotifs
             [1, 5]
         ]
     ]
@@ -341,7 +341,7 @@ def test_plot_all():
             ds_name,
             series.T,
             motifsets=motifs,
-            motiflet_dims=dim,
+            leitmotif_dims=dim,
             motifset_names=motifset_names,
             motif_length=lengths[i],
             show=path is None)

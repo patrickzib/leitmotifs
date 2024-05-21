@@ -6,13 +6,13 @@ def test_processImage():
     # file_name = "images_paper/charleston_93_04_160_3_0.gif"
 
     id = 2
-    file_name = "images_paper/boxing/motiflet_wrong/motiflet_13_17_0_6.gif"
+    file_name = "motiflet_13_17_0_6.gif"
 
     id = 1
-    file_name = "images_paper/boxing/motiflet_wrong/motiflet_13_17_0_0.gif"
+    file_name = "motiflet_13_17_0_0.gif"
 
     id = 3
-    file_name = "images_paper/boxing/motiflet_wrong/motiflet_13_17_0_4.gif"
+    file_name = "motiflet_13_17_0_4.gif"
 
 
     num_key_frames = 10

@@ -1,4 +1,4 @@
-from motiflets.plotting import *
+from leitmotifs.plotting import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -40,10 +40,10 @@ def test_penguins_univ():
         print("Current", length)
         series = B.iloc[:length,0].T
 
-        ml = Motiflets(ds_name,
-                       series,
-                       n_jobs=8,
-                       )
+        ml = LAMA(ds_name,
+                  series,
+                  n_jobs=8,
+                  )
 
         k_max = 5
 
@@ -74,10 +74,10 @@ def test_penguins_multivariate():
         print("Current", length, flush=True)
         series = B.iloc[:length].T
 
-        ml = Motiflets(ds_name,
-                       series,
-                       n_dims=3
-                       )
+        ml = LAMA(ds_name,
+                  series,
+                  n_dims=3
+                  )
 
         k_max = 5
 

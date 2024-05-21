@@ -1,6 +1,6 @@
 import os
 import matplotlib as mpl
-from motiflets.motiflets import read_audio_from_dataframe
+from leitmotifs.lama import read_audio_from_dataframe
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -32,10 +32,10 @@ def test_audio():
     channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3']
     df = df.loc[channels].iloc[:, :20000]
 
-    ml = Motiflets(ds_name, df,
-                   dimension_labels=df.index,
-                   n_dims=n_dims,
-                   )
+    ml = LAMA(ds_name, df,
+              dimension_labels=df.index,
+              n_dims=n_dims,
+              )
     ml.plot_dataset()
 
     motif_length_range = np.int32(motif_length_range_in_s /
@@ -54,9 +54,9 @@ def test_audio():
     print("Found motif length", length_in_seconds, motif_length)
 
     if os.path.isfile(audio_file_url):
-        # best motiflets
+        # best leitmotifs
         for a, eb in enumerate(ml.elbow_points):
-            motiflet = np.sort(ml.motiflets[eb])
+            motiflet = np.sort(ml.leitmotifs[eb])
             print("Positions:", motiflet, index_range[motiflet])
 
             extract_audio_segment(

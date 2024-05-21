@@ -15,13 +15,13 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import zscore
 
-import motiflets.motiflets as ml
+import leitmotifs.lama as ml
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 
 
-class Motiflets:
+class LAMA:
 
     def __init__(
             self,
@@ -48,7 +48,7 @@ class Motiflets:
         self.motif_length = 0
         self.all_extrema = []
         self.all_elbows = []
-        self.all_top_motiflets = []
+        self.all_top_leitmotifs = []
         self.all_dists = []
 
         self.n_dims = n_dims
@@ -56,9 +56,9 @@ class Motiflets:
         self.motif_length = 0
         self.k_max = 0
         self.dists = []
-        self.motiflets = []
+        self.leitmotifs = []
         self.elbow_points = []
-        self.motiflets_dims = []
+        self.leitmotif_dims = []
         self.all_dimensions = []
 
     def fit_motif_length(
@@ -76,11 +76,11 @@ class Motiflets:
 
         (self.motif_length,
          self.dists,
-         self.motiflets,
-         self.motiflets_dims,
+         self.leitmotifs,
+         self.leitmotif_dims,
          self.elbow_points,
          self.all_elbows,
-         self.all_top_motiflets,
+         self.all_top_leitmotifs,
          self.all_dists,
          self.all_dimensions,
          self.all_extrema) = plot_motif_length_selection(
@@ -117,7 +117,7 @@ class Motiflets:
         else:
             self.motif_length = motif_length
 
-        self.dists, self.motiflets, self.motiflets_dims, self.elbow_points = plot_elbow(
+        self.dists, self.leitmotifs, self.leitmotif_dims, self.elbow_points = plot_elbow(
             k_max,
             self.series,
             n_dims=self.n_dims,
@@ -134,7 +134,7 @@ class Motiflets:
             slack=self.slack
         )
 
-        return self.dists, self.motiflets, self.elbow_points
+        return self.dists, self.leitmotifs, self.elbow_points
 
     def fit_dimensions(
             self,
@@ -176,7 +176,7 @@ class Motiflets:
 
     def plot_motifset(self, elbow_points=None, path=None, motifset_name=None):
 
-        if self.dists is None or self.motiflets is None or self.elbow_points is None:
+        if self.dists is None or self.leitmotifs is None or self.elbow_points is None:
             raise Exception("Please call fit_k_elbow first.")
 
         if elbow_points is None:
@@ -192,8 +192,8 @@ class Motiflets:
         fig, ax = plot_motifsets(
             self.ds_name,
             self.series,
-            motifsets=self.motiflets[elbow_points],
-            motiflet_dims=self.motiflets_dims[elbow_points],
+            motifsets=self.leitmotifs[elbow_points],
+            leitmotif_dims=self.leitmotif_dims[elbow_points],
             motifset_names=motifset_names,
             dist=self.dists[elbow_points],
             ground_truth=self.ground_truth,
@@ -272,7 +272,7 @@ def plot_motifsets(
         motifsets=None,
         motifset_names=None,
         dist=None,
-        motiflet_dims=None,
+        leitmotif_dims=None,
         motif_length=None,
         ground_truth=None,
         font_size=26,
@@ -361,12 +361,12 @@ def plot_motifsets(
 
         if motifsets is not None:
             for i, motifset in enumerate(motifsets):
-                if (motiflet_dims is None or
-                        (motiflet_dims[i] is not None and dim in motiflet_dims[i])):
+                if (leitmotif_dims is None or
+                        (leitmotif_dims[i] is not None and dim in leitmotif_dims[i])):
                     if motifset is not None:
                         for a, pos in enumerate(motifset):
                             # Do not plot, if all dimensions are covered
-                            if motiflet_dims is None or motiflet_dims[i].shape[0] < \
+                            if leitmotif_dims is None or leitmotif_dims[i].shape[0] < \
                                     data.shape[0]:
                                 _ = sns.lineplot(ax=axes[0, 0],
                                                  x=data_index[
@@ -470,9 +470,9 @@ def plot_motifsets(
         y_labels.append("Ground Truth")
 
     if motifsets is not None:
-        for i, motiflet in enumerate(motifsets):
-            if motiflet is not None:
-                for pos in motiflet:
+        for i, leitmotif in enumerate(motifsets):
+            if leitmotif is not None:
+                for pos in leitmotif:
                     ratio = 0.8
                     rect = Rectangle(
                         (data_index[pos], -i - gt_count),
@@ -558,49 +558,13 @@ def _plot_elbow_points(
     for elbow in elbow_points:
         ax.vlines(
             elbow, lim1, lim2,
-            linestyles="--", label=str(elbow) + "-Motiflet"
+            linestyles="--", label=str(elbow) + "-Leitmotif"
         )
     ax.set(xlabel='Size (k)', ylabel='Extent')
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     plt.scatter(elbow_points, dists[elbow_points], color="red", label="Minima")
 
-    motiflets = motifset_candidates[elbow_points]
-    # for i, motiflet in enumerate(motiflets):
-    #     if motiflet is not None:
-    #         if elbow_points[i] - 3 < 0:
-    #             x_pos = 0
-    #         else:
-    #             x_pos = (elbow_points[i] - 2) / (len(motifset_candidates))
-    #
-    #         scale = max(dists) - min(dists)
-    #         # y_pos = (dists[elbow_points[i]] - min(dists) + scale * 0.15) / scale
-    #         axins = ax.inset_axes(
-    #             [x_pos, 0.1, 0.2, 0.15])
-    #
-    #         df = pd.DataFrame()
-    #         df["time"] = data_index[range(0, motif_length)]
-    #
-    #         for dim in range(data_raw.shape[0]):
-    #             if (motifset_candidates_dims is None or
-    #                     dim == motifset_candidates_dims[elbow_points][0][0]):
-    #                 pos = motiflet[0]
-    #                 normed_data = zscore(data_raw[dim, pos:pos + motif_length])
-    #                 df["dim_" + str(dim)] = normed_data
-    #
-    #         df_melt = pd.melt(df, id_vars="time")
-    #         _ = sns.lineplot(ax=axins, data=df_melt,
-    #                          x="time", y="value",
-    #                          hue="variable",
-    #                          style="variable",
-    #                          errorbar=("ci", 99),
-    #                          # alpha=0.8,
-    #                          n_boot=10, color=sns.color_palette("tab10")[(i + 1) % 10])
-    #         axins.set_xlabel("")
-    #         axins.patch.set_alpha(0)
-    #         axins.set_ylabel("")
-    #         axins.xaxis.set_major_formatter(plt.NullFormatter())
-    #         axins.yaxis.set_major_formatter(plt.NullFormatter())
-    #         axins.legend().set_visible(False)
+    leitmotifs = motifset_candidates[elbow_points]
 
     plt.tight_layout()
     plt.savefig("lord_of_the_rings_elbow_points.pdf")
@@ -622,9 +586,9 @@ def plot_elbow(k_max,
                n_jobs=4,
                elbow_deviation=1.00,
                slack=0.5):
-    """Plots the elbow-plot for k-Motiflets.
+    """Plots the elbow-plot for leitmotifs.
 
-    This is the method to find and plot the characteristic k-Motiflets within range
+    This is the method to find and plot the characteristic leitmotifs within range
     [2...k_max] for given a `motif_length` using elbow-plots.
 
     Details are given within the paper Section 5.1 Learning meaningful k.
@@ -650,7 +614,7 @@ def plot_elbow(k_max,
     dimension_labels:
         Labels for the dimensions
     filter: bool, default=True
-        filters overlapping motiflets from the result,
+        filters overlapping leitmotifs from the result,
     n_jobs : int
         Number of jobs to be used.
     elbow_deviation : float, default=1.00
@@ -680,7 +644,7 @@ def plot_elbow(k_max,
     print("Data", raw_data.shape)
 
     startTime = time.perf_counter()
-    dists, candidates, candidate_dims, elbow_points, m = ml.search_k_motiflets_elbow(
+    dists, candidates, candidate_dims, elbow_points, m = ml.search_leitmotifs_elbow(
         k_max,
         raw_data,
         motif_length,
@@ -705,12 +669,12 @@ def plot_elbow(k_max,
             ds_name,
             data,
             motifsets=candidates[elbow_points],
-            motiflet_dims=candidate_dims[elbow_points],
+            leitmotif_dims=candidate_dims[elbow_points],
             dist=dists,
             motif_length=motif_length,
             show=True)
 
-        # plot_grid_motiflets(
+        # plot_grid_leitmotifs(
         #    ds_name, data, candidates, elbow_points,
         #    dists, motif_length, show_elbows=False,
         #    candidates_dims=candidate_dims,
@@ -784,8 +748,8 @@ def plot_motif_length_selection(
     startTime = time.perf_counter()
     (best_motif_length,
      all_minima, au_ef,
-     elbow, top_motiflets,
-     top_motiflets_dims, dists) = \
+     elbow, top_leitmotifs,
+     top_leitmotifs_dims, dists) = \
         ml.find_au_ef_motif_length(
             data_raw, k_max,
             n_dims=n_dims,
@@ -803,8 +767,8 @@ def plot_motif_length_selection(
     if plot:
         _plot_window_lengths(
             all_minima, au_ef, data_raw, ds_name, elbow, header, index,
-            motif_length_range, top_motiflets,
-            top_motiflets_dims=top_motiflets_dims)
+            motif_length_range, top_leitmotifs,
+            top_leitmotifs_dims=top_leitmotifs_dims)
 
         if plot_elbows or plot_motifsets:
             to_plot = all_minima[0]
@@ -814,10 +778,10 @@ def plot_motif_length_selection(
             for a in to_plot:
                 motif_length = motif_length_range[a]
                 candidates = np.zeros(len(dists[a]), dtype=object)
-                candidates[elbow[a]] = top_motiflets[a]  # need to unpack
+                candidates[elbow[a]] = top_leitmotifs[a]  # need to unpack
 
                 candidate_dims = np.zeros(len(dists[a]), dtype=object)
-                candidate_dims[elbow[a]] = top_motiflets_dims[a]  # need to unpack
+                candidate_dims[elbow[a]] = top_leitmotifs_dims[a]  # need to unpack
 
                 elbow_points = elbow[a]
 
@@ -831,8 +795,8 @@ def plot_motif_length_selection(
                     plot_motifsets(
                         ds_name,
                         data,
-                        motifsets=top_motiflets[a],
-                        motiflet_dims=top_motiflets_dims[a],
+                        motifsets=top_leitmotifs[a],
+                        leitmotif_dims=top_leitmotifs_dims[a],
                         dist=dists[a][elbow_points],
                         motif_length=motif_length,
                         ground_truth=ground_truth,
@@ -841,21 +805,21 @@ def plot_motif_length_selection(
     best_pos = np.argmin(au_ef)
     best_elbows = elbow[best_pos]
     best_dist = dists[best_pos]
-    best_motiflets = np.zeros(len(dists[best_pos]), dtype=object)
-    best_motiflets[elbow[best_pos]] = top_motiflets[best_pos]  # need to unpack
-    best_motiflets_dims = np.zeros(len(dists[best_pos]), dtype=object)
-    best_motiflets_dims[elbow[best_pos]] = top_motiflets_dims[
+    best_leitmotifs = np.zeros(len(dists[best_pos]), dtype=object)
+    best_leitmotifs[elbow[best_pos]] = top_leitmotifs[best_pos]  # need to unpack
+    best_leitmotifs_dims = np.zeros(len(dists[best_pos]), dtype=object)
+    best_leitmotifs_dims[elbow[best_pos]] = top_leitmotifs_dims[
         best_pos]  # need to unpack
 
     return (best_motif_length,
             best_dist,
-            best_motiflets,
-            best_motiflets_dims,
+            best_leitmotifs,
+            best_leitmotifs_dims,
             best_elbows,
             elbow,
-            top_motiflets,
+            top_leitmotifs,
             dists,
-            top_motiflets_dims,
+            top_leitmotifs_dims,
             all_minima[0])
 
 
@@ -879,8 +843,8 @@ def _plot_window_lengths(
         all_minima, au_ef, data_raw, ds_name,
         elbow, header, index,
         motif_length_range,
-        top_motiflets,
-        top_motiflets_dims=None):
+        top_leitmotifs,
+        top_leitmotifs_dims=None):
     # set_sns_style(font_size)
 
     indices = ~np.isinf(au_ef)
@@ -909,8 +873,8 @@ def _plot_window_lengths(
         data_raw = data_raw.reshape((1, -1))
     # iterate all minima
     for i, minimum in enumerate(all_minima[0]):
-        # iterate all motiflets
-        for a, motiflet_pos in enumerate(top_motiflets[minimum]):
+        # iterate all leitmotifs
+        for a, leitmotif_pos in enumerate(top_leitmotifs[minimum]):
             x_pos = minimum / len(motif_length_range)
             scale = max(au_ef) - min(au_ef)
             y_pos = (au_ef[minimum] - min(au_ef) + (1.5 * a + 1) * scale * 0.15) / scale
@@ -921,9 +885,9 @@ def _plot_window_lengths(
             df["time"] = index[range(0, motif_length)]
 
             for dim in range(data_raw.shape[0]):
-                if top_motiflets_dims is None or dim == top_motiflets_dims[minimum][0][
+                if top_leitmotifs_dims is None or dim == top_leitmotifs_dims[minimum][0][
                     0]:
-                    pos = motiflet_pos[0]
+                    pos = leitmotif_pos[0]
                     normed_data = zscore(data_raw[dim, pos:pos + motif_length])
                     df["dim_" + str(dim)] = normed_data
 

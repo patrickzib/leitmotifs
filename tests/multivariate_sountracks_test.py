@@ -1,9 +1,9 @@
 import os
 import matplotlib as mpl
-from motiflets.motiflets import read_audio_from_dataframe
+from leitmotifs.lama import read_audio_from_dataframe
 
 from audio.lyrics import *
-from motiflets.competitors import *
+from leitmotifs.competitors import *
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -120,7 +120,7 @@ channels = [
 #     positions = np.array([positions])
 #
 #     if os.path.isfile(audio_file_url):
-#         # extract motiflets
+#         # extract leitmotifs
 #         for a, motif in enumerate(positions):
 #             motif_length = motif[a, 1] - motif[a, 0]
 #             print(motif_length)
@@ -165,13 +165,13 @@ def test_lama(
     else:
         df_transform = df
 
-    ml = Motiflets(ds_name, df_transform,
-                   dimension_labels=df.index,
-                   n_dims=n_dims,
-                   slack=slack,
-                   minimize_pairwise_dist=minimize_pairwise_dist,
-                   ground_truth=ground_truth
-                   )
+    ml = LAMA(ds_name, df_transform,
+              dimension_labels=df.index,
+              n_dims=n_dims,
+              slack=slack,
+              minimize_pairwise_dist=minimize_pairwise_dist,
+              ground_truth=ground_truth
+              )
 
     # motif_length_range = np.int32(motif_length_range_in_s /
     #                               audio_length_seconds * df.shape[1])
@@ -197,13 +197,13 @@ def test_lama(
     if use_PCA:
         dims = [np.argsort(pca.components_[:])[:, :n_dims][0] for _ in ks]
     else:
-        dims = ml.motiflets_dims[ks]
+        dims = ml.leitmotif_dims[ks]
 
     length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
     print("Found motif length", length_in_seconds, motif_length)
 
     for a, eb in enumerate(ml.elbow_points):
-        motiflet = np.sort(ml.motiflets[eb])
+        motiflet = np.sort(ml.leitmotifs[eb])
         print("Positions:", index_range[motiflet])
         print("Positions:", list(zip(motiflet, motiflet + motif_length)))
 
@@ -421,7 +421,7 @@ def test_plot_results():
                 ds_name,
                 df,
                 motifsets=[motifs[pos] for pos in positions],
-                motiflet_dims=[dims[pos] for pos in positions],
+                leitmotif_dims=[dims[pos] for pos in positions],
                 motifset_names=plot_names,
                 motif_length=motif_length,
                 ground_truth=ground_truth,

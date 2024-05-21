@@ -1,9 +1,9 @@
 import os
 
 from audio.lyrics import *
-from motiflets.motiflets import read_audio_from_dataframe
-from motiflets.motiflets import read_ground_truth
-from motiflets.competitors import *
+from leitmotifs.lama import read_audio_from_dataframe
+from leitmotifs.lama import read_ground_truth
+from leitmotifs.competitors import *
 
 # path outside the git
 path_to_wav = "../../motiflets_use_cases/audio/"
@@ -58,7 +58,7 @@ def test_audio():
         ground_truth = read_ground_truth(pandas_file_url, path="")
         df = df.loc[channels]
 
-        ml = Motiflets(
+        ml = LAMA(
             ds_name, df,
             dimension_labels=df.index,
             slack=0.6,
@@ -86,7 +86,7 @@ def test_audio():
         ml.plot_motifset(motifset_name="LAMA")
 
         print("Best length:", m, index_range[m])
-        motiflet = np.sort(ml.motiflets[ks[i]])
+        motiflet = np.sort(ml.leitmotifs[ks[i]])
         print("Positions:", motiflet)
 
         if False:

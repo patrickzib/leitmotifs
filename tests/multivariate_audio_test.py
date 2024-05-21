@@ -2,8 +2,8 @@ import matplotlib as mpl
 import os
 
 from audio.lyrics import *
-from motiflets.competitors import *
-from motiflets.motiflets import read_audio_from_dataframe
+from leitmotifs.competitors import *
+from leitmotifs.lama import read_audio_from_dataframe
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -102,64 +102,18 @@ channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4',
             ]
 
 
-# def test_read_write():
-#     audio_length_seconds, df, index_range = read_from_wav(read_from_wav)
-#     df.to_csv(pandas_file_url, compression='gzip')
-#     audio_length_seconds2, df2, index_range2 = read_audio_from_dataframe(pandas_file_url)
-
-
-# def test_ground_truth():
-#     audio_length_seconds, df, index_range, ground_truth \
-#         = read_audio_from_dataframe(pandas_file_url, channels)
-#
-#     # motif_length_range = np.int32(motif_length_range_in_s /
-#     #                              audio_length_seconds * df.shape[1])
-#
-#     ml = Motiflets(ds_name, df,
-#                    dimension_labels=df.index,
-#                    n_dims=n_dims,
-#                    ground_truth=ground_truth
-#                    )
-#
-#     # print("Positions:", index_range[ground_truth.loc[0][0]])
-#
-#     positions = []
-#     # [24.50, 40.5], [68.5, 84.50], [108.5, 124.5], [162.5, 178.5], [178.5, 194.5]
-#     positions.append([[index_range.searchsorted(24.5), index_range.searchsorted(40.5)],
-#                       [index_range.searchsorted(68.5), index_range.searchsorted(84.50)],
-#                       [index_range.searchsorted(108.5),
-#                        index_range.searchsorted(124.5)],
-#                       [index_range.searchsorted(162.5),
-#                        index_range.searchsorted(178.5)],
-#                       [index_range.searchsorted(178.5), index_range.searchsorted(194.5)]
-#                       ])
-#     print(repr(positions))
-#
-#     if os.path.isfile(audio_file_url):
-#         # extract motiflets
-#         for a, motif in enumerate(ground_truth.loc[0]):
-#             motif_length = motif[a][1] - motif[a][0]
-#             length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
-#
-#             extract_audio_segment(
-#                 df, ds_name, audio_file_url, "snippets",
-#                 length_in_seconds, index_range, motif_length,
-#                 np.array(motif)[:, 0], id=(a + 1))
-#
-#     ml.plot_dataset()
-
 
 def test_learn_parameters():
     audio_length_seconds, df, index_range, ground_truth \
         = read_audio_from_dataframe(pandas_file_url)
 
     n_dims = 3
-    ml = Motiflets(ds_name, df,
-                   dimension_labels=df.index,
-                   n_dims=n_dims,
-                   ground_truth=ground_truth,
-                   slack=slack
-                   )
+    ml = LAMA(ds_name, df,
+              dimension_labels=df.index,
+              n_dims=n_dims,
+              ground_truth=ground_truth,
+              slack=slack
+              )
 
     motif_length_range = np.int32(motif_length_range_in_s /
                                   audio_length_seconds * df.shape[1])
@@ -178,7 +132,7 @@ def test_learn_parameters():
     print("Found motif length", length_in_seconds, m)
 
     for a, eb in enumerate(ml.elbow_points):
-        motiflet = np.sort(ml.motiflets[eb])
+        motiflet = np.sort(ml.leitmotifs[eb])
         print("Positions:", index_range[motiflet])
         print("Positions:", list(zip(motiflet, motiflet + motif_length)))
 
@@ -215,7 +169,7 @@ def test_lama(
     else:
         df_transform = df
 
-    ml = Motiflets(
+    ml = LAMA(
         ds_name, df_transform,
         dimension_labels=df.index,
         n_dims=n_dims,
@@ -249,7 +203,7 @@ def test_lama(
     if use_PCA:
         dims = [np.argsort(pca.components_[:])[:, :n_dims][0] for _ in ks]
     else:
-        dims = ml.motiflets_dims[ks]
+        dims = ml.leitmotif_dims[ks]
 
     length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
     print("Found motif length", length_in_seconds, motif_length)
@@ -257,7 +211,7 @@ def test_lama(
     print("Positions:")
     # for a, eb in enumerate(ml.elbow_points):
     for a, eb in enumerate(ks):
-        motiflet = np.sort(ml.motiflets[eb])
+        motiflet = np.sort(ml.leitmotifs[eb])
         print("\tMotif pos\t:", repr(motiflet))
         print("\tdims\t:", repr(dims))
 
@@ -433,7 +387,7 @@ def test_plot_results():
                 ds_name,
                 df,
                 motifsets=[motifs[pos] for pos in positions],
-                motiflet_dims=[dims[pos] for pos in positions],
+                leitmotif_dims=[dims[pos] for pos in positions],
                 motifset_names=plot_names,
                 motif_length=motif_length,
                 ground_truth=ground_truth,

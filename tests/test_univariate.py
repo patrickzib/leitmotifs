@@ -1,5 +1,5 @@
-from motiflets.motiflets import *
-from motiflets.plotting import *
+from leitmotifs.lama import *
+from leitmotifs.plotting import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -16,9 +16,9 @@ mpl.rcParams['figure.dpi'] = 150
 def test_univariate():
     file = 'ecg-heartbeat-av.csv'
     ds_name = "ECG Heartbeat"
-    series, df_gt = read_dataset_with_index(file)
+    series = read_dataset_with_index(file)
 
-    ml = Motiflets(ds_name, series, df_gt)
+    ml = LAMA(ds_name, series)
     ml.plot_dataset()
 
     ks = 20

@@ -1,10 +1,10 @@
 from matplotlib.animation import FuncAnimation
 
 import amc.amc_parser as amc_parser
-from motiflets.plotting import *
-from motiflets.motiflets import read_ground_truth
+from leitmotifs.plotting import *
+from leitmotifs.lama import read_ground_truth
 import matplotlib as mpl
-from motiflets.competitors import *
+from leitmotifs.competitors import *
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -267,10 +267,10 @@ def test_ground_truth():
             fps=20)
 
     ground_truth = read_ground_truth(amc_path)
-    ml = Motiflets(ds_name, df,
-                   dimension_labels=df.index,
-                   ground_truth=ground_truth
-                   )
+    ml = LAMA(ds_name, df,
+              dimension_labels=df.index,
+              ground_truth=ground_truth
+              )
     ml.plot_dataset()
 
 
@@ -302,7 +302,7 @@ def test_lama(
     # n_dims = 10
 
     # for use_dims in np.arange(2, n_dims):
-    ml = Motiflets(
+    ml = LAMA(
         amc_name, df_transform,
         dimension_labels=df.index,
         n_dims=n_dims,
@@ -333,7 +333,7 @@ def test_lama(
     if use_PCA:
         dims = np.argsort(pca.components_[:])[:, :n_dims]
     else:
-        dims = ml.motiflets_dims[ks]
+        dims = ml.leitmotif_dims[ks]
 
     for a, i in enumerate(ks):
         motif = motif_sets[i]
@@ -357,15 +357,15 @@ def test_lama(
     #     dists = ml.all_dists[minimum]
     #     elbow_points = ml.all_elbows[minimum]
     #
-    #     motiflets = ml.all_top_motiflets[minimum]
-    #     motiflets = np.zeros(len(dists), dtype=object)
-    #     motiflets[elbow_points] = ml.all_top_motiflets[minimum]
+    #     leitmotifs = ml.all_top_motiflets[minimum]
+    #     leitmotifs = np.zeros(len(dists), dtype=object)
+    #     leitmotifs[elbow_points] = ml.all_top_motiflets[minimum]
     #
     #     dimensions = np.zeros(len(dists), dtype=object)
     #     dimensions[elbow_points] = ml.all_dimensions[minimum]  # need to unpack
     #     if len(elbow_points) > 1:
     #         for eb in elbow_points:
-    #             motif = motiflets[eb]
+    #             motif = leitmotifs[eb]
     #             generate_gif(motif, m, motions, joints)
 
     return motif_sets[ks], dims
@@ -543,7 +543,7 @@ def test_plot_results():
                 ds_name,
                 df,
                 motifsets=[motifs[pos] for pos in positions],
-                motiflet_dims=[dims[pos] for pos in positions],
+                leitmotif_dims=[dims[pos] for pos in positions],
                 motifset_names=plot_names,
                 motif_length=motif_length,
                 ground_truth=ground_truth,

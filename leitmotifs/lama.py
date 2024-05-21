@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Compute k-Motiflets.
+"""Compute leitmotifs using LAMA.
 
 
 """
@@ -560,7 +560,7 @@ def distance(dot_rolled, n, m, means, stds, order, halve_m):
 
 @njit(fastmath=True, cache=True)
 def get_radius(D_full, motifset_pos):
-    """Computes the radius of the passed motif set (motiflet).
+    """Computes the radius of the passed motif set (leitmotif).
 
     Parameters
     ----------
@@ -571,10 +571,10 @@ def get_radius(D_full, motifset_pos):
 
     Returns
     -------
-    motiflet_radius : float
+    leitmotif_radius : float
         The radius of the motif set
     """
-    motiflet_radius = np.inf
+    leitmotif_radius = np.inf
 
     for ii in range(len(motifset_pos) - 1):
         i = motifset_pos[ii]
@@ -583,9 +583,9 @@ def get_radius(D_full, motifset_pos):
             if (i != jj):
                 j = motifset_pos[jj]
                 current = max(current, D_full[i, j])
-        motiflet_radius = min(current, motiflet_radius)
+        leitmotif_radius = min(current, leitmotif_radius)
 
-    return motiflet_radius
+    return leitmotif_radius
 
 
 @njit(fastmath=True, cache=True)
@@ -699,12 +699,13 @@ def _argknn(
 
 
 @njit(fastmath=True, cache=True)
-def get_approximate_k_motiflet(
+def run_LAMA(
         ts, m, k, D, knns, dim_index, upper_bound=np.inf
 ):
-    """Compute the approximate k-Motiflets.
+    """Compute the approximate leitmotif using LAMA.
 
-    Details are given within the paper Section 4.2 Approximate k-Motiflet Algorithm.
+    Details are given within the paper Section 3.3
+    LAtent leitMotif discovery Algorithm (LAMA).
 
     Parameters
     ----------
@@ -713,7 +714,7 @@ def get_approximate_k_motiflet(
     m : int
         The motif length
     k : int
-        The k in k-Motiflets
+        The size k of the leitmotif
     D : 2d array-like
         The distance matrix
     upper_bound : float
@@ -722,15 +723,15 @@ def get_approximate_k_motiflet(
     Returns
     -------
     Tuple
-        motiflet_candidate : np.array
-            The (approximate) best motiflet found
-        motiflet_dist:
-            The extent of the motiflet found
+        leitmotif_candidate : np.array
+            The (approximate) best leitmotif found
+        leitmotif_dist:
+            The extent of the leitmotif found
     """
     n = ts.shape[-1] - m + 1
-    motiflet_dist = upper_bound
-    motiflet_dims = None
-    motiflet_candidate = None
+    leitmotif_dist = upper_bound
+    leitmotif_dims = None
+    leitmotif_candidate = None
 
     for order in np.arange(n, dtype=np.int32):
         # for dim in np.arange(ts.shape[0], dtype=np.int32):
@@ -748,20 +749,20 @@ def get_approximate_k_motiflet(
             knn_distance += D[dim_index[order, a]][order][knn_idx[k - 1]]
 
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
-            if knn_distance <= motiflet_dist:
-                motiflet_extent = get_pairwise_extent(
+            if knn_distance <= leitmotif_dist:
+                extent = get_pairwise_extent(
                     D,
                     knn_idx[:k],
                     dim_index,
-                    motiflet_dist
+                    leitmotif_dist
                 )
-                if motiflet_extent <= motiflet_dist:
-                    motiflet_dist = motiflet_extent
-                    motiflet_candidate = knn_idx[:k]
-                    motiflet_dims = dim_index[order]
+                if extent <= leitmotif_dist:
+                    leitmotif_dist = extent
+                    leitmotif_candidate = knn_idx[:k]
+                    leitmotif_dims = dim_index[order]
 
-    # print("best dims", m, k, motiflet_dims)
-    return motiflet_candidate, motiflet_dist, motiflet_dims
+    # print("best dims", m, k, leitmotif_dims)
+    return leitmotif_candidate, leitmotif_dist, leitmotif_dims
 
 
 @njit(fastmath=True, cache=True)
@@ -784,8 +785,8 @@ def _check_unique(motifset_1, motifset_2, motif_length):
     True, if there are at least m/2 subsequences with an overlap of 25%, else False.
     """
     count = 0
-    for a in motifset_1:  # smaller motiflet
-        for b in motifset_2:  # larger motiflet
+    for a in motifset_1:  # smaller leitmotif
+        for b in motifset_2:  # larger leitmotif
             if abs(a - b) < (motif_length / 4):
                 count = count + 1
                 break
@@ -931,8 +932,8 @@ def select_subdimensions(
             For each length in the interval, the AU_EF.
         elbows :
             Largest k (largest elbow) found
-        top_motiflets :
-            The motiflet for the largest k for each length.
+        top_leitmotifs :
+            The leitmotif for the largest k for each length.
 
     """
     # in reverse order
@@ -946,7 +947,7 @@ def select_subdimensions(
     for i, n_dims in enumerate(dim_range):
         if n_dims <= data.shape[0]:
             dist, candidates, candidate_dims, elbow_points, D_full, knns \
-                = search_k_motiflets_elbow(
+                = search_leitmotifs_elbow(
                 k_max,
                 data,
                 motif_length,
@@ -1016,8 +1017,8 @@ def find_au_ef_motif_length(
             For each length in the interval, the AU_EF.
         elbows :
             Largest k (largest elbow) found
-        top_motiflets :
-            The motiflet for the largest k for each length.
+        top_leitmotifs :
+            The leitmotif for the largest k for each length.
 
     """
     # apply sampling for speedup only
@@ -1031,14 +1032,14 @@ def find_au_ef_motif_length(
     au_efs = np.zeros(len(motif_length_range), dtype=object)
     au_efs.fill(np.inf)
     elbows = np.zeros(len(motif_length_range), dtype=object)
-    top_motiflets = np.zeros(len(motif_length_range), dtype=object)
-    top_motiflets_dims = np.zeros(len(motif_length_range), dtype=object)
+    top_leitmotifs = np.zeros(len(motif_length_range), dtype=object)
+    top_leitmotifs_dims = np.zeros(len(motif_length_range), dtype=object)
     dists = np.zeros(len(motif_length_range), dtype=object)
 
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m // subsample < data.shape[-1]:
-            dist, candidates, candidate_dims, elbow_points, _ = search_k_motiflets_elbow(
+            dist, candidates, candidate_dims, elbow_points, _ = search_leitmotifs_elbow(
                 k_max,
                 data,
                 m // subsample,
@@ -1061,13 +1062,13 @@ def find_au_ef_motif_length(
 
             if len(elbow_points > 0):
                 elbows[i] = elbow_points
-                top_motiflets[i] = candidates[elbow_points]
-                top_motiflets_dims[i] = candidate_dims[elbow_points]
+                top_leitmotifs[i] = candidates[elbow_points]
+                top_leitmotifs_dims[i] = candidate_dims[elbow_points]
             else:
                 # we found only the pair motif
                 elbows[i] = [2]
-                top_motiflets[i] = [candidates[2]]
-                top_motiflets_dims[i] = candidate_dims[candidates[2]]
+                top_leitmotifs[i] = [candidates[2]]
+                top_leitmotifs_dims[i] = candidate_dims[candidates[2]]
 
                 # no elbow can be found, ignore this part
                 au_efs[i] = 1.0
@@ -1078,8 +1079,8 @@ def find_au_ef_motif_length(
     au_efs = np.array(au_efs, dtype=np.float64)[::-1]
     elbows = elbows[::-1]
     dists = dists[::-1]
-    top_motiflets = top_motiflets[::-1] * subsample
-    top_motiflets_dims = top_motiflets_dims[::-1]
+    top_leitmotifs = top_leitmotifs[::-1] * subsample
+    top_leitmotifs_dims = top_leitmotifs_dims[::-1]
 
     # Minima in AU_EF
     minimum = motif_length_range[np.nanargmin(au_efs)]
@@ -1089,11 +1090,11 @@ def find_au_ef_motif_length(
     return (minimum,
             au_ef_minima, au_efs,
             elbows,
-            top_motiflets, top_motiflets_dims,
+            top_leitmotifs, top_leitmotifs_dims,
             dists)
 
 
-def search_k_motiflets_elbow(
+def search_leitmotifs_elbow(
         k_max,
         data,
         motif_length,
@@ -1109,7 +1110,7 @@ def search_k_motiflets_elbow(
 ):
     """Computes the elbow-function.
 
-    This is the method to find the characteristic k-Motiflets within range
+    This is the method to find the characteristic leitmotifs within range
     [2...k_max] for given a `motif_length` using elbow-plots.
 
     Details are given within the paper Section 5.1 Learning meaningful k.
@@ -1129,7 +1130,7 @@ def search_k_motiflets_elbow(
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
     filter: bool, default=True
-        filters overlapping motiflets from the result,
+        filters overlapping leitmotif from the result,
     slack: float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
@@ -1202,9 +1203,9 @@ def search_k_motiflets_elbow(
                 sum_dims=sum_dims)
 
     # non-overlapping motifs only
-    k_motiflet_distances = np.zeros(k_max_ + 1)
-    k_motiflet_candidates = np.empty(k_max_ + 1, dtype=object)
-    k_motiflet_dims = np.empty(k_max_ + 1, dtype=object)
+    k_leitmotif_distances = np.zeros(k_max_ + 1)
+    k_leitmotif_candidates = np.empty(k_max_ + 1, dtype=object)
+    k_leitmotif_dims = np.empty(k_max_ + 1, dtype=object)
 
     # order dimensions by increasing distance
     use_dim = min(n_dims, len(D_full))  # dimensions indexed by 0
@@ -1231,18 +1232,18 @@ def search_k_motiflets_elbow(
             dim_index = np.argsort(D_knn, axis=0)[:use_dim]
             dim_index = np.transpose(dim_index, (1, 0))
 
-        candidate, candidate_dist, candidate_dims = get_approximate_k_motiflet(
+        candidate, candidate_dist, candidate_dims = run_LAMA(
             data_raw, m, test_k, D_full, knns, dim_index,
             upper_bound=upper_bound,
         )
 
-        k_motiflet_distances[test_k] = candidate_dist
-        k_motiflet_candidates[test_k] = candidate
+        k_leitmotif_distances[test_k] = candidate_dist
+        k_leitmotif_candidates[test_k] = candidate
 
         if minimize_pairwise_dist or sum_dims:
-            k_motiflet_dims[test_k] = np.arange(d)
+            k_leitmotif_dims[test_k] = np.arange(d)
         elif not sum_dims:
-            k_motiflet_dims[test_k] = candidate_dims
+            k_leitmotif_dims[test_k] = candidate_dims
 
         # compute a new upper bound
         # if candidate is not None:
@@ -1251,23 +1252,23 @@ def search_k_motiflets_elbow(
         # FIXME: upper_bound = min(candidate_dist, upper_bound)
 
     # smoothen the line to make it monotonically increasing
-    k_motiflet_distances[0:2] = k_motiflet_distances[2]
-    for i in range(len(k_motiflet_distances), 2):
-        k_motiflet_distances[i - 1] = min(k_motiflet_distances[i],
-                                          k_motiflet_distances[i - 1])
+    k_leitmotif_distances[0:2] = k_leitmotif_distances[2]
+    for i in range(len(k_leitmotif_distances), 2):
+        k_leitmotif_distances[i - 1] = min(k_leitmotif_distances[i],
+                                          k_leitmotif_distances[i - 1])
 
-    elbow_points = find_elbow_points(k_motiflet_distances,
+    elbow_points = find_elbow_points(k_leitmotif_distances,
                                      elbow_deviation=elbow_deviation)
 
     if filter:
         elbow_points = _filter_unique(
-            elbow_points, k_motiflet_candidates, motif_length)
+            elbow_points, k_leitmotif_candidates, motif_length)
 
     if return_distances:
-        return (k_motiflet_distances, k_motiflet_candidates, k_motiflet_dims,
+        return (k_leitmotif_distances, k_leitmotif_candidates, k_leitmotif_dims,
                 elbow_points, D_full, knns)
     else:
-        return (k_motiflet_distances, k_motiflet_candidates, k_motiflet_dims,
+        return (k_leitmotif_distances, k_leitmotif_candidates, k_leitmotif_dims,
                 elbow_points, m)
 
 
@@ -1294,7 +1295,7 @@ def take_along_axis(D_full, d, knn_idx, n):
 
 @njit(fastmath=True, cache=True)
 def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
-    motiflet_candidate_dist = 0
+    leitmotif_candidate_dist = 0
     m_half = int(m * slack)
     for i in pool:
         for j in pool:
@@ -1304,9 +1305,9 @@ def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
 
     for i in pool:
         for j in pool:
-            motiflet_candidate_dist = max(motiflet_candidate_dist, D_full[i, j])
+            leitmotif_candidate_dist = max(leitmotif_candidate_dist, D_full[i, j])
 
-    return motiflet_candidate_dist
+    return leitmotif_candidate_dist
 
 
 # @njit(fastmath=True, cache=True, parallel=True)

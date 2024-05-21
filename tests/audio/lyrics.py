@@ -4,7 +4,7 @@ import pylrc
 from pydub import AudioSegment
 from scipy.io import wavfile
 
-from motiflets.plotting import *
+from leitmotifs.plotting import *
 
 
 def read_from_wav(audio_file_url):

@@ -1,7 +1,7 @@
 import stumpy
 
-from motiflets.competitors import *
-from motiflets.plotting import *
+from leitmotifs.competitors import *
+from leitmotifs.plotting import *
 import matplotlib as mpl
 
 mpl.rcParams['figure.dpi'] = 150
@@ -49,11 +49,11 @@ def test_lama(use_PCA=False):
         else:
             df_transform = df
 
-        ml = Motiflets(ds_name,
-                       df_transform,
-                       n_dims=2,
-                       n_jobs=8,
-                       )
+        ml = LAMA(ds_name,
+                  df_transform,
+                  n_dims=2,
+                  n_jobs=8,
+                  )
 
         k_max = 5
 

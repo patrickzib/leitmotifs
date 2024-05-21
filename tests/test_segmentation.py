@@ -1,4 +1,4 @@
-from motiflets.plotting import *
+from leitmotifs.plotting import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -27,8 +27,8 @@ def test_har():
 
     for i, (a, b) in enumerate(zip(cps[:-1], cps[1:])):
         series = har_series.iloc[a:b].values
-        ml = Motiflets(ds_name=activities[i], series=series,
-                       elbow_deviation=1.25, slack=0.6)
+        ml = LAMA(ds_name=activities[i], series=series,
+                  elbow_deviation=1.25, slack=0.6)
 
         k_max = 50
         length_range = np.arange(40, 150, 2)

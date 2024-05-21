@@ -1,5 +1,5 @@
 import os
-from motiflets.plotting import *
+from leitmotifs.plotting import *
 
 import matplotlib as mpl
 
@@ -46,17 +46,17 @@ def read_refit_data(house_index=1):
 
 def test_plot_data():
     ds_name, series = read_refit_data()
-    ml = Motiflets(ds_name, series)
+    ml = LAMA(ds_name, series)
     ml.plot_dataset()
 
 
 def test_multivariate():
     ds_name, series = read_refit_data(house_index=10)
 
-    ml = Motiflets(ds_name,
-                   series,
-                   n_dims=2
-                   )
+    ml = LAMA(ds_name,
+              series,
+              n_dims=2
+              )
 
     k_max = 20
     motif_length_range = np.arange(20, 350, 10)

@@ -1,6 +1,6 @@
 import stumpy
 
-from motiflets.plotting import *
+from leitmotifs.plotting import *
 from numba import njit
 
 
@@ -47,7 +47,7 @@ def run_mstamp(df, ds_name, motif_length,
             ds_name,
             df,
             motifsets=motifs,
-            motiflet_dims=dims,
+            leitmotif_dims=dims,
             motifset_names=motifset_names,
             motif_length=motif_length,
             ground_truth=ground_truth,
@@ -116,7 +116,7 @@ def run_kmotifs(
                     ds_name,
                     series,
                     motifsets=motifset.reshape(1, -1),
-                    motiflet_dims=np.arange(use_dims).reshape(1, -1),
+                    leitmotif_dims=np.arange(use_dims).reshape(1, -1),
                     motifset_names=motifset_names,
                     motif_length=motif_length,
                     ground_truth=ground_truth,
