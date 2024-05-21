@@ -1,0 +1,8 @@
+,Dataset,Method,Precision,Recall
+0,Star Wars - The Imperial March,LAMA,1.0,1.0
+1,Star Wars - The Imperial March,LAMA (naive),1.0,1.0
+2,Star Wars - The Imperial March,mSTAMP+MDL,0.0,0.0
+3,Star Wars - The Imperial March,mSTAMP,0.0,0.0
+4,Star Wars - The Imperial March,EMD*,0.2,0.2
+5,Star Wars - The Imperial March,K-Motifs (TOP-f),0.2,0.2
+6,Star Wars - The Imperial March,K-Motifs (all),1.0,1.0

@@ -1,0 +1,22 @@
+Done
+- Sub-dimensional motifs
+- Use sparse matrix for scalability
+
+To Do
+
+- Use a different library for sparse matrix support:
+    - https://pypi.org/project/csr/
+    - https://pypi.org/project/numba-plsa/
+    - https://github.com/SanPen/CSparse3
+
+- Use scamp for computing the distance matrix?
+    Scamp: https://scamp-docs.readthedocs.io/en/latest/performance.html
+    MP Fd: https://github.com/matrix-profile-foundation/matrixprofile
+
+- Implement Streaming Motifs
+- Log-File-Data
+
+
+
+
+
