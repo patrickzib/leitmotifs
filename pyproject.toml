@@ -1,12 +1,12 @@
 [project]
 name = "leitmotif"
 
-version = "0.0.1"
+version = "0.1.0"
 
 description = "Discovering Leitmotifs in Multidimensional Time Series"
 readme = "README.md"
 authors = [
-    {name = "patrickzib", email = "void@void.com"}
+    {name = "patrickzib", email = "patrick.schaefer@hu-berlin.de"}
 ]
 keywords = [
     "multidimensional",
@@ -52,7 +52,7 @@ dependencies = [
 ]
 
 [project.urls]
-repository = "https://github.com/patrickzib/motiflets"
+repository = "https://github.com/patrickzib/leitmotifs"
 #documentation = ""
 #download = ""
 
