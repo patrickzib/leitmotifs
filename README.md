@@ -3,6 +3,8 @@
 This page was built in support of our paper "Discovering Leitmotifs in Multidimensional 
 Time Series" by Patrick Schäfer and Ulf Leser.
 
+A leitmotif is a recurring theme in literature, movies or music that carries symbolic significance for the piece it is contained in. When this piece can be represented as a multi-dimensional time series (MDTS), such as acoustic or visual observations, finding a leitmotif is equivalent to the pattern discovery problem, which is an unsupervised and complex problem in time series analytics. Compared to the univariate case, it carries additional complexity because patterns typically do not occur in all dimensions but only in a few - which are, however, unknown and must be detected by the method itself. In this paper, we present the novel, efficient and highly effective leitmotif discovery algorithm LAMA for MDTS. LAMA rests on two core principals: (a) a leitmotif manifests solely given a yet unknown number of sub-dimensions - neither too few, nor too many, and (b) the set of sub-dimensions are not independent form the best pattern found therein, necessitating both problems to be approached in a joint manner. In contrast to all previous methods, LAMA is the first to tackle both problems jointly - instead of first selecting dimensions (or leitmotifs) and then finding the best leitmotifs (or dimensions). 
+
 Supporting Material
 - `tests`: Please see the python tests for use cases
 - `notebooks`: Please see the Jupyter Notebooks for use cases
