@@ -196,7 +196,7 @@ def _sliding_dot_product(query, time_series):
     ----------
     query : array-like
         first time series, typically shorter than ts
-    ts : array-like
+    time_series : array-like
         second time series, typically longer than query.
 
     Returns
@@ -905,8 +905,8 @@ def select_subdimensions(
     ----------
     data : array-like
         The time series.
-    k_max : list
-        The interval of k's to compute the area of a single AU_EF.
+    k_max : int
+        The maximum value of k's to compute the area of a single AU_EF.
     motif_length : int
         The length of the motif
     dim_range : list

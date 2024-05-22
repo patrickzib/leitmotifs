@@ -150,7 +150,7 @@ def test_lama(
     if use_PCA:
         dims = [np.argsort(pca.components_[:])[:, :n_dims][0] for _ in ks]
     else:
-        dims = ml.leitmotif_dims[ks]
+        dims = ml.leitmotifs_dims[ks]
 
     for a, eb in enumerate(ml.elbow_points):
         motiflet = np.sort(ml.leitmotifs[eb])

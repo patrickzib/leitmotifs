@@ -246,7 +246,7 @@ def test_lama(use_PCA=False):
             if use_PCA:
                 print("\tdims\t:", repr(np.argsort(pca.components_[:])[:, :n_dims]))
             else:
-                print("\tdims\t:", repr(ml.leitmotif_dims[eb]))
+                print("\tdims\t:", repr(ml.leitmotifs_dims[eb]))
 
 
 def test_emd_pca():

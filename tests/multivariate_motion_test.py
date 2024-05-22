@@ -333,7 +333,7 @@ def test_lama(
     if use_PCA:
         dims = np.argsort(pca.components_[:])[:, :n_dims]
     else:
-        dims = ml.leitmotif_dims[ks]
+        dims = ml.leitmotifs_dims[ks]
 
     for a, i in enumerate(ks):
         motif = motif_sets[i]

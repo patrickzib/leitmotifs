@@ -33,8 +33,8 @@ class LAMA:
             elbow_deviation=1.00,
             n_dims=None,
             n_jobs=4,
-            slack=0.5,
-    ):
+            slack=0.5
+    ) -> None:
         self.ds_name = ds_name
         self.series = convert_to_2d(series)
 
@@ -58,7 +58,7 @@ class LAMA:
         self.dists = []
         self.leitmotifs = []
         self.elbow_points = []
-        self.leitmotif_dims = []
+        self.leitmotifs_dims = []
         self.all_dimensions = []
 
     def fit_motif_length(
@@ -77,7 +77,7 @@ class LAMA:
         (self.motif_length,
          self.dists,
          self.leitmotifs,
-         self.leitmotif_dims,
+         self.leitmotifs_dims,
          self.elbow_points,
          self.all_elbows,
          self.all_top_leitmotifs,
@@ -117,7 +117,7 @@ class LAMA:
         else:
             self.motif_length = motif_length
 
-        self.dists, self.leitmotifs, self.leitmotif_dims, self.elbow_points = plot_elbow(
+        self.dists, self.leitmotifs, self.leitmotifs_dims, self.elbow_points = plot_elbow(
             k_max,
             self.series,
             n_dims=self.n_dims,
@@ -174,7 +174,11 @@ class LAMA:
 
         return fig, ax
 
-    def plot_motifset(self, elbow_points=None, path=None, motifset_name=None):
+    def plot_motifset(
+            self,
+            elbow_points=None,
+            path=None,
+            motifset_name=None):
 
         if self.dists is None or self.leitmotifs is None or self.elbow_points is None:
             raise Exception("Please call fit_k_elbow first.")
@@ -193,7 +197,7 @@ class LAMA:
             self.ds_name,
             self.series,
             motifsets=self.leitmotifs[elbow_points],
-            leitmotif_dims=self.leitmotif_dims[elbow_points],
+            leitmotif_dims=self.leitmotifs_dims[elbow_points],
             motifset_names=motifset_names,
             dist=self.dists[elbow_points],
             ground_truth=self.ground_truth,
@@ -207,7 +211,9 @@ class LAMA:
         return fig, ax
 
 
-def convert_to_2d(series):
+def convert_to_2d(
+        series
+):
     if series.ndim == 1:
         print('Warning: The input dimension must be 2d.')
         if isinstance(series, pd.Series):
@@ -221,7 +227,10 @@ def convert_to_2d(series):
     return series
 
 
-def as_series(data, index_range, index_name):
+def as_series(
+        data,
+        index_range,
+        index_name):
     """Coverts a time series to a series with an index.
 
     Parameters
@@ -271,11 +280,9 @@ def plot_motifsets(
         data,
         motifsets=None,
         motifset_names=None,
-        dist=None,
         leitmotif_dims=None,
         motif_length=None,
         ground_truth=None,
-        font_size=26,
         show=True):
     """Plots the data and the found motif sets.
 
@@ -384,7 +391,7 @@ def plot_motifsets(
 
                             axes[0, 1 + i].set_title(
                                 (("Motif Set " + str(i + 1)) if motifset_names is None
-                                 else motifset_names[i%len(motifset_names)]) + "\n" +
+                                 else motifset_names[i % len(motifset_names)]) + "\n" +
                                 "k=" + str(len(motifset)) +
                                 # ", d=" + str(np.round(dist[i], 2)) +
                                 ", l=" + str(motif_length),
@@ -396,7 +403,7 @@ def plot_motifsets(
                             for aa, pos in enumerate(motifset):
                                 values = dim_data_raw[pos:pos + motif_length]
                                 df[str(aa)] = (values - values.mean()) / (
-                                            values.std() + 1e-4) + offset
+                                        values.std() + 1e-4) + offset
 
                             df_melt = pd.melt(df, id_vars="time")
                             _ = sns.lineplot(
@@ -410,30 +417,6 @@ def plot_motifsets(
                                         sns.color_palette("tab10"))],
                                 x="time",
                                 y="value")
-
-        # for aaa, column in enumerate(ground_truth):
-        #     for offsets in ground_truth[column]:
-        #         for pos, off in enumerate(offsets):
-        #             if pos == 0 and dim == 0:
-        #                 # Plot label only once
-        #                 sns.lineplot(x=data_index[off[0]: off[1]],
-        #                              y=dim_data_raw[off[0]:off[1]] + offset,
-        #                              label=column,
-        #                              alpha=0.5,
-        #                              color=sns.color_palette("tab10")[(aaa-1) % 10],
-        #                              ax=axes[0, 0],
-        #                              errorbar=("ci", None),
-        #                              estimator=None
-        #                              )
-        #             else:
-        #                 sns.lineplot(x=data_index[off[0]: off[1]],
-        #                              y=dim_data_raw[off[0]:off[1]] + offset,
-        #                              color=sns.color_palette("tab10")[(aaa-1) % 10],
-        #                              alpha=0.5,
-        #                              ax=axes[0, 0],
-        #                              errorbar=("ci", None),
-        #                              estimator=None
-        #                              )
 
     gt_count = 0
     y_labels = []
@@ -518,11 +501,10 @@ def plot_motifsets(
 
 
 def _plot_elbow_points(
-        ds_name, data, motif_length,
+        ds_name, data,
         elbow_points,
         motifset_candidates,
-        dists,
-        motifset_candidates_dims=None):
+        dists):
     """Plots the elbow points found.
 
     Parameters
@@ -531,8 +513,6 @@ def _plot_elbow_points(
         The name of the time series.
     data: array-like
         The time series data.
-    motif_length: int
-        The length of the motif.
     elbow_points: array-like
         The elbow points to plot.
     motifset_candidates: 2d array-like
@@ -569,7 +549,6 @@ def _plot_elbow_points(
     plt.tight_layout()
     plt.savefig("lord_of_the_rings_elbow_points.pdf")
     plt.show()
-
 
 
 def plot_elbow(k_max,
@@ -661,8 +640,8 @@ def plot_elbow(k_max,
 
     if plot_elbows:
         _plot_elbow_points(
-            ds_name, data, motif_length, elbow_points,
-            candidates, dists, motifset_candidates_dims=candidate_dims)
+            ds_name, data, elbow_points,
+            candidates, dists)
 
     if plot_motif:
         plot_motifsets(
@@ -670,7 +649,6 @@ def plot_elbow(k_max,
             data,
             motifsets=candidates[elbow_points],
             leitmotif_dims=candidate_dims[elbow_points],
-            dist=dists,
             motif_length=motif_length,
             show=True)
 
@@ -787,9 +765,8 @@ def plot_motif_length_selection(
 
                 if plot_elbows:
                     _plot_elbow_points(
-                        ds_name, data, motif_length,
-                        elbow_points, candidates, dists[a],
-                        motifset_candidates_dims=candidate_dims)
+                        ds_name, data,
+                        elbow_points, candidates, dists[a])
 
                 if plot_motif:
                     plot_motifsets(
@@ -797,7 +774,6 @@ def plot_motif_length_selection(
                         data,
                         motifsets=top_leitmotifs[a],
                         leitmotif_dims=top_leitmotifs_dims[a],
-                        dist=dists[a][elbow_points],
                         motif_length=motif_length,
                         ground_truth=ground_truth,
                         show=True)
@@ -885,8 +861,9 @@ def _plot_window_lengths(
             df["time"] = index[range(0, motif_length)]
 
             for dim in range(data_raw.shape[0]):
-                if top_leitmotifs_dims is None or dim == top_leitmotifs_dims[minimum][0][
-                    0]:
+                if top_leitmotifs_dims is None or dim == \
+                        top_leitmotifs_dims[minimum][0][
+                            0]:
                     pos = leitmotif_pos[0]
                     normed_data = zscore(data_raw[dim, pos:pos + motif_length])
                     df["dim_" + str(dim)] = normed_data

@@ -203,7 +203,7 @@ def test_lama(
     if use_PCA:
         dims = [np.argsort(pca.components_[:])[:, :n_dims][0] for _ in ks]
     else:
-        dims = ml.leitmotif_dims[ks]
+        dims = ml.leitmotifs_dims[ks]
 
     length_in_seconds = motif_length * audio_length_seconds / df.shape[1]
     print("Found motif length", length_in_seconds, motif_length)
