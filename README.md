@@ -224,12 +224,12 @@ See all results in <a href="notebooks/plot_ground_truth.ipynb">Results Notebook<
 ## Notebooks
 
 
-- Jupyter-Notebooks for finding subdimensional Leitmotif in multidimensional time series
-<a href="notebooks/use_cases_paper.ipynb">Multivariate Use Case</a>:
+- Jupyter-Notebooks for finding subdimensional Leitmotifs in a multidimensional time series
+<a href="notebooks/use_case.ipynb">Multivariate Use Case</a>:
 highlights a use case used in the paper, and shows the unique ability 
 to learn its parameters from the data and find interesting motif sets.
 
-- All other use cases can be found in the <a href="tests">test folder</a>
+- All other use cases presented in the paper can be found in the <a href="tests">test folder</a>
 
 
 ## Citation
