@@ -101,9 +101,128 @@ To do an elbow plot, and learn the number of repeats of the motif, we may simply
     
 # Use Cases
 
-Data Sets: We collected challenging real-life data sets to assess the quality and 
-scalability of the algorithm. An overview of datasets can be found in Table 2 
-of our paper. 
+Data Sets: We collected and annotated 12 challenging real-life data sets to assess the quality and 
+scalability of the LAMA algorithm. 
+
+<table>
+  <caption>Ground leitmotifs were manually inferred. GT refers to the number of leitmotif occurrences.</caption>
+  <small>
+    <table>
+      <thead>
+        <tr>
+          <th>Use Case</th>
+          <th>Category</th>
+          <th>Length</th>
+          <th>Dim.</th>
+          <th>GT</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Charleston</td>
+          <td>Motion Capture</td>
+          <td>506</td>
+          <td>93</td>
+          <td>3</td>
+        </tr>
+        <tr>
+          <td>Boxing</td>
+          <td>Motion Capture</td>
+          <td>4840</td>
+          <td>93</td>
+          <td>10</td>
+        </tr>
+        <tr>
+          <td>Swordplay</td>
+          <td>Motion Capture</td>
+          <td>2251</td>
+          <td>93</td>
+          <td>6</td>
+        </tr>
+        <tr>
+          <td>Basketball</td>
+          <td>Motion Capture</td>
+          <td>721</td>
+          <td>93</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>LOTR - The Shire</td>
+          <td>Soundtrack</td>
+          <td>6487</td>
+          <td>20</td>
+          <td>4</td>
+        </tr>
+        <tr>
+          <td>SW - The Imperial March</td>
+          <td>Soundtrack</td>
+          <td>8015</td>
+          <td>20</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>RS - Paint it black</td>
+          <td>Pop Music</td>
+          <td>9744</td>
+          <td>20</td>
+          <td>10</td>
+        </tr>
+        <tr>
+          <td>Linkin Park - Numb</td>
+          <td>Pop Music</td>
+          <td>8018</td>
+          <td>20</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>Linkin P. - What I've Done</td>
+          <td>Pop Music</td>
+          <td>8932</td>
+          <td>20</td>
+          <td>6</td>
+        </tr>
+        <tr>
+          <td>Queen - Under Pressure</td>
+          <td>Pop Music</td>
+          <td>9305</td>
+          <td>20</td>
+          <td>16</td>
+        </tr>
+        <tr>
+          <td>Vanilla Ice - Ice Ice Baby</td>
+          <td>Pop Music</td>
+          <td>11693</td>
+          <td>20</td>
+          <td>20</td>
+        </tr>
+        <tr>
+          <td>Starling</td>
+          <td>Wildlife Rec.</td>
+          <td>2839</td>
+          <td>20</td>
+          <td>4</td>
+        </tr>
+      </tbody>
+    </table>
+  </small>
+</table>
+
+## Aggregated Results
+
+
+| Method              |   Mean Precision        |   Median Precision        |  Mean Recall         |   Median Recall        |
+|:--------------------|------------------------:|--------------------------:|---------------------:|-----------------------:|
+| EMD*                |                0.656548 |                      0.8  |             0.8      |                    0.8 |
+| K-Motifs (TOP-f)    |                0.692857 |                      0.75 |             0.814286 |                    1   |
+| K-Motifs (all dims) |                0.906548 |                      1    |             0.942857 |                    1   |
+| LAMA                |                0.916071 |                      1    |             0.985714 |                    1   |
+| mSTAMP              |                0.571429 |                      1    |             0.3      |                    0.2 |
+| mSTAMP+MDL          |                0.571429 |                      1    |             0.3      |                    0.2 |
+
+See all results in <a href="notebooks/plot_ground_truth.ipynb">Results Notebook</a>.
+
+## Notebooks
+
 
 - Jupyter-Notebooks for finding subdimensional Leitmotif in multidimensional time series
 <a href="notebooks/use_cases_paper.ipynb">Multivariate Use Case</a>:
