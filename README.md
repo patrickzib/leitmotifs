@@ -212,12 +212,12 @@ scalability of the LAMA algorithm.
 
 | Method              |   Mean Precision        |   Median Precision        |  Mean Recall         |   Median Recall        |
 |:--------------------|------------------------:|--------------------------:|---------------------:|-----------------------:|
-| EMD*                |                0.656548 |                      0.8  |             0.8      |                    0.8 |
-| K-Motifs (TOP-f)    |                0.692857 |                      0.75 |             0.814286 |                    1   |
-| K-Motifs (all dims) |                0.906548 |                      1    |             0.942857 |                    1   |
-| LAMA                |                0.916071 |                      1    |             0.985714 |                    1   |
-| mSTAMP              |                0.571429 |                      1    |             0.3      |                    0.2 |
-| mSTAMP+MDL          |                0.571429 |                      1    |             0.3      |                    0.2 |
+| EMD*                |                0.608712 |                      0.65 |             0.745455 |                    0.8 |
+| K-Motifs (TOP-f)    |                0.651515 |                      0.75 |             0.751515 |                    1   |
+| K-Motifs (all dims) |                0.831439 |                      1    |             0.854545 |                    1   |
+| LAMA                |                0.946591 |                      1    |             0.990909 |                    1   |
+| mSTAMP              |                0.545455 |                      1    |             0.342424 |                    0.2 |
+| mSTAMP+MDL          |                0.454545 |                      0    |             0.251515 |                    0   |
 
 See all results in <a href="notebooks/plot_ground_truth.ipynb">Results Notebook</a>.
 
