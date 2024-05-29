@@ -268,7 +268,7 @@ def test_kmotifs(dataset_name="The Rolling Stones - Paint It, Black",
 
 def test_publication():
     dataset_names = [
-        "The Rolling Stones - Paint It, Black",
+        # Does not work with the metric "The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
         "Numb - Linkin Park",
         "Vanilla Ice - Ice Ice Baby",
@@ -358,10 +358,10 @@ def test_plot_results():
                     np.sort(motif_set), ground_truth.values[0, 0], motif_length)
                 results.append([ds_name, method, precision, recall])
 
-        #pd.DataFrame(
-        #    data=np.array(results),
-        #    columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        #    "results/audio_precision.csv")
+        pd.DataFrame(
+            data=np.array(results),
+            columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
+            "results/audio_precision.csv")
 
         print(results)
 
