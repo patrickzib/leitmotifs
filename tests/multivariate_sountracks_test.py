@@ -361,7 +361,7 @@ def test_publication():
 def test_plot_results():
     dataset_names = [
         "Star Wars - The Imperial March",
-        # "Lord of the Rings Symphony - The Shire"
+        "Lord of the Rings Symphony - The Shire"
     ]
 
     method_names = [
