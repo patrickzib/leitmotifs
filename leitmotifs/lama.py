@@ -67,6 +67,8 @@ def read_ground_truth(dataset):
     """
     if "_gt.csv" not in dataset:
         file = os.path.splitext(dataset)[0] + "_gt.csv"
+    else:
+        file = os.path.splitext(dataset)[0]
 
     if exists(file):
         print(file)
@@ -76,6 +78,8 @@ def read_ground_truth(dataset):
             series.iloc[i] = series.iloc[i].apply(literal_eval)
 
         return series
+    else:
+        print("No ground truth found for ", dataset)
     return None
 
 
@@ -1198,7 +1202,7 @@ def search_leitmotifs_elbow(
                 n_jobs=n_jobs,
                 slack=slack)
         else:
-            print("Using Default Backend", flush=True)
+            # print("Using Default Backend", flush=True)
             D_full, knns = compute_distance_matrix(
                 data_raw, m, k_max_,
                 n_jobs=n_jobs,
