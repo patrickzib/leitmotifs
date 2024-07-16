@@ -5,83 +5,57 @@ mpl.rcParams['figure.dpi'] = 150
 from leitmotifs.competitors import *
 from leitmotifs.lama import *
 
+def znormalize(ts):
+    for i in range(3):
+        ts[:, 3*i : 3*(i+1)] \
+            = ((ts[:, 3*i : 3*(i+1)] - np.mean(ts[:, 3*i : 3*(i+1)], axis=None)) /
+               np.std(ts[:, 3*i : 3*(i+1)], axis=None))
+    return ts
 
-def normalize(x):
-    std = np.std(x)
-    mean = np.mean(x)
-    if std == 0:
-        return x - mean
-    return (x - mean) / std
 
+def load_physiodata():
+    subjects = range(1, 6)
+    exercises = range(1, 9)
+    relevant_imus = np.array([2, 4, 2, 2, 2, 2, 2, 2])
 
-def load_crypto():
-    ada_eur = pd.read_csv("../datasets/crypto/ADA-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    bitcoin_usd = pd.read_csv("../datasets/crypto/BTC-USD.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    bitcoin_gbp = pd.read_csv("../datasets/crypto/BTC-GBP.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    bitcoin_eur = pd.read_csv("../datasets/crypto/BTC-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    bitcoin_cash = pd.read_csv("../datasets/crypto/BCH-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    ethereum = pd.read_csv("../datasets/crypto/ETH-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    litecoin = pd.read_csv("../datasets/crypto/LTC-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    solana = pd.read_csv("../datasets/crypto/SOL-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    xrp = pd.read_csv("../datasets/crypto/XRP-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
+    root_path = "../datasets/physiodata"
+    df = pd.DataFrame(columns=['subject', 'exercise', 'imu', 'ts'])
 
-    ada_eur.index = pd.to_datetime(ada_eur.index)
-    bitcoin_usd.index = pd.to_datetime(bitcoin_usd.index)
-    bitcoin_gbp.index = pd.to_datetime(bitcoin_gbp.index)
-    bitcoin_eur.index = pd.to_datetime(bitcoin_eur.index)
-    bitcoin_cash.index = pd.to_datetime(bitcoin_cash.index)
-    ethereum.index = pd.to_datetime(ethereum.index)
-    litecoin.index = pd.to_datetime(litecoin.index)
-    solana.index = pd.to_datetime(solana.index)
-    xrp.index = pd.to_datetime(xrp.index)
+    for subject in subjects:
+        for exercise, imu in zip(exercises, relevant_imus):
+            path = os.path.join(root_path, f"s{subject}", f"e{exercise}", f"u{imu}",
+                                "test.txt")
+            f = open(path)
+            next(f)
+            data = np.array([l.split(';') for l in f.readlines()], dtype=np.float64)
+            # acc (3 spatial axes), gyr (3 spatial axes), mag (3 spatial axes)
+            df.loc[len(df.index)] = [subject, exercise, imu, data[:, 1:]]
+            f.close()
+    df['ts'] = df['ts'].apply(znormalize)
+    df_gt = read_ground_truth("../datasets/physiodata/physio")
 
-    ada_eur["Name"] = "Cardano"
-    bitcoin_usd["Name"] = "Bitcoin (USD)"
-    bitcoin_gbp["Name"] = "Bitcoin (GBP)"
-    bitcoin_eur["Name"] = "Bitcoin (EUR)"
-    bitcoin_cash["Name"] = "Bitcoin Cash"
-    ethereum["Name"] = "Ethereum"
-    litecoin["Name"] = "Litecoin"
-    solana["Name"] = "Solana"
-    xrp["Name"] = "XRP"
+    subject = 2
+    exercise = 1
+    imu = 2
 
-    for df_apply in [ada_eur, bitcoin_usd, bitcoin_gbp, bitcoin_eur, bitcoin_cash,
-                     ethereum, litecoin, solana, xrp]:
-        df_apply[["Close"]] = df_apply[["Close"]].apply(np.log2).apply(normalize)
-        df_apply[["Volume"]] = df_apply[["Volume"]].apply(normalize)
+    print(f"Subject {subject}, Exercise {exercise}, IMU {imu}")
+    *_, ts = df.query('subject == @subject & exercise == @exercise & imu == @imu').iloc[0]
 
-    df = pd.concat([ada_eur, bitcoin_cash, bitcoin_eur, ethereum, litecoin, solana,
-                    xrp])  # bitcoin_gbp, bitcoin_usd,
-    df["Name"] = df["Name"].astype("category")
-
-    df_pivot = df.pivot(columns="Name", values="Close").fillna(method="bfill")
-
-    df_gt = read_ground_truth("../datasets/crypto/crypto")
-
-    return df_pivot.T, df_gt
+    return pd.DataFrame(ts.T), df_gt
 
 
 datasets = {
-    "Bitcoin-Halving": {
-        "ks": [3],
-        "motif_length": 180,
-        "n_dims": 2,
-        "slack": 1.0,
-        # "length_range": np.arange(120, 240, 10),
+    "Physiodata": {
+        "ks": [18],
+        "motif_length": 206,
+        "n_dims": 3,
+        "slack": 0.5,
+        "length_range": np.arange(201, 282, 5),
     },
 }
 
 
-def get_ds_parameters(name="Bitcoin-Halving"):
+def get_ds_parameters(name="Physiodata"):
     global ds_name, k_max, n_dims, length_range, motif_length
     global audio_file_url, pandas_file_url, ks, slack
 
@@ -90,19 +64,19 @@ def get_ds_parameters(name="Bitcoin-Halving"):
     ks = dataset["ks"]
     k_max = np.max(ks) + 2
     n_dims = dataset["n_dims"]
-    # length_range = dataset["length_range"]
+    length_range = dataset["length_range"]
     slack = dataset["slack"]
     motif_length = dataset["motif_length"]
 
 
 def test_lama(
-        dataset_name="Bitcoin-Halving",
+        dataset_name="Physiodata",
         minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
         plot=True):
     get_ds_parameters(dataset_name)
-    df, ground_truth = load_crypto()
+    df, ground_truth = load_physiodata()
 
     # make the signal uni-variate by applying PCA
     if use_PCA:
@@ -154,22 +128,22 @@ def test_lama(
     return motif_sets[ks], dims
 
 
-def test_emd_pca(dataset_name="Bitcoin-Halving", plot=True):
+def test_emd_pca(dataset_name="Physiodata", plot=True):
     return test_lama(dataset_name, use_PCA=True, motifset_name="PCA", plot=plot)
 
 
-def test_mstamp(dataset_name="Bitcoin-Halving", plot=True, use_mdl=True):
+def test_mstamp(dataset_name="Physiodata", plot=True, use_mdl=True):
     get_ds_parameters(dataset_name)
-    df, ground_truth = load_crypto()
+    df, ground_truth = load_physiodata()
 
     return run_mstamp(df, ds_name, motif_length=motif_length,
                       ground_truth=ground_truth, plot=plot,
                       use_mdl=use_mdl, use_dims=n_dims)
 
 
-def test_kmotifs(dataset_name="Bitcoin-Halving", first_dims=True, plot=True):
+def test_kmotifs(dataset_name="Physiodata", first_dims=True, plot=True):
     get_ds_parameters(dataset_name)
-    df, ground_truth = load_crypto()
+    df, ground_truth = load_physiodata()
 
     motif_sets = []
     used_dims = []
@@ -179,7 +153,7 @@ def test_kmotifs(dataset_name="Bitcoin-Halving", first_dims=True, plot=True):
             ds_name,
             motif_length=motif_length,
             slack=slack,
-            r_ranges=np.arange(1, 200, 1),
+            r_ranges=np.arange(150, 300, 5),
             use_dims=n_dims if first_dims else df.shape[0],  # first dims or all dims
             target_k=target_k,
             ground_truth=ground_truth,
@@ -193,7 +167,7 @@ def test_kmotifs(dataset_name="Bitcoin-Halving", first_dims=True, plot=True):
 
 def test_publication():
     dataset_names = [
-        "Bitcoin-Halving"
+        "Physiodata"
     ]
     method_names = [
         "LAMA",
@@ -234,13 +208,13 @@ def test_publication():
         # from datetime import datetime
         # currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
         df.to_parquet(
-            f'results/results_stocks_{dataset_name}.gzip',  # _{currentDateTime}
+            f'results/results_physio_{dataset_name}.gzip',  # _{currentDateTime}
             compression='gzip')
 
 
 def test_plot_results():
     dataset_names = [
-        "Bitcoin-Halving"
+        "Physiodata"
     ]
     method_names = [
         "LAMA",
@@ -256,10 +230,10 @@ def test_plot_results():
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
-        df, ground_truth = load_crypto()
+        df, ground_truth = load_physiodata()
 
         df_loc = pd.read_parquet(
-            f"results/results_stocks_{dataset_name}.gzip")
+            f"results/results_physio_{dataset_name}.gzip")
 
         motifs = []
         dims = []
@@ -281,7 +255,7 @@ def test_plot_results():
         pd.DataFrame(
             data=np.array(results),
             columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-            "results/stocks_precision.csv")
+            "results/physio_precision.csv")
 
         print(results)
 
