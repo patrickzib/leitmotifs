@@ -65,7 +65,9 @@ def read_ground_truth(dataset):
         A series of ground-truth data
 
     """
-    file = os.path.splitext(dataset)[0] + "_gt.csv"
+    if "_gt.csv" not in dataset:
+        file = os.path.splitext(dataset)[0] + "_gt.csv"
+
     if exists(file):
         print(file)
         series = pd.read_csv(file, index_col=0)
@@ -157,7 +159,8 @@ def pd_series_to_numpy(data):
     else:
         data_raw = data
         data_index = np.arange(data.shape[-1])
-    return data_index.astype(np.float64), data_raw.astype(np.float64, copy=False)
+    return (data_index # TODO needed .astype(np.float64)???
+            , data_raw.astype(np.float64, copy=False))
 
 
 def read_dataset(dataset, sampling_factor=10000):

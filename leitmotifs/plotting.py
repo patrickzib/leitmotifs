@@ -199,7 +199,7 @@ class LAMA:
             motifsets=self.leitmotifs[elbow_points],
             leitmotif_dims=self.leitmotifs_dims[elbow_points],
             motifset_names=motifset_names,
-            dist=self.dists[elbow_points],
+            # dist=self.dists[elbow_points],
             ground_truth=self.ground_truth,
             motif_length=self.motif_length,
             show=path is None)
@@ -445,7 +445,8 @@ def plot_motifsets(
                                     color='black',
                                     weight='bold',
                                     fontsize=12,
-                                    ha='center', va='center')
+                                    ha='center',
+                                    va='center')
 
                 axes[1, 0].add_patch(rect)
     if ground_truth is not None and len(ground_truth) > 0:
@@ -476,6 +477,8 @@ def plot_motifsets(
         axes[1, 0].set_yticklabels(y_labels, fontsize=18)
         axes[1, 0].set_ylim([-abs(len(y_labels)) + 1, 1])
         axes[1, 0].set_xlim(axes[0, 0].get_xlim())
+        axes[1, 0].set_xticklabels([])
+        axes[1, 0].set_xticks([])
 
         if motifsets is not None:
             axes[1, 0].set_title("Positions", fontsize=22)
@@ -650,6 +653,7 @@ def plot_elbow(k_max,
             motifsets=candidates[elbow_points],
             leitmotif_dims=candidate_dims[elbow_points],
             motif_length=motif_length,
+            ground_truth=ground_truth,
             show=True)
 
         # plot_grid_leitmotifs(

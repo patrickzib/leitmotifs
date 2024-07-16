@@ -104,6 +104,8 @@ channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4',
 
 
 def test_learn_parameters():
+    dataset_name = "Vanilla Ice - Ice Ice Baby"
+    get_ds_parameters(dataset_name)
     audio_length_seconds, df, index_range, ground_truth \
         = read_audio_from_dataframe(pandas_file_url)
 
