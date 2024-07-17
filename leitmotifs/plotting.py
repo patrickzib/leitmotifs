@@ -16,13 +16,56 @@ from matplotlib.ticker import MaxNLocator
 from scipy.stats import zscore
 
 import leitmotifs.lama as ml
+from leitmotifs.distances import map_distances
+from leitmotifs.distances import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 
 
 class LAMA:
+    """
+        Class implementing the LAMA.
 
+        Parameters
+        ----------
+        ds_name : str
+            Name of the dataset.
+        series : array-like
+            The time series data.
+        minimize_pairwise_dist: bool (default=False)
+            If True, the pairwise distance is minimized. This is the mStamp-approach.
+            It has the potential drawback, that each pair of subsequences may have
+            different smallest dimensions.
+        ground_truth : pd.Series
+            Ground-truth information as pd.Series.
+        dimension_labels : array-like (default=None)
+            Labels used for the dimensions' axis for plotting.
+            If None, numeric indices are used.
+        elbow_deviation : float, optional (default=1.00)
+            The minimal absolute deviation needed to detect an elbow.
+            It measures the absolute change in deviation from k to k+1.
+            1.05 corresponds to 5% increase in deviation.
+        n_dims : int, optional (default=2)
+            The number of dimensions to be used in the subdimensional motif discovery.
+        distance: str (default="znormed_ed")
+            The name of the distance function to be computed.
+            Available options are:
+                - znormed_ed or znormed_euclidean for z-normalized ED
+                - ed or euclidean for the "normal" ED.
+        n_jobs : int, optional (default=1)
+            Amount of threads used in the k-nearest neighbour calculation.
+        slack: float, optional (default=0.5)
+            Defines an exclusion zone around each subsequence to avoid trivial matches.
+            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+
+        Methods
+        -------
+        fit(time_series)
+            Fit the KSN model to the input time series data.
+        constrain(self, lbound, ubound)
+            Return a constrained KSN model for the given temporal constraint.
+        """
     def __init__(
             self,
             ds_name,
@@ -32,6 +75,7 @@ class LAMA:
             dimension_labels=None,
             elbow_deviation=1.00,
             n_dims=None,
+            distance="znormed_ed",
             n_jobs=4,
             slack=0.5
     ) -> None:
@@ -43,6 +87,9 @@ class LAMA:
         self.dimension_labels = dimension_labels
         self.ground_truth = ground_truth
         self.minimize_pairwise_dist = minimize_pairwise_dist
+
+        # distance function used
+        self.distance_preprocessing, self.distance = map_distances(distance)
 
         self.motif_length_range = None
         self.motif_length = 0
@@ -98,7 +145,10 @@ class LAMA:
             plot_motif=plot_motifsets,
             ground_truth=self.ground_truth,
             plot=plot,
-            plot_best_only=plot_best_only)
+            plot_best_only=plot_best_only,
+            distance=self.distance,
+            distance_preprocessing=self.distance_preprocessing
+        )
 
         return self.motif_length, self.all_extrema
 
@@ -131,7 +181,9 @@ class LAMA:
             minimize_pairwise_dist=self.minimize_pairwise_dist,
             n_jobs=self.n_jobs,
             elbow_deviation=self.elbow_deviation,
-            slack=self.slack
+            slack=self.slack,
+            distance=self.distance,
+            distance_preprocessing=self.distance_preprocessing
         )
 
         return self.dists, self.leitmotifs, self.elbow_points
@@ -153,6 +205,8 @@ class LAMA:
             n_jobs=self.n_jobs,
             elbow_deviation=self.elbow_deviation,
             slack=self.slack,
+            distance=self.distance,
+            distance_preprocessing=self.distance_preprocessing
         )
 
         fig, ax = plt.subplots(figsize=(10, 4))
@@ -567,7 +621,10 @@ def plot_elbow(k_max,
                filter=True,
                n_jobs=4,
                elbow_deviation=1.00,
-               slack=0.5):
+               slack=0.5,
+               distance=znormed_euclidean_distance,
+               distance_preprocessing=sliding_mean_std
+               ):
     """Plots the elbow-plot for leitmotifs.
 
     This is the method to find and plot the characteristic leitmotifs within range
@@ -606,6 +663,10 @@ def plot_elbow(k_max,
     slack : float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+    distance: callable
+        The distance function to be computed.
+    distance_preprocessing: callable
+        The distance preprocessing function to be computed.
 
     Returns
     -------
@@ -635,7 +696,10 @@ def plot_elbow(k_max,
         filter=filter,
         n_jobs=n_jobs,
         minimize_pairwise_dist=minimize_pairwise_dist,
-        slack=slack)
+        slack=slack,
+        distance=distance,
+        distance_preprocessing=distance_preprocessing
+    )
     endTime = (time.perf_counter() - startTime)
 
     print("Chosen window-size:", m, "in", np.round(endTime, 1), "s")
@@ -680,6 +744,8 @@ def plot_motif_length_selection(
         plot_best_only=True,
         plot_elbows=True,
         plot_motif=True,
+        distance=znormed_euclidean_distance,
+        distance_preprocessing=sliding_mean_std
 ):
     """Computes the AU_EF plot to extract the best motif lengths
 
@@ -707,6 +773,10 @@ def plot_motif_length_selection(
     slack : float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+    distance: callable
+        The distance function to be computed.
+    distance_preprocessing: callable
+        The distance preprocessing function to be computed.
 
     Returns
     -------
@@ -740,7 +810,10 @@ def plot_motif_length_selection(
             n_jobs=n_jobs,
             elbow_deviation=elbow_deviation,
             slack=slack,
-            subsample=subsample)
+            subsample=subsample,
+            distance=distance,
+            distance_preprocessing=distance_preprocessing
+        )
     endTime = (time.perf_counter() - startTime)
     print("\tTime", np.round(endTime, 1), "s")
 
