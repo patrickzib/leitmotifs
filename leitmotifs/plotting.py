@@ -51,8 +51,8 @@ class LAMA:
         distance: str (default="znormed_ed")
             The name of the distance function to be computed.
             Available options are:
-                - znormed_ed or znormed_euclidean for z-normalized ED
-                - ed or euclidean for the "normal" ED.
+                - 'znormed_ed' or 'znormed_euclidean' for z-normalized ED
+                - 'ed' or 'euclidean' for the "normal" ED.
         n_jobs : int, optional (default=1)
             Amount of threads used in the k-nearest neighbour calculation.
         slack: float, optional (default=0.5)

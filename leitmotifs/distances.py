@@ -8,7 +8,7 @@ import numpy as np
 from numba import njit
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True, inline="always")
 def sliding_csum(ts, m):
     """
     Computes the sliding cumulative sum of squares of a time series with a specified window size.
@@ -31,7 +31,7 @@ def sliding_csum(ts, m):
     return csumsq[m:] - csumsq[:-m]
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True, inline="always")
 def euclidean_distance(dot_rolled, n, m, csumsq, order, halve_m):
     dist = -2 * dot_rolled + csumsq + csumsq[order]
 
@@ -45,7 +45,7 @@ def euclidean_distance(dot_rolled, n, m, csumsq, order, halve_m):
     return dist
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True, inline="always")
 def sliding_mean_std(ts, m):
     """Computes the incremental mean, std, given a time series and windows of length m.
 
@@ -84,7 +84,7 @@ def sliding_mean_std(ts, m):
     return [movmean, movstd]
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True, inline="always")
 def znormed_euclidean_distance(dot_rolled, n, m, preprocessing, order, halve_m):
     """ Implementation of z-normalized Euclidean distance """
     means, stds = preprocessing
