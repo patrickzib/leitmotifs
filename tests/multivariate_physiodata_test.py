@@ -46,8 +46,8 @@ def load_physiodata():
 
 datasets = {
     "Physiodata": {
-        "ks": [18],
-        "motif_length": 206,
+        "ks": [20],
+        "motif_length": 150,
         "n_dims": 3,
         "slack": 0.5,
         "length_range": np.arange(201, 282, 5),
@@ -88,6 +88,7 @@ def test_lama(
 
     ml = LAMA(ds_name, df_transform,
               dimension_labels=df.index,
+              # distance="cosine",
               n_dims=n_dims,
               slack=slack,
               minimize_pairwise_dist=minimize_pairwise_dist,
