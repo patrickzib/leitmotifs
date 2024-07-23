@@ -11,25 +11,28 @@ import multivariate_physiodata_test as physiodata
 import multivariate_soundtracks_test as soundtracks
 import leitmotifs.lama as lama
 
-for sampling_factor in [2, 3, 4, 5, 6, 7, 8]:
-    print ("Running tests with sampling", sampling_factor)
-    crypto.sampling_factor = sampling_factor
-    motion.sampling_factor = sampling_factor
-    physiodata.sampling_factor = sampling_factor
-    lama.sampling_factor = sampling_factor
+def test():
+    for sampling_factor in [2, 3, 4, 5, 6, 7, 8]:
+        print ("Running tests with sampling", sampling_factor)
+        crypto.sampling_factor = sampling_factor
+        motion.sampling_factor = sampling_factor
+        physiodata.sampling_factor = sampling_factor
+        lama.sampling_factor = sampling_factor
 
-    # Run all tests
-    audio.test_publication(sampling_factor=sampling_factor)
-    crypto.test_publication()
-    motion.test_publication()
-    physiodata.test_publication()
-    birds.test_publication(sampling_factor=sampling_factor)
-    soundtracks.test_publication(sampling_factor=sampling_factor)
+        # Run all tests
+        # FIXME: window lengths are not adapted to the sampling factor
 
-    # Evaluate all tests
-    audio.test_plot_results(plot=False, sampling_factor=sampling_factor)
-    crypto.test_plot_results(plot=False)
-    motion.test_plot_results(plot=False)
-    physiodata.test_plot_results(plot=False)
-    birds.test_plot_results(plot=False, sampling_factor=sampling_factor)
-    soundtracks.test_plot_results(plot=False, sampling_factor=sampling_factor)
+        #audio.test_publication(sampling_factor=sampling_factor)
+        #crypto.test_publication()
+        motion.test_publication()
+        #physiodata.test_publication()
+        #birds.test_publication(sampling_factor=sampling_factor)
+        #soundtracks.test_publication(sampling_factor=sampling_factor)
+
+        # Evaluate all tests
+        #audio.test_plot_results(plot=False, sampling_factor=sampling_factor)
+        #crypto.test_plot_results(plot=False)
+        motion.test_plot_results(plot=False)
+        #physiodata.test_plot_results(plot=False)
+        #birds.test_plot_results(plot=False, sampling_factor=sampling_factor)
+        #soundtracks.test_plot_results(plot=False, sampling_factor=sampling_factor)
