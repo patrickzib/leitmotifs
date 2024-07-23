@@ -8,7 +8,7 @@ import numpy as np
 from numba import njit
 
 
-@njit(fastmath=True, cache=True, inline="always")
+@njit(fastmath=True, cache=True)
 def sliding_csum(ts, m):
     """
     Computes the sliding cumulative sum of squares of a time series with a
@@ -33,7 +33,7 @@ def sliding_csum(ts, m):
     return csumsq[m:] - csumsq[:-m]
 
 
-@njit(fastmath=True, cache=True, inline="always")
+@njit(fastmath=True, cache=True)
 def euclidean_distance(dot_rolled, n, m, csumsq, order, halve_m):
     dist = -2 * dot_rolled + csumsq + csumsq[order]
 
@@ -46,7 +46,7 @@ def euclidean_distance(dot_rolled, n, m, csumsq, order, halve_m):
     return dist
 
 
-@njit(fastmath=True, cache=True, inline="always")
+@njit(fastmath=True, cache=True)
 def sliding_csum_dcsum(ts, m):
     """
     Computes the sliding cumulative sum of squares of a time series with a
@@ -76,7 +76,7 @@ def sliding_csum_dcsum(ts, m):
     return csum[m:] - csum[:-m], dcsum[m:] - dcsum[:-m]
 
 
-@njit(fastmath=True, cache=True, inline="always")
+@njit(fastmath=True, cache=True)
 def complexity_invariant_distance(dot_rolled, n, m, preprocessing, order, halve_m):
     """ Implementation of z-normalized Euclidean distance """
     csumsq, ce = preprocessing
@@ -94,7 +94,7 @@ def complexity_invariant_distance(dot_rolled, n, m, preprocessing, order, halve_
     return dist
 
 
-@njit(fastmath=True, cache=True, inline="always")
+@njit(fastmath=True, cache=True)
 def cosine_distance(dot_rolled, n, m, csumsq, order, halve_m):
     dist = 1 - dot_rolled / (csumsq + csumsq[order])
 
@@ -107,7 +107,7 @@ def cosine_distance(dot_rolled, n, m, csumsq, order, halve_m):
     return dist
 
 
-@njit(fastmath=True, cache=True, inline="always")
+@njit(fastmath=True, cache=True)
 def sliding_mean_std(ts, m):
     """Computes the incremental mean, std, given a time series and windows of length m.
 
@@ -146,7 +146,7 @@ def sliding_mean_std(ts, m):
     return [moving_mean, moving_std]
 
 
-@njit(fastmath=True, cache=True, inline="always")
+@njit(fastmath=True, cache=True)
 def znormed_euclidean_distance(dot_rolled, n, m, preprocessing, order, halve_m):
     """ Implementation of z-normalized Euclidean distance """
     means, stds = preprocessing

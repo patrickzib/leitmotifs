@@ -87,11 +87,18 @@ def read_ground_truth(dataset):
 noise_level = None
 sampling_factor = None
 
-def add_gaussian_noise(df, mean=0, std_dev=1):
-    noise = np.random.normal(mean, std_dev, df.shape)
-    return df + noise
+def add_gaussian_noise(df, noise_level=None):
+    if noise_level:
+        df_noisy = df.copy()
+        for col in df_noisy.columns:
+            std_dev = df_noisy[col].std()
+            noise = np.random.normal(0, std_dev * noise_level, df_noisy[col].shape)
+            df_noisy[col] += noise
+        return df_noisy
+    else:
+        return df
 
-def _resample_with_factor(df, df_gt, factor=1):
+def resample_with_factor(df, df_gt, factor=1):
     """Resamples a time series."""
     if factor > 1:
         factor = int(factor)
@@ -122,10 +129,10 @@ def read_audio_from_dataframe(pandas_file_url, channels=None):
 
     if noise_level:         # TODO only for experiments
         print("Adding noise to the data", noise_level)
-        df = add_gaussian_noise(df, mean=0, std_dev=noise_level)
+        df = add_gaussian_noise(df, noise_level)
 
     if sampling_factor:     # TODO only for experiments
-        df, df_gt = _resample_with_factor(df, df_gt, sampling_factor)
+        df, df_gt = resample_with_factor(df, df_gt, sampling_factor)
         # audio_length_seconds = audio_length_seconds / sampling_factor
 
     return audio_length_seconds, df, np.float64(df.columns), df_gt
