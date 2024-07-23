@@ -50,7 +50,7 @@ def load_physiodata():
 
     if noise_level:
         print ("Adding noise to the data", noise_level)
-        df = add_gaussian_noise(df, mean=0, std_dev=noise_level)
+        df = add_gaussian_noise(df, noise_level)
     if sampling_factor:
         print("Applying sampling to the data", sampling_factor)
         df, df_gt = resample_with_factor(df, df_gt, factor=sampling_factor)

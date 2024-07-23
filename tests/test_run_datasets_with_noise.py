@@ -11,7 +11,7 @@ import multivariate_physiodata_test as physiodata
 import multivariate_soundtracks_test as soundtracks
 import leitmotifs.lama as lama
 
-for noise_level in [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]:
+for noise_level in reversed([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]):
     print ("Running tests with noise level", noise_level)
     crypto.noise_level = noise_level
     motion.noise_level = noise_level
@@ -19,17 +19,17 @@ for noise_level in [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]:
     lama.noise_level = noise_level
 
     # Run all tests
+    soundtracks.test_publication(noise_level=noise_level)
     audio.test_publication(noise_level=noise_level)
     crypto.test_publication()
     motion.test_publication()
     physiodata.test_publication()
     birds.test_publication(noise_level=noise_level)
-    soundtracks.test_publication(noise_level=noise_level)
 
     # Evaluate all tests
+    soundtracks.test_plot_results(plot=False, noise_level=noise_level)
     audio.test_plot_results(plot=False, noise_level=noise_level)
     crypto.test_plot_results(plot=False)
     motion.test_plot_results(plot=False)
     physiodata.test_plot_results(plot=False)
     birds.test_plot_results(plot=False, noise_level=noise_level)
-    soundtracks.test_plot_results(plot=False, noise_level=noise_level)

@@ -73,7 +73,7 @@ def load_crypto():
 
     if noise_level:
         print ("Adding noise to the data", noise_level)
-        df_pivot = add_gaussian_noise(df_pivot, mean=0, std_dev=noise_level)
+        df_pivot = add_gaussian_noise(df_pivot, noise_level)
     if sampling_factor:
         print("Applying sampling to the data", sampling_factor)
         df_pivot, df_gt = resample_with_factor(df_pivot, df_gt, factor=sampling_factor)

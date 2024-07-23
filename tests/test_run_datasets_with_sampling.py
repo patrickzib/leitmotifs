@@ -11,7 +11,7 @@ import multivariate_physiodata_test as physiodata
 import multivariate_soundtracks_test as soundtracks
 import leitmotifs.lama as lama
 
-for sampling_factor in [2, 4, 8, 16, 32]:
+for sampling_factor in [2, 3, 4, 5, 6, 7, 8]:
     print ("Running tests with sampling", sampling_factor)
     crypto.sampling_factor = sampling_factor
     motion.sampling_factor = sampling_factor

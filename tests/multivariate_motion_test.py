@@ -1,10 +1,9 @@
 from matplotlib.animation import FuncAnimation
 
 import amc.amc_parser as amc_parser
-from leitmotifs.plotting import *
-from leitmotifs.lama import read_ground_truth
 import matplotlib as mpl
 from leitmotifs.competitors import *
+from leitmotifs.lama import *
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -60,7 +59,7 @@ def read_motion_dataset(add_xyz=True):
 
     if noise_level:
         print ("Adding noise to the data", noise_level)
-        df = add_gaussian_noise(df, mean=0, std_dev=noise_level)
+        df = add_gaussian_noise(df, noise_level)
     if sampling_factor:
         print("Applying sampling to the data", sampling_factor)
         df, df_gt = resample_with_factor(df, df_gt, factor=sampling_factor)
