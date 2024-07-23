@@ -260,3 +260,26 @@ def eval_tests(
             if out_path is not None:
                 plt.savefig(out_path)
                 plt.show()
+
+
+def add_gaussian_noise(df, mean=0, std_dev=1):
+    """Function to add Gaussian noise to a DataFrame.
+    """
+    noise = np.random.normal(mean, std_dev, df.shape)
+    return df + noise
+
+
+def resample_with_factor(df, df_gt, factor=1):
+    """Resamples a time series."""
+    if factor > 1:
+        factor = int(factor)
+        if df.ndim >= 2:
+            df = df.iloc[:, ::factor]
+        else:
+            df = df.iloc[::factor]
+
+        if df_gt is not None:
+            for column in df_gt:
+                df_gt[column] = df_gt[column].transform(
+                    lambda l: (np.array(l)) // factor)
+    return df, df_gt

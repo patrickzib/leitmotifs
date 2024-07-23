@@ -8,7 +8,7 @@ from ast import literal_eval
 from os.path import exists
 import os
 
-import numpy as np
+# import numpy as np
 import numpy.fft as fft
 import pandas as pd
 from numba import njit, prange, objmode, types
@@ -82,9 +82,35 @@ def read_ground_truth(dataset):
         print("No ground truth found for ", dataset)
     return None
 
+#######################
+# TODO remove - only for noise experiments
+noise_level = None
+sampling_factor = None
+
+def add_gaussian_noise(df, mean=0, std_dev=1):
+    noise = np.random.normal(mean, std_dev, df.shape)
+    return df + noise
+
+def _resample_with_factor(df, df_gt, factor=1):
+    """Resamples a time series."""
+    if factor > 1:
+        factor = int(factor)
+        if df.ndim >= 2:
+            df = df.iloc[:, ::factor]
+        else:
+            df = df.iloc[::factor]
+
+        if df_gt is not None:
+            for column in df_gt:
+                df_gt[column] = df_gt[column].transform(
+                    lambda l: (np.array(l)) // factor)
+    return df, df_gt
+#######################
+
 
 def read_audio_from_dataframe(pandas_file_url, channels=None):
     """Reads a time series with an index (e.g. time) from a CSV with MFCC features."""
+    global noise_level
 
     df = pd.read_csv(pandas_file_url, index_col=0, compression='gzip')
     audio_length_seconds = 2 * float(df.columns[-1]) - float(df.columns[-2])
@@ -92,9 +118,17 @@ def read_audio_from_dataframe(pandas_file_url, channels=None):
     if channels:
         df = df.loc[channels]
 
-    ground_truth = read_ground_truth(pandas_file_url)
+    df_gt = read_ground_truth(pandas_file_url)
 
-    return audio_length_seconds, df, np.float64(df.columns), ground_truth
+    if noise_level:         # TODO only for experiments
+        print("Adding noise to the data", noise_level)
+        df = add_gaussian_noise(df, mean=0, std_dev=noise_level)
+
+    if sampling_factor:     # TODO only for experiments
+        df, df_gt = _resample_with_factor(df, df_gt, sampling_factor)
+        # audio_length_seconds = audio_length_seconds / sampling_factor
+
+    return audio_length_seconds, df, np.float64(df.columns), df_gt
 
 
 def read_dataset_with_index(dataset, sampling_factor=10000):
@@ -130,8 +164,7 @@ def read_dataset_with_index(dataset, sampling_factor=10000):
     if gt is not None:
         if factor > 1:
             for column in gt:
-                gt[column] = gt[column].transform(
-                    lambda l: (np.array(l)) // factor)
+                gt[column] = gt[column].transform(lambda l: (np.array(l)) // factor)
         return data, gt
     else:
         return data

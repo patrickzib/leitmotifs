@@ -5,6 +5,9 @@ mpl.rcParams['figure.dpi'] = 150
 from leitmotifs.competitors import *
 from leitmotifs.lama import *
 
+# Experiment with different noise levels to show robustness of the method
+noise_level = None
+sampling_factor = None
 
 def normalize(x):
     std = np.std(x)
@@ -15,6 +18,8 @@ def normalize(x):
 
 
 def load_crypto():
+    global noise_level, sampling_factor
+
     ada_eur = pd.read_csv("../datasets/crypto/ADA-EUR.csv").set_index("Date")[
         ["Close", "Volume"]]
     bitcoin_usd = pd.read_csv("../datasets/crypto/BTC-USD.csv").set_index("Date")[
@@ -63,11 +68,17 @@ def load_crypto():
                     xrp])  # bitcoin_gbp, bitcoin_usd,
     df["Name"] = df["Name"].astype("category")
 
-    df_pivot = df.pivot(columns="Name", values="Close").fillna(method="bfill")
-
+    df_pivot = df.pivot(columns="Name", values="Close").fillna(method="bfill").T
     df_gt = read_ground_truth("../datasets/crypto/crypto")
 
-    return df_pivot.T, df_gt
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        df_pivot = add_gaussian_noise(df_pivot, mean=0, std_dev=noise_level)
+    if sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        df_pivot, df_gt = resample_with_factor(df_pivot, df_gt, factor=sampling_factor)
+
+    return df_pivot, df_gt
 
 
 datasets = {
@@ -193,7 +204,7 @@ def test_kmotifs(dataset_name="Bitcoin-Halving", first_dims=True, plot=True):
     return motif_sets, used_dims
 
 
-def test_publication():
+def test_publication(plot=True):
     dataset_names = [
         "Bitcoin-Halving"
     ]
@@ -209,7 +220,16 @@ def test_publication():
         "LAMA (ed)",
         "LAMA (cosine)"
     ]
-    file_prefix = "results_stocks"
+
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        file_prefix = "results_stocks_"+str(noise_level)
+    elif sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        file_prefix = "results_stocks_s" + str(sampling_factor)
+    else:
+        file_prefix = "results_stocks"
+
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
         run_tests(
@@ -221,11 +241,11 @@ def test_publication():
             test_emd_pca=test_emd_pca,
             test_kmotifs=test_kmotifs,
             file_prefix=file_prefix,
-            plot=False
+            plot=plot
         )
 
 
-def test_plot_results():
+def test_plot_results(plot=True):
     dataset_names = [
         "Bitcoin-Halving"
     ]
@@ -257,7 +277,19 @@ def test_plot_results():
             "LAMA (cosine)"
         ]
     }
-    file_prefix = "results_stocks"
+
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        file_prefix = "results_stocks_"+str(noise_level)
+        output_file = "stocks_precision_"+str(noise_level)
+    elif sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        file_prefix = "results_stocks_s"+str(noise_level)
+        output_file = "stocks_precision_s" + str(sampling_factor)
+    else:
+        file_prefix = "results_stocks"
+        output_file = "stocks_precision"
+
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
         df, ground_truth = load_crypto()
@@ -272,10 +304,10 @@ def test_plot_results():
             all_plot_names,
             file_prefix,
             results,
-            plot=True
+            plot=plot
         )
 
     pd.DataFrame(
         data=np.array(results),
         columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        "results/stocks_precision.csv")
+            "results/"+output_file+".csv")

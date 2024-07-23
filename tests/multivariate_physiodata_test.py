@@ -5,6 +5,10 @@ mpl.rcParams['figure.dpi'] = 150
 from leitmotifs.competitors import *
 from leitmotifs.lama import *
 
+# Experiment with different noise levels to show robustness of the method
+noise_level = None
+sampling_factor = None
+
 def znormalize(ts):
     for i in range(3):
         ts[:, 3*i : 3*(i+1)] \
@@ -14,6 +18,8 @@ def znormalize(ts):
 
 
 def load_physiodata():
+    global noise_level, sampling_factor
+
     subjects = range(1, 6)
     exercises = range(1, 9)
     relevant_imus = np.array([2, 4, 2, 2, 2, 2, 2, 2])
@@ -40,8 +46,16 @@ def load_physiodata():
 
     print(f"Subject {subject}, Exercise {exercise}, IMU {imu}")
     *_, ts = df.query('subject == @subject & exercise == @exercise & imu == @imu').iloc[0]
+    df = pd.DataFrame(ts.T)
 
-    return pd.DataFrame(ts.T), df_gt
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        df = add_gaussian_noise(df, mean=0, std_dev=noise_level)
+    if sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        df, df_gt = resample_with_factor(df, df_gt, factor=sampling_factor)
+
+    return df, df_gt
 
 
 datasets = {
@@ -166,7 +180,7 @@ def test_kmotifs(dataset_name="Physiodata", first_dims=True, plot=True):
     return motif_sets, used_dims
 
 
-def test_publication():
+def test_publication(plot=False):
     dataset_names = [
         "Physiodata"
     ]
@@ -183,7 +197,15 @@ def test_publication():
         "LAMA (cosine)"
     ]
 
-    file_prefix = "results_physio"
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        file_prefix = "results_physio_"+str(noise_level)
+    elif sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        file_prefix = "results_physio_s" + str(sampling_factor)
+    else:
+        file_prefix = "results_physio"
+
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
         run_tests(
@@ -195,11 +217,11 @@ def test_publication():
             test_emd_pca=test_emd_pca,
             test_kmotifs=test_kmotifs,
             file_prefix=file_prefix,
-            plot=False
+            plot=plot
         )
 
 
-def test_plot_results():
+def test_plot_results(plot=True):
     dataset_names = [
         "Physiodata"
     ]
@@ -231,7 +253,17 @@ def test_plot_results():
             "LAMA (cosine)"
         ]
     }
-    file_prefix = "results_physio"
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        file_prefix = "results_physio_"+str(noise_level)
+        output_file = "physio_precision_"+str(noise_level)
+    elif sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        file_prefix = "results_physio_s"+str(noise_level)
+        output_file = "physio_precision_s"+str(noise_level)
+    else:
+        file_prefix = "results_physio"
+        output_file = "physio_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -247,10 +279,10 @@ def test_plot_results():
             all_plot_names,
             file_prefix,
             results,
-            plot=True
+            plot=plot
         )
 
     pd.DataFrame(
         data=np.array(results),
         columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        "results/physio_precision.csv")
+        "results/"+output_file+".csv")

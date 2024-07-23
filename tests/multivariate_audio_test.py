@@ -270,7 +270,7 @@ def test_kmotifs(dataset_name="The Rolling Stones - Paint It, Black",
     return motif_sets, used_dims
 
 
-def test_publication():
+def test_publication(plot=False, noise_level=None, sampling_factor=None):
     dataset_names = [
         # Does not work with the metric "The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
@@ -290,7 +290,15 @@ def test_publication():
         "LAMA (ed)",
         "LAMA (cosine)"
     ]
-    file_prefix = "results_audio"
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        file_prefix = "results_audio_" + str(noise_level)
+    elif sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        file_prefix = "results_audio_s" + str(sampling_factor)
+    else:
+        file_prefix = "results_audio"
+
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
         run_tests(
@@ -302,11 +310,11 @@ def test_publication():
             test_emd_pca=test_emd_pca,
             test_kmotifs=test_kmotifs,
             file_prefix=file_prefix,
-            plot=False
+            plot=plot
         )
 
 
-def test_plot_results():
+def test_plot_results(plot=True, noise_level=None, sampling_factor=None):
     dataset_names = [
         # "The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
@@ -342,7 +350,17 @@ def test_plot_results():
             "LAMA (cosine)"
         ]
     }
-    file_prefix = "results_audio"
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        file_prefix = "results_audio_"+str(noise_level)
+        output_file = "audio_precision_"+str(noise_level)
+    elif sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        file_prefix = "results_audio_s"+str(noise_level)
+        output_file = "audio_precision_s" + str(sampling_factor)
+    else:
+        file_prefix = "results_audio"
+        output_file = "audio_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -359,13 +377,13 @@ def test_plot_results():
             all_plot_names,
             file_prefix,
             results,
-            plot=True
+            plot=plot
         )
 
     pd.DataFrame(
         data=np.array(results),
         columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        "results/audio_precision.csv")
+        "results/"+output_file+".csv")
 
 
 def plot_spectrogram(audio_file_urls):

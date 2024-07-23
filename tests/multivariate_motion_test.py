@@ -8,6 +8,9 @@ from leitmotifs.competitors import *
 
 mpl.rcParams['figure.dpi'] = 150
 
+# Experiment with different noise levels to show robustness of the method
+noise_level = None
+sampling_factor = None
 
 def get_joint_pos_dict(c_joints, c_motion):
     c_joints['root'].set_motion(c_motion)
@@ -41,9 +44,11 @@ def include_joints(df, include, add_xyz=True):
 
 
 def read_motion_dataset(add_xyz=True):
+    global noise_level, sampling_factor
+
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
-    ground_truth = read_ground_truth(amc_path)
+    df_gt = read_ground_truth(amc_path)
     df = pd.DataFrame(
         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
     df = include_joints(exclude_body_joints(df), used_joints, add_xyz=add_xyz)
@@ -53,7 +58,14 @@ def read_motion_dataset(add_xyz=True):
     df.columns = time[:len(df.columns)]
     df.name = ds_name
 
-    return df, ground_truth, joints, motions
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        df = add_gaussian_noise(df, mean=0, std_dev=noise_level)
+    if sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        df, df_gt = resample_with_factor(df, df_gt, factor=sampling_factor)
+
+    return df, df_gt, joints, motions
 
 
 def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
@@ -429,7 +441,7 @@ def generate_gif(motif, m, motions, joints):
             fps=20)
 
 
-def test_publication():
+def test_publication(plot=False):
     dataset_names = [
         "Boxing",
         "Swordplay",
@@ -449,7 +461,15 @@ def test_publication():
         "LAMA (cosine)"
     ]
 
-    file_prefix = "results_motion"
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        file_prefix = "results_motion_"+str(noise_level)
+    elif sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        file_prefix = "results_motion_s" + str(sampling_factor)
+    else:
+        file_prefix = "results_motion"
+
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
         run_tests(
@@ -461,11 +481,11 @@ def test_publication():
             test_emd_pca=test_emd_pca,
             test_kmotifs=test_kmotifs,
             file_prefix=file_prefix,
-            plot=False
+            plot=plot
         )
 
 
-def test_plot_results():
+def test_plot_results(plot=True):
     dataset_names = [
         "Boxing",
         "Swordplay",
@@ -501,7 +521,17 @@ def test_plot_results():
             "LAMA (cosine)"
         ]
     }
-    file_prefix = "results_motion"
+    if noise_level:
+        print ("Adding noise to the data", noise_level)
+        file_prefix = "results_motion_"+str(noise_level)
+        output_file = "motion_precision_"+str(noise_level)
+    elif sampling_factor:
+        print("Applying sampling to the data", sampling_factor)
+        file_prefix = "results_motion_s"+str(noise_level)
+        output_file = "motion_precision_s" + str(sampling_factor)
+    else:
+        file_prefix = "results_motion"
+        output_file = "motion_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -517,13 +547,13 @@ def test_plot_results():
             all_plot_names,
             file_prefix,
             results,
-            plot=True
+            plot=plot
         )
 
     pd.DataFrame(
         data=np.array(results),
         columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        "results/motion_precision.csv")
+        "results/"+output_file+".csv")
 
 
 
