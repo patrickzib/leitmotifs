@@ -1,33 +1,33 @@
 ,Dataset,Method,Precision,Recall
-0,Boxing,LAMA,0.7,0.7
-1,Boxing,LAMA (naive),0.8,0.8
+0,Boxing,LAMA,0.8,0.8
+1,Boxing,LAMA (naive),0.9,0.9
 2,Boxing,mSTAMP+MDL,1.0,0.2
 3,Boxing,mSTAMP,1.0,0.2
 4,Boxing,EMD*,0.7,0.7
-5,Boxing,K-Motifs (TOP-f),0.7,0.5
-6,Boxing,K-Motifs (all),0.8,0.6
-7,Boxing,LAMA (cid),0.1,0.1
-8,Boxing,LAMA (ed),0.6,0.4
-9,Boxing,LAMA (cosine),0.1,0.1
+5,Boxing,K-Motifs (TOP-f),0.6,0.5
+6,Boxing,K-Motifs (all),0.7,0.7
+7,Boxing,LAMA (cid),0.4,0.5
+8,Boxing,LAMA (ed),0.6,0.5
+9,Boxing,LAMA (cosine),0.2,0.2
 10,Swordplay,LAMA,1.0,1.0
-11,Swordplay,LAMA (naive),0.0,0.0
+11,Swordplay,LAMA (naive),0.8333333333333334,0.8333333333333334
 12,Swordplay,mSTAMP+MDL,0.0,0.0
 13,Swordplay,mSTAMP,0.0,0.0
-14,Swordplay,EMD*,0.8333333333333334,0.8333333333333334
-15,Swordplay,K-Motifs (TOP-f),0.3333333333333333,0.3333333333333333
-16,Swordplay,K-Motifs (all),0.0,0.0
-17,Swordplay,LAMA (cid),0.5,0.5
-18,Swordplay,LAMA (ed),0.8333333333333334,0.8333333333333334
+14,Swordplay,EMD*,0.0,0.0
+15,Swordplay,K-Motifs (TOP-f),0.2857142857142857,0.3333333333333333
+16,Swordplay,K-Motifs (all),0.5,0.5
+17,Swordplay,LAMA (cid),0.16666666666666666,0.16666666666666666
+18,Swordplay,LAMA (ed),0.6666666666666666,0.6666666666666666
 19,Swordplay,LAMA (cosine),0.6666666666666666,0.6666666666666666
 20,Basketball,LAMA,0.6,0.6
 21,Basketball,LAMA (naive),0.6,0.6
 22,Basketball,mSTAMP+MDL,0.5,0.2
 23,Basketball,mSTAMP,0.5,0.2
-24,Basketball,EMD*,0.6,0.6
-25,Basketball,K-Motifs (TOP-f),0.6,0.6
-26,Basketball,K-Motifs (all),0.6,0.6
+24,Basketball,EMD*,0.8,0.8
+25,Basketball,K-Motifs (TOP-f),0.4,0.4
+26,Basketball,K-Motifs (all),0.4,0.4
 27,Basketball,LAMA (cid),0.4,0.4
-28,Basketball,LAMA (ed),0.6,0.6
+28,Basketball,LAMA (ed),0.4,0.4
 29,Basketball,LAMA (cosine),0.4,0.4
 30,Charleston - Side By Side Female,LAMA,1.0,1.0
 31,Charleston - Side By Side Female,LAMA (naive),1.0,1.0

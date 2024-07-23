@@ -1,34 +1,34 @@
 ,Dataset,Method,Precision,Recall
-0,Boxing,LAMA,0.9,0.9
+0,Boxing,LAMA,0.8,0.8
 1,Boxing,LAMA (naive),0.8,0.8
 2,Boxing,mSTAMP+MDL,1.0,0.2
 3,Boxing,mSTAMP,1.0,0.2
-4,Boxing,EMD*,0.8,0.8
-5,Boxing,K-Motifs (TOP-f),0.7,0.7
+4,Boxing,EMD*,0.6,0.6
+5,Boxing,K-Motifs (TOP-f),0.6,0.6
 6,Boxing,K-Motifs (all),0.7,0.6
-7,Boxing,LAMA (cid),0.2,0.2
-8,Boxing,LAMA (ed),0.2,0.2
+7,Boxing,LAMA (cid),0.3,0.3
+8,Boxing,LAMA (ed),0.3,0.2
 9,Boxing,LAMA (cosine),0.0,0.0
 10,Swordplay,LAMA,1.0,1.0
 11,Swordplay,LAMA (naive),1.0,1.0
 12,Swordplay,mSTAMP+MDL,0.0,0.0
 13,Swordplay,mSTAMP,0.0,0.0
-14,Swordplay,EMD*,0.0,0.0
-15,Swordplay,K-Motifs (TOP-f),0.16666666666666666,0.16666666666666666
+14,Swordplay,EMD*,0.6666666666666666,0.6666666666666666
+15,Swordplay,K-Motifs (TOP-f),0.3333333333333333,0.3333333333333333
 16,Swordplay,K-Motifs (all),0.0,0.0
-17,Swordplay,LAMA (cid),0.3333333333333333,0.3333333333333333
-18,Swordplay,LAMA (ed),0.3333333333333333,0.3333333333333333
-19,Swordplay,LAMA (cosine),0.3333333333333333,0.3333333333333333
-20,Basketball,LAMA,0.4,0.4
-21,Basketball,LAMA (naive),1.0,1.0
-22,Basketball,mSTAMP+MDL,0.0,0.0
-23,Basketball,mSTAMP,1.0,0.4
-24,Basketball,EMD*,0.8,0.8
-25,Basketball,K-Motifs (TOP-f),0.4,0.4
+17,Swordplay,LAMA (cid),0.8333333333333334,0.8333333333333334
+18,Swordplay,LAMA (ed),0.6666666666666666,0.6666666666666666
+19,Swordplay,LAMA (cosine),0.6666666666666666,0.6666666666666666
+20,Basketball,LAMA,0.6,0.6
+21,Basketball,LAMA (naive),0.6,0.6
+22,Basketball,mSTAMP+MDL,0.5,0.2
+23,Basketball,mSTAMP,0.0,0.0
+24,Basketball,EMD*,0.4,0.4
+25,Basketball,K-Motifs (TOP-f),0.6,0.6
 26,Basketball,K-Motifs (all),1.0,1.0
 27,Basketball,LAMA (cid),0.2,0.2
-28,Basketball,LAMA (ed),0.2,0.2
-29,Basketball,LAMA (cosine),0.2,0.2
+28,Basketball,LAMA (ed),0.4,0.4
+29,Basketball,LAMA (cosine),0.4,0.4
 30,Charleston - Side By Side Female,LAMA,1.0,1.0
 31,Charleston - Side By Side Female,LAMA (naive),1.0,1.0
 32,Charleston - Side By Side Female,mSTAMP+MDL,1.0,0.6666666666666666
@@ -37,5 +37,5 @@
 35,Charleston - Side By Side Female,K-Motifs (TOP-f),1.0,1.0
 36,Charleston - Side By Side Female,K-Motifs (all),1.0,1.0
 37,Charleston - Side By Side Female,LAMA (cid),1.0,1.0
-38,Charleston - Side By Side Female,LAMA (ed),1.0,1.0
+38,Charleston - Side By Side Female,LAMA (ed),1.0,0.6666666666666666
 39,Charleston - Side By Side Female,LAMA (cosine),1.0,0.6666666666666666

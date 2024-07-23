@@ -5,7 +5,7 @@
 3,Physiodata,mSTAMP,1.0,1.0
 4,Physiodata,EMD*,0.35,1.0
 5,Physiodata,K-Motifs (TOP-f),0.5,1.0
-6,Physiodata,K-Motifs (all),0.45,1.0
-7,Physiodata,LAMA (cid),0.4,1.0
+6,Physiodata,K-Motifs (all),0.5,1.0
+7,Physiodata,LAMA (cid),0.0,0.0
 8,Physiodata,LAMA (ed),0.0,0.0
 9,Physiodata,LAMA (cosine),0.0,0.0

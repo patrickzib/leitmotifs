@@ -1,7 +1,7 @@
 ,Dataset,Method,Precision,Recall
 0,Physiodata,LAMA,0.5,1.0
 1,Physiodata,LAMA (naive),0.5,1.0
-2,Physiodata,mSTAMP+MDL,1.0,1.0
+2,Physiodata,mSTAMP+MDL,0.5,1.0
 3,Physiodata,mSTAMP,1.0,1.0
 4,Physiodata,EMD*,0.35,1.0
 5,Physiodata,K-Motifs (TOP-f),0.5,1.0

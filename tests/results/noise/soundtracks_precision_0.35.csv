@@ -1,21 +1,21 @@
 ,Dataset,Method,Precision,Recall
 0,Star Wars - The Imperial March,LAMA,0.0,0.0
-1,Star Wars - The Imperial March,LAMA (naive),1.0,1.0
+1,Star Wars - The Imperial March,LAMA (naive),0.0,0.0
 2,Star Wars - The Imperial March,mSTAMP+MDL,0.0,0.0
 3,Star Wars - The Imperial March,mSTAMP,0.0,0.0
-4,Star Wars - The Imperial March,EMD*,0.0,0.0
-5,Star Wars - The Imperial March,K-Motifs (TOP-f),0.2,0.2
-6,Star Wars - The Imperial March,K-Motifs (all),1.0,1.0
+4,Star Wars - The Imperial March,EMD*,0.2,0.2
+5,Star Wars - The Imperial March,K-Motifs (TOP-f),0.6,0.6
+6,Star Wars - The Imperial March,K-Motifs (all),0.0,0.0
 7,Star Wars - The Imperial March,LAMA (cid),0.0,0.0
-8,Star Wars - The Imperial March,LAMA (ed),0.6,0.6
-9,Star Wars - The Imperial March,LAMA (cosine),1.0,1.0
+8,Star Wars - The Imperial March,LAMA (ed),0.2,0.2
+9,Star Wars - The Imperial March,LAMA (cosine),0.0,0.0
 10,Lord of the Rings Symphony - The Shire,LAMA,0.0,0.0
-11,Lord of the Rings Symphony - The Shire,LAMA (naive),0.5,1.0
+11,Lord of the Rings Symphony - The Shire,LAMA (naive),0.0,0.0
 12,Lord of the Rings Symphony - The Shire,mSTAMP+MDL,0.0,0.0
 13,Lord of the Rings Symphony - The Shire,mSTAMP,0.0,0.0
-14,Lord of the Rings Symphony - The Shire,EMD*,0.25,0.5
+14,Lord of the Rings Symphony - The Shire,EMD*,0.0,0.0
 15,Lord of the Rings Symphony - The Shire,K-Motifs (TOP-f),0.25,0.5
-16,Lord of the Rings Symphony - The Shire,K-Motifs (all),0.6666666666666666,1.0
-17,Lord of the Rings Symphony - The Shire,LAMA (cid),0.5,0.5
+16,Lord of the Rings Symphony - The Shire,K-Motifs (all),0.42857142857142855,1.0
+17,Lord of the Rings Symphony - The Shire,LAMA (cid),0.25,0.5
 18,Lord of the Rings Symphony - The Shire,LAMA (ed),0.0,0.0
 19,Lord of the Rings Symphony - The Shire,LAMA (cosine),0.0,0.0
