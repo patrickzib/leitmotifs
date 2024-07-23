@@ -146,3 +146,117 @@ def compute_precision_recall(pred, gt, motif_length):
                 pred_correct[a] = 1
 
     return np.average(pred_correct), np.average(gt_found)
+
+
+def run_tests(
+        dataset_name,
+        ks,
+        method_names,
+        test_lama,    # function
+        test_mstamp,  # function
+        test_emd_pca, # function
+        test_kmotifs, # function
+        file_prefix,
+        plot=False,
+      ):
+    motifA, dimsA = test_lama(dataset_name, plot=plot)
+    motifB, dimsB = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
+    motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
+    motifD, dimsD = test_mstamp(dataset_name, plot=plot, use_mdl=False)
+    motifE, dimsE = test_emd_pca(dataset_name, plot=plot)
+    motifF, dimsF = test_kmotifs(dataset_name, first_dims=True, plot=plot)
+    motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
+
+    motifH, dimsH = test_lama(dataset_name, plot=plot, distance="cid")
+    motifI, dimsI = test_lama(dataset_name, plot=plot, distance="ed")
+    motifJ, dimsJ = test_lama(dataset_name, plot=plot, distance="cosine")
+
+    method_names_dims = [name + "_dims" for name in method_names]
+    columns = ["dataset", "k"]
+    columns.extend(method_names)
+    columns.extend(method_names_dims)
+    df = pd.DataFrame(columns=columns)
+
+    for i, k in enumerate(ks):
+        df.loc[len(df.index)] \
+            = [dataset_name,
+               k,
+               motifA[i].tolist(),
+               motifB[i].tolist(),
+               motifC[0],  # just one
+               motifD[0],  # just one
+               motifE[i].tolist(),
+               motifF[i].tolist(),
+               motifG[i].tolist(),
+               motifH[i].tolist(),
+               motifI[i].tolist(),
+               motifJ[i].tolist(),
+
+               dimsA[i].tolist(),
+               dimsB[i].tolist(),
+               dimsC[0].tolist(),  # just one
+               dimsD[0].tolist(),  # just one
+               dimsE[i].tolist(),
+               dimsF[i].tolist(),
+               dimsG[i].tolist(),
+               dimsH[i].tolist(),
+               dimsI[i].tolist(),
+               dimsJ[i].tolist()]
+
+    print("--------------------------")
+
+    # from datetime import datetime
+    # currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
+    df.to_parquet(
+        f'results/{file_prefix}_{dataset_name}.gzip',  # _{currentDateTime}
+        compression='gzip')
+
+
+def eval_tests(
+        dataset_name,
+        ds_name,
+        df,
+        method_names,
+        motif_length,
+        ground_truth,
+        all_plot_names,
+        file_prefix,
+        results,
+        plot=True):
+    df_loc = pd.read_parquet(f"results/{file_prefix}_{dataset_name}.gzip")
+
+    motifs = []
+    dims = []
+    for id in range(df_loc.shape[0]):
+        for motif_method in method_names:
+            motifs.append(df_loc.loc[id][motif_method])
+            dims.append(df_loc.loc[id][motif_method + "_dims"])
+
+    # write results to file
+    for id in range(df_loc.shape[0]):
+        for method, motif_set in zip(
+                method_names,
+                motifs[id * len(method_names): (id + 1) * len(method_names)]
+        ):
+            precision, recall = compute_precision_recall(
+                np.sort(motif_set), ground_truth.values[0, 0], motif_length)
+            results.append([ds_name, method, precision, recall])
+
+    if plot:
+        for plot_name in all_plot_names:
+            plot_names = all_plot_names[plot_name]
+            positions = [method_names.index(name) for name in plot_names]
+            out_path = "results/images/" + dataset_name + plot_name + ".pdf"
+            plot_motifsets(
+                ds_name,
+                df,
+                motifsets=[motifs[pos] for pos in positions],
+                leitmotif_dims=[dims[pos] for pos in positions],
+                motifset_names=plot_names,
+                motif_length=motif_length,
+                ground_truth=ground_truth,
+                show=out_path is None)
+
+            if out_path is not None:
+                plt.savefig(out_path)
+                plt.show()

@@ -74,6 +74,7 @@ def test_lama(
         minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
+        distance="znormed_ed",
         plot=True):
     get_ds_parameters(dataset_name)
     df, ground_truth = load_physiodata()
@@ -88,12 +89,11 @@ def test_lama(
 
     ml = LAMA(ds_name, df_transform,
               dimension_labels=df.index,
-              # distance="cosine",
+              distance=distance,
               n_dims=n_dims,
               slack=slack,
               minimize_pairwise_dist=minimize_pairwise_dist,
-              ground_truth=ground_truth,
-              )
+              ground_truth=ground_truth)
 
     # learn parameters
     # motif_length, all_minima = ml.fit_motif_length(
@@ -177,40 +177,26 @@ def test_publication():
         "mSTAMP",
         "EMD*",
         "K-Motifs (TOP-f)",
-        "K-Motifs (all)"
+        "K-Motifs (all)",
+        "LAMA (cid)",
+        "LAMA (ed)",
+        "LAMA (cosine)"
     ]
-    plot = True
+
+    file_prefix = "results_physio"
     for dataset_name in dataset_names:
-        motifA, dimsA = test_lama(dataset_name, plot=plot)
-        motifB, dimsB = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
-        motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
-        motifD, dimsD = test_mstamp(dataset_name, plot=plot, use_mdl=False)
-        motifE, dimsE = test_emd_pca(dataset_name, plot=plot)
-        motifF, dimsF = test_kmotifs(dataset_name, first_dims=True, plot=plot)
-        motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
-
-        method_names_dims = [name + "_dims" for name in method_names]
-        columns = ["dataset", "k"]
-        columns.extend(method_names)
-        columns.extend(method_names_dims)
-        df = pd.DataFrame(columns=columns)
-
-        for i, k in enumerate(ks):
-            df.loc[len(df.index)] \
-                = [dataset_name, k,
-                   motifA[i].tolist(), motifB[i].tolist(), motifC[0], motifD[0],
-                   motifE[i].tolist(), motifF[i].tolist(), motifG[i].tolist(),
-                   dimsA[i].tolist(), dimsB[i].tolist(), dimsC[0].tolist(),
-                   dimsD[0].tolist(),
-                   dimsE[i].tolist(), dimsF[i].tolist(), dimsG[i].tolist()]
-
-        print("--------------------------")
-
-        # from datetime import datetime
-        # currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
-        df.to_parquet(
-            f'results/results_physio_{dataset_name}.gzip',  # _{currentDateTime}
-            compression='gzip')
+        get_ds_parameters(dataset_name)
+        run_tests(
+            dataset_name,
+            ks=ks,
+            method_names=method_names,
+            test_lama=test_lama,
+            test_mstamp=test_mstamp,
+            test_emd_pca=test_emd_pca,
+            test_kmotifs=test_kmotifs,
+            file_prefix=file_prefix,
+            plot=False
+        )
 
 
 def test_plot_results():
@@ -224,63 +210,47 @@ def test_plot_results():
         "mSTAMP",
         "EMD*",
         "K-Motifs (TOP-f)",
-        "K-Motifs (all)"
+        "K-Motifs (all)",
+        "LAMA (cid)",
+        "LAMA (ed)",
+        "LAMA (cosine)"
     ]
 
     results = []
+    all_plot_names = {
+        "_new": [
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (all)",
+            "LAMA",
+        ], "_distances": [
+            "LAMA",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
+    }
+    file_prefix = "results_physio"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
         df, ground_truth = load_physiodata()
 
-        df_loc = pd.read_parquet(
-            f"results/results_physio_{dataset_name}.gzip")
+        eval_tests(
+            dataset_name,
+            ds_name,
+            df,
+            method_names,
+            motif_length,
+            ground_truth,
+            all_plot_names,
+            file_prefix,
+            results,
+            plot=True
+        )
 
-        motifs = []
-        dims = []
-        for id in range(df_loc.shape[0]):
-            for motif_method in method_names:
-                motifs.append(df_loc.loc[id][motif_method])
-                dims.append(df_loc.loc[id][motif_method + "_dims"])
-
-        # write results to file
-        for id in range(df_loc.shape[0]):
-            for method, motif_set in zip(
-                    method_names,
-                    motifs[id * len(method_names): (id + 1) * len(method_names)]
-            ):
-                precision, recall = compute_precision_recall(
-                    np.sort(motif_set), ground_truth.values[0, 0], motif_length)
-                results.append([ds_name, method, precision, recall])
-
-        pd.DataFrame(
-            data=np.array(results),
-            columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-            "results/physio_precision.csv")
-
-        print(results)
-
-        if True:
-            plot_names = [
-                "mSTAMP+MDL",
-                "mSTAMP",
-                "EMD*",
-                "K-Motifs (all)",
-                "LAMA",
-            ]
-
-            positions = [method_names.index(name) for name in plot_names]
-            out_path = "results/images/" + dataset_name + "_new.pdf"
-            plot_motifsets(
-                ds_name,
-                df,
-                motifsets=[motifs[pos] for pos in positions],
-                leitmotif_dims=[dims[pos] for pos in positions],
-                motifset_names=plot_names,
-                motif_length=motif_length,
-                ground_truth=ground_truth,
-                show=out_path is None)
-
-            if out_path is not None:
-                plt.savefig(out_path)
-                plt.show()
+    pd.DataFrame(
+        data=np.array(results),
+        columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
+        "results/physio_precision.csv")

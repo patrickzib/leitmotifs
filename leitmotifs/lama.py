@@ -163,8 +163,11 @@ def pd_series_to_numpy(data):
     else:
         data_raw = data
         data_index = np.arange(data.shape[-1])
-    return (data_index  # TODO needed .astype(np.float64)???
-            , data_raw.astype(np.float64, copy=False))
+
+    try:
+        return (data_index.astype(np.float64), data_raw.astype(np.float64, copy=False))
+    except TypeError:  # datetime index cannot be cast to float64
+        return (data_index, data_raw.astype(np.float64, copy=False))
 
 
 def read_dataset(dataset, sampling_factor=10000):
