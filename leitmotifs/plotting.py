@@ -702,8 +702,8 @@ def plot_elbow(k_max,
     )
     endTime = (time.perf_counter() - startTime)
 
-    print("Chosen window-size:", m, "in", np.round(endTime, 1), "s")
-    print("Elbow Points", elbow_points)
+    print("Window-size:", m)
+    print("Elbow Points", elbow_points, " found in", np.round(endTime, 1), "s")
 
     if plot_elbows:
         _plot_elbow_points(

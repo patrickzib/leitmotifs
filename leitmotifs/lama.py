@@ -348,7 +348,6 @@ def compute_distance_matrix(time_series,
             knns = np.zeros((dims, 1, 1), dtype=np.int32)
     else:
         D_all = np.zeros((dims, n, n), dtype=np.float32)
-
         if compute_knns:
             knns = np.zeros((dims, n, k), dtype=np.int32)
         else:
