@@ -9,7 +9,6 @@ mpl.rcParams['figure.dpi'] = 150
 
 # Experiment with different noise levels to show robustness of the method
 noise_level = None
-sampling_factor = None
 
 def get_joint_pos_dict(c_joints, c_motion):
     c_joints['root'].set_motion(c_motion)
@@ -43,7 +42,7 @@ def include_joints(df, include, add_xyz=True):
 
 
 def read_motion_dataset(add_xyz=True):
-    global noise_level, sampling_factor
+    global noise_level
 
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
@@ -60,9 +59,6 @@ def read_motion_dataset(add_xyz=True):
     if noise_level:
         print ("Adding noise to the data", noise_level)
         df = add_gaussian_noise(df, noise_level)
-    if sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        df, df_gt = resample_with_factor(df, df_gt, factor=sampling_factor)
 
     return df, df_gt, joints, motions
 
@@ -463,9 +459,6 @@ def test_publication(plot=False):
     if noise_level:
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_motion_"+str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_motion_s" + str(sampling_factor)
     else:
         file_prefix = "results_motion"
 
@@ -524,10 +517,6 @@ def test_plot_results(plot=True):
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_motion_"+str(noise_level)
         output_file = "motion_precision_"+str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_motion_s"+str(noise_level)
-        output_file = "motion_precision_s" + str(sampling_factor)
     else:
         file_prefix = "results_motion"
         output_file = "motion_precision"

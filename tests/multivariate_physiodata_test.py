@@ -1,4 +1,5 @@
 import matplotlib as mpl
+import pandas as pd
 
 mpl.rcParams['figure.dpi'] = 150
 
@@ -7,7 +8,6 @@ from leitmotifs.lama import *
 
 # Experiment with different noise levels to show robustness of the method
 noise_level = None
-sampling_factor = None
 
 def znormalize(ts):
     for i in range(3):
@@ -18,42 +18,41 @@ def znormalize(ts):
 
 
 def load_physiodata():
-    global noise_level, sampling_factor
+    global noise_level
 
-    subjects = range(1, 6)
-    exercises = range(1, 9)
-    relevant_imus = np.array([2, 4, 2, 2, 2, 2, 2, 2])
+    # subjects = range(1, 6)
+    # exercises = range(1, 9)
+    # relevant_imus = np.array([2, 4, 2, 2, 2, 2, 2, 2])
+    #
+    # root_path = "../datasets/physiodata"
+    # df = pd.DataFrame(columns=['subject', 'exercise', 'imu', 'ts'])
+    #
+    # for subject in subjects:
+    #     for exercise, imu in zip(exercises, relevant_imus):
+    #         path = os.path.join(root_path, f"s{subject}", f"e{exercise}", f"u{imu}",
+    #                             "test.txt")
+    #         f = open(path)
+    #         next(f)
+    #         data = np.array([l.split(';') for l in f.readlines()], dtype=np.float64)
+    #         # acc (3 spatial axes), gyr (3 spatial axes), mag (3 spatial axes)
+    #         df.loc[len(df.index)] = [subject, exercise, imu, data[:, 1:]]
+    #         f.close()
+    # df['ts'] = df['ts'].apply(znormalize)
+    # subject = 2
+    # exercise = 1
+    # imu = 2
+    # print(f"Subject {subject}, Exercise {exercise}, IMU {imu}")
+    # *_, ts = df.query('subject == @subject & exercise == @exercise & imu == @imu').iloc[0]
+    # df2 = pd.DataFrame(ts.T)
+    # # df2.to_csv("../datasets/physiodata/physio.csv", index=False)
 
-    root_path = "../datasets/physiodata"
-    df = pd.DataFrame(columns=['subject', 'exercise', 'imu', 'ts'])
 
-    for subject in subjects:
-        for exercise, imu in zip(exercises, relevant_imus):
-            path = os.path.join(root_path, f"s{subject}", f"e{exercise}", f"u{imu}",
-                                "test.txt")
-            f = open(path)
-            next(f)
-            data = np.array([l.split(';') for l in f.readlines()], dtype=np.float64)
-            # acc (3 spatial axes), gyr (3 spatial axes), mag (3 spatial axes)
-            df.loc[len(df.index)] = [subject, exercise, imu, data[:, 1:]]
-            f.close()
-    df['ts'] = df['ts'].apply(znormalize)
     df_gt = read_ground_truth("../datasets/physiodata/physio")
-
-    subject = 2
-    exercise = 1
-    imu = 2
-
-    print(f"Subject {subject}, Exercise {exercise}, IMU {imu}")
-    *_, ts = df.query('subject == @subject & exercise == @exercise & imu == @imu').iloc[0]
-    df = pd.DataFrame(ts.T)
+    df = pd.read_csv("../datasets/physiodata/physio.csv")
 
     if noise_level:
         print ("Adding noise to the data", noise_level)
         df = add_gaussian_noise(df, noise_level)
-    if sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        df, df_gt = resample_with_factor(df, df_gt, factor=sampling_factor)
 
     return df, df_gt
 
@@ -200,9 +199,6 @@ def test_publication(plot=False):
     if noise_level:
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_physio_"+str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_physio_s" + str(sampling_factor)
     else:
         file_prefix = "results_physio"
 
@@ -257,10 +253,6 @@ def test_plot_results(plot=True):
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_physio_"+str(noise_level)
         output_file = "physio_precision_"+str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_physio_s"+str(noise_level)
-        output_file = "physio_precision_s"+str(noise_level)
     else:
         file_prefix = "results_physio"
         output_file = "physio_precision"

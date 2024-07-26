@@ -146,11 +146,11 @@ def test_learn_parameters():
                     length_in_seconds, index_range, m, motiflet, id=(a + 1))
 
 
-def test_publication():
-    test_lama()
-    test_emd_pca()
-    test_mstamp()
-    test_kmotifs()
+# def test_publication():
+#     test_lama()
+#     test_emd_pca()
+#     test_mstamp()
+#     test_kmotifs()
 
 
 def test_lama(
@@ -270,7 +270,7 @@ def test_kmotifs(dataset_name="The Rolling Stones - Paint It, Black",
     return motif_sets, used_dims
 
 
-def test_publication(plot=False, noise_level=None, sampling_factor=None):
+def test_publication(plot=False, noise_level=None):
     dataset_names = [
         # Does not work with the metric "The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
@@ -293,9 +293,6 @@ def test_publication(plot=False, noise_level=None, sampling_factor=None):
     if noise_level:
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_audio_" + str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_audio_s" + str(sampling_factor)
     else:
         file_prefix = "results_audio"
 
@@ -314,7 +311,7 @@ def test_publication(plot=False, noise_level=None, sampling_factor=None):
         )
 
 
-def test_plot_results(plot=True, noise_level=None, sampling_factor=None):
+def test_plot_results(plot=True, noise_level=None):
     dataset_names = [
         # "The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
@@ -354,10 +351,6 @@ def test_plot_results(plot=True, noise_level=None, sampling_factor=None):
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_audio_"+str(noise_level)
         output_file = "audio_precision_"+str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_audio_s"+str(noise_level)
-        output_file = "audio_precision_s" + str(sampling_factor)
     else:
         file_prefix = "results_audio"
         output_file = "audio_precision"

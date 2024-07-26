@@ -249,7 +249,7 @@ def test_kmotifs(dataset_name="Common-Starling", first_dims=True, plot=True):
     return motif_sets, used_dims
 
 
-def test_publication(plot=False, noise_level=None, sampling_factor=None):
+def test_publication(plot=False, noise_level=None):
     dataset_names = [
         "Common-Starling"
     ]
@@ -268,9 +268,6 @@ def test_publication(plot=False, noise_level=None, sampling_factor=None):
     if noise_level:
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_birdsounds_"+str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_birdsounds_s" + str(sampling_factor)
     else:
         file_prefix = "results_birdsounds"
 
@@ -288,7 +285,7 @@ def test_publication(plot=False, noise_level=None, sampling_factor=None):
             plot=plot
         )
 
-def test_plot_results(plot=True, noise_level=None, sampling_factor=None):
+def test_plot_results(plot=True, noise_level=None):
     dataset_names = [
         "Common-Starling"
     ]
@@ -325,10 +322,6 @@ def test_plot_results(plot=True, noise_level=None, sampling_factor=None):
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_birdsounds_"+str(noise_level)
         output_file = "birdsounds_precision_"+str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_birdsounds_s"+str(noise_level)
-        output_file = "birdsounds_precision_s" + str(sampling_factor)
     else:
         file_prefix = "results_birdsounds"
         output_file = "birdsounds_precision"

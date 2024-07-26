@@ -7,7 +7,6 @@ from leitmotifs.lama import *
 
 # Experiment with different noise levels to show robustness of the method
 noise_level = None
-sampling_factor = None
 
 def normalize(x):
     std = np.std(x)
@@ -18,67 +17,68 @@ def normalize(x):
 
 
 def load_crypto():
-    global noise_level, sampling_factor
+    global noise_level
 
-    ada_eur = pd.read_csv("../datasets/crypto/ADA-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    bitcoin_usd = pd.read_csv("../datasets/crypto/BTC-USD.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    bitcoin_gbp = pd.read_csv("../datasets/crypto/BTC-GBP.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    bitcoin_eur = pd.read_csv("../datasets/crypto/BTC-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    bitcoin_cash = pd.read_csv("../datasets/crypto/BCH-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    ethereum = pd.read_csv("../datasets/crypto/ETH-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    litecoin = pd.read_csv("../datasets/crypto/LTC-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    solana = pd.read_csv("../datasets/crypto/SOL-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
-    xrp = pd.read_csv("../datasets/crypto/XRP-EUR.csv").set_index("Date")[
-        ["Close", "Volume"]]
+    # ada_eur = pd.read_csv("../datasets/crypto/ADA-EUR.csv").set_index("Date")[
+    #     ["Close", "Volume"]]
+    # bitcoin_usd = pd.read_csv("../datasets/crypto/BTC-USD.csv").set_index("Date")[
+    #     ["Close", "Volume"]]
+    # bitcoin_gbp = pd.read_csv("../datasets/crypto/BTC-GBP.csv").set_index("Date")[
+    #     ["Close", "Volume"]]
+    # bitcoin_eur = pd.read_csv("../datasets/crypto/BTC-EUR.csv").set_index("Date")[
+    #     ["Close", "Volume"]]
+    # bitcoin_cash = pd.read_csv("../datasets/crypto/BCH-EUR.csv").set_index("Date")[
+    #     ["Close", "Volume"]]
+    # ethereum = pd.read_csv("../datasets/crypto/ETH-EUR.csv").set_index("Date")[
+    #     ["Close", "Volume"]]
+    # litecoin = pd.read_csv("../datasets/crypto/LTC-EUR.csv").set_index("Date")[
+    #     ["Close", "Volume"]]
+    # solana = pd.read_csv("../datasets/crypto/SOL-EUR.csv").set_index("Date")[
+    #     ["Close", "Volume"]]
+    # xrp = pd.read_csv("../datasets/crypto/XRP-EUR.csv").set_index("Date")[
+    #     ["Close", "Volume"]]
+    #
+    # ada_eur.index = pd.to_datetime(ada_eur.index)
+    # bitcoin_usd.index = pd.to_datetime(bitcoin_usd.index)
+    # bitcoin_gbp.index = pd.to_datetime(bitcoin_gbp.index)
+    # bitcoin_eur.index = pd.to_datetime(bitcoin_eur.index)
+    # bitcoin_cash.index = pd.to_datetime(bitcoin_cash.index)
+    # ethereum.index = pd.to_datetime(ethereum.index)
+    # litecoin.index = pd.to_datetime(litecoin.index)
+    # solana.index = pd.to_datetime(solana.index)
+    # xrp.index = pd.to_datetime(xrp.index)
+    #
+    # ada_eur["Name"] = "Cardano"
+    # bitcoin_usd["Name"] = "Bitcoin (USD)"
+    # bitcoin_gbp["Name"] = "Bitcoin (GBP)"
+    # bitcoin_eur["Name"] = "Bitcoin (EUR)"
+    # bitcoin_cash["Name"] = "Bitcoin Cash"
+    # ethereum["Name"] = "Ethereum"
+    # litecoin["Name"] = "Litecoin"
+    # solana["Name"] = "Solana"
+    # xrp["Name"] = "XRP"
+    #
+    # for df_apply in [ada_eur, bitcoin_usd, bitcoin_gbp, bitcoin_eur, bitcoin_cash,
+    #                  ethereum, litecoin, solana, xrp]:
+    #     df_apply[["Close"]] = df_apply[["Close"]].apply(np.log2).apply(normalize)
+    #     df_apply[["Volume"]] = df_apply[["Volume"]].apply(normalize)
+    #
+    # df = pd.concat([ada_eur, bitcoin_cash, bitcoin_eur, ethereum, litecoin, solana,
+    #                 xrp])  # bitcoin_gbp, bitcoin_usd,
+    # df["Name"] = df["Name"].astype("category")
+    #
+    # df_pivot = df.pivot(columns="Name", values="Close").fillna(method="bfill").T
+    # # df_pivot.to_csv("../datasets/crypto/crypto.csv", index=False)
 
-    ada_eur.index = pd.to_datetime(ada_eur.index)
-    bitcoin_usd.index = pd.to_datetime(bitcoin_usd.index)
-    bitcoin_gbp.index = pd.to_datetime(bitcoin_gbp.index)
-    bitcoin_eur.index = pd.to_datetime(bitcoin_eur.index)
-    bitcoin_cash.index = pd.to_datetime(bitcoin_cash.index)
-    ethereum.index = pd.to_datetime(ethereum.index)
-    litecoin.index = pd.to_datetime(litecoin.index)
-    solana.index = pd.to_datetime(solana.index)
-    xrp.index = pd.to_datetime(xrp.index)
-
-    ada_eur["Name"] = "Cardano"
-    bitcoin_usd["Name"] = "Bitcoin (USD)"
-    bitcoin_gbp["Name"] = "Bitcoin (GBP)"
-    bitcoin_eur["Name"] = "Bitcoin (EUR)"
-    bitcoin_cash["Name"] = "Bitcoin Cash"
-    ethereum["Name"] = "Ethereum"
-    litecoin["Name"] = "Litecoin"
-    solana["Name"] = "Solana"
-    xrp["Name"] = "XRP"
-
-    for df_apply in [ada_eur, bitcoin_usd, bitcoin_gbp, bitcoin_eur, bitcoin_cash,
-                     ethereum, litecoin, solana, xrp]:
-        df_apply[["Close"]] = df_apply[["Close"]].apply(np.log2).apply(normalize)
-        df_apply[["Volume"]] = df_apply[["Volume"]].apply(normalize)
-
-    df = pd.concat([ada_eur, bitcoin_cash, bitcoin_eur, ethereum, litecoin, solana,
-                    xrp])  # bitcoin_gbp, bitcoin_usd,
-    df["Name"] = df["Name"].astype("category")
-
-    df_pivot = df.pivot(columns="Name", values="Close").fillna(method="bfill").T
+    df = pd.read_csv("../datasets/crypto/crypto.csv")
+    df.columns = pd.to_datetime(df.columns)
     df_gt = read_ground_truth("../datasets/crypto/crypto")
 
     if noise_level:
         print ("Adding noise to the data", noise_level)
-        df_pivot = add_gaussian_noise(df_pivot, noise_level)
-    if sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        df_pivot, df_gt = resample_with_factor(df_pivot, df_gt, factor=sampling_factor)
+        df = add_gaussian_noise(df, noise_level)
 
-    return df_pivot, df_gt
+    return df, df_gt
 
 
 datasets = {
@@ -224,9 +224,6 @@ def test_publication(plot=True):
     if noise_level:
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_stocks_"+str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_stocks_s" + str(sampling_factor)
     else:
         file_prefix = "results_stocks"
 
@@ -282,10 +279,6 @@ def test_plot_results(plot=True):
         print ("Adding noise to the data", noise_level)
         file_prefix = "results_stocks_"+str(noise_level)
         output_file = "stocks_precision_"+str(noise_level)
-    elif sampling_factor:
-        print("Applying sampling to the data", sampling_factor)
-        file_prefix = "results_stocks_s"+str(noise_level)
-        output_file = "stocks_precision_s" + str(sampling_factor)
     else:
         file_prefix = "results_stocks"
         output_file = "stocks_precision"
