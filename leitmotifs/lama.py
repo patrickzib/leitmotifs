@@ -85,7 +85,6 @@ def read_ground_truth(dataset):
 #######################
 # TODO remove - only for noise experiments
 noise_level = None
-sampling_factor = None
 
 def add_gaussian_noise(df, noise_level=None):
     if noise_level:
@@ -98,20 +97,6 @@ def add_gaussian_noise(df, noise_level=None):
     else:
         return df
 
-def resample_with_factor(df, df_gt, factor=1):
-    """Resamples a time series."""
-    if factor > 1:
-        factor = int(factor)
-        if df.ndim >= 2:
-            df = df.iloc[:, ::factor]
-        else:
-            df = df.iloc[::factor]
-
-        if df_gt is not None:
-            for column in df_gt:
-                df_gt[column] = df_gt[column].transform(
-                    lambda l: (np.array(l)) // factor)
-    return df, df_gt
 #######################
 
 
@@ -130,10 +115,6 @@ def read_audio_from_dataframe(pandas_file_url, channels=None):
     if noise_level:         # TODO only for experiments
         print("Adding noise to the data", noise_level)
         df = add_gaussian_noise(df, noise_level)
-
-    if sampling_factor:     # TODO only for experiments
-        df, df_gt = resample_with_factor(df, df_gt, sampling_factor)
-        # audio_length_seconds = audio_length_seconds / sampling_factor
 
     return audio_length_seconds, df, np.float64(df.columns), df_gt
 
