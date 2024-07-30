@@ -202,6 +202,20 @@ scalability of the LAMA algorithm.
           <td>20</td>
           <td>4</td>
         </tr>
+        <tr>
+          <td>Physiodata (Physical Exercises)</td>
+          <td>Wearable Sensors</td>
+          <td>5526</td>
+          <td>5</td>
+          <td>20</td>
+        </tr>
+        <tr>
+          <td>Bitcoin Halving</td>
+          <td>Crypto/Stocks</td>
+          <td>3591</td>
+          <td>5</td>
+          <td>3</td>
+        </tr>          
       </tbody>
     </table>
   </small>
