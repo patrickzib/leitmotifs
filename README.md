@@ -101,7 +101,7 @@ To do an elbow plot, and learn the number of repeats of the motif, we may simply
     
 # Use Cases
 
-Data Sets: We collected and annotated 12 challenging real-life data sets to assess the quality and 
+Data Sets: We collected and annotated 14 challenging real-life data sets to assess the quality and 
 scalability of the LAMA algorithm. 
 
 <table>
