@@ -158,10 +158,15 @@ def test_plot():
     mpl.rcParams['lines.markersize'] = 12
 
     df = pd.read_csv("csv/scalability2.csv", index_col=0)
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(10, 4))
     ax.set_title("Scalability in length n for d=8")
     sns.lineplot(x="Lengths", y="Time", hue="Method", style="Method", markers=True,
                  data=df.reset_index(), ax=ax)
+
+    ax.annotate('Out-of-Memory', xy=(20000,10), xytext=(10000,1000),
+                     arrowprops=dict(facecolor='red', arrowstyle="->",
+                                     connectionstyle="arc3,rad=.5"),
+                     fontsize=12, fontfamily='monospace', color="red", ha='left');
 
     # plt.yscale('log',base=2)
     ax.set_ylabel("Walltime in s")

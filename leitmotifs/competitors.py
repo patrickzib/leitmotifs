@@ -128,6 +128,9 @@ def run_kmotifs(
 
 
 def compute_precision_recall(pred, gt, motif_length):
+    if motif_length == 0:
+       return 0, 0
+
     gt_found = np.zeros(len(gt))
     pred_correct = np.zeros(len(pred))
     for a, start in enumerate(pred):

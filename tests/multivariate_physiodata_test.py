@@ -63,7 +63,7 @@ datasets = {
         "motif_length": 150,
         "n_dims": 3,
         "slack": 0.5,
-        "length_range": np.arange(201, 282, 5),
+        "length_range": np.arange(150, 180, 10),
     },
 }
 

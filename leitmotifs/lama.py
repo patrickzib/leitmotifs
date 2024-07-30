@@ -71,7 +71,7 @@ def read_ground_truth(dataset):
         file = os.path.splitext(dataset)[0]
 
     if exists(file):
-        print(file)
+        # print(file)
         series = pd.read_csv(file, index_col=0)
 
         for i in range(0, series.shape[0]):
