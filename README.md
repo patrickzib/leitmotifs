@@ -226,12 +226,13 @@ scalability of the LAMA algorithm.
 
 | Method              |   Mean Precision        |   Median Precision        |  Mean Recall         |   Median Recall        |
 |:--------------------|------------------------:|--------------------------:|---------------------:|-----------------------:|
-| EMD*                |                0.608712 |                      0.65 |             0.745455 |                    0.8 |
-| K-Motifs (TOP-f)    |                0.651515 |                      0.75 |             0.751515 |                    1   |
-| K-Motifs (all dims) |                0.831439 |                      1    |             0.854545 |                    1   |
-| LAMA                |                0.946591 |                      1    |             0.990909 |                    1   |
-| mSTAMP              |                0.545455 |                      1    |             0.342424 |                    0.2 |
-| mSTAMP+MDL          |                0.454545 |                      0    |             0.251515 |                    0   |
+| EMD*                |                 59.3269 |                   65      |              75.8974 |                     80 |
+| K-Motifs (TOP-f)    |                 61.0989 |                   70      |              70.7692 |                    100 |
+| K-Motifs (all dims) |                 76.7628 |                   83.3333 |              82.5641 |                    100 |
+| LAMA                |                 88.6859 |                  100      |              95.1282 |                    100 |
+| SMM                 |                 33.7762 |                   27.2727 |              70.3846 |                    100 |
+| mSTAMP              |                 53.8462 |                  100      |              36.6667 |                     20 |
+| mSTAMP+MDL          |                 46.1538 |                    0      |              28.9744 |                      0 |
 
 See all results in <a href="notebooks/plot_ground_truth.ipynb">Results Notebook</a>.
 
