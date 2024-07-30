@@ -101,7 +101,7 @@ To do an elbow plot, and learn the number of repeats of the motif, we may simply
     
 # Use Cases
 
-Data Sets: We collected and annotated 12 challenging real-life data sets to assess the quality and 
+Data Sets: We collected and annotated 14 challenging real-life data sets to assess the quality and 
 scalability of the LAMA algorithm. 
 
 <table>
@@ -202,6 +202,20 @@ scalability of the LAMA algorithm.
           <td>20</td>
           <td>4</td>
         </tr>
+        <tr>
+          <td>Physiodata (Physical Exercises)</td>
+          <td>Wearable Sensors</td>
+          <td>5526</td>
+          <td>5</td>
+          <td>20</td>
+        </tr>
+        <tr>
+          <td>Bitcoin Halving</td>
+          <td>Crypto/Stocks</td>
+          <td>3591</td>
+          <td>5</td>
+          <td>3</td>
+        </tr>          
       </tbody>
     </table>
   </small>
@@ -212,12 +226,13 @@ scalability of the LAMA algorithm.
 
 | Method              |   Mean Precision        |   Median Precision        |  Mean Recall         |   Median Recall        |
 |:--------------------|------------------------:|--------------------------:|---------------------:|-----------------------:|
-| EMD*                |                0.608712 |                      0.65 |             0.745455 |                    0.8 |
-| K-Motifs (TOP-f)    |                0.651515 |                      0.75 |             0.751515 |                    1   |
-| K-Motifs (all dims) |                0.831439 |                      1    |             0.854545 |                    1   |
-| LAMA                |                0.946591 |                      1    |             0.990909 |                    1   |
-| mSTAMP              |                0.545455 |                      1    |             0.342424 |                    0.2 |
-| mSTAMP+MDL          |                0.454545 |                      0    |             0.251515 |                    0   |
+| EMD*                |                 59.3 |                   65      |              75.9 |                     80 |
+| K-Motifs (TOP-f)    |                 61.1 |                   70      |              70.8 |                    100 |
+| K-Motifs (all dims) |                 76.8 |                   83.3    |              82.6 |                    100 |
+| SMM                 |                 33.8 |                   27.3    |              70.4 |                    100 |
+| mSTAMP              |                 53.8 |                  100      |              36.7 |                     20 |
+| mSTAMP+MDL          |                 46.2 |                    0      |              29.0 |                      0 |
+| LAMA                |                 88.7 |                  100      |              95.1 |                    100 |
 
 See all results in <a href="notebooks/plot_ground_truth.ipynb">Results Notebook</a>.
 
