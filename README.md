@@ -229,10 +229,10 @@ scalability of the LAMA algorithm.
 | EMD*                |                 59.3 |                   65      |              75.9 |                     80 |
 | K-Motifs (TOP-f)    |                 61.1 |                   70      |              70.8 |                    100 |
 | K-Motifs (all dims) |                 76.8 |                   83.3    |              82.6 |                    100 |
-| LAMA                |                 88.7 |                  100      |              95.1 |                    100 |
 | SMM                 |                 33.8 |                   27.3    |              70.4 |                    100 |
 | mSTAMP              |                 53.8 |                  100      |              36.7 |                     20 |
 | mSTAMP+MDL          |                 46.2 |                    0      |              29.0 |                      0 |
+| LAMA                |                 88.7 |                  100      |              95.1 |                    100 |
 
 See all results in <a href="notebooks/plot_ground_truth.ipynb">Results Notebook</a>.
 
