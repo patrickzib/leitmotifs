@@ -601,10 +601,10 @@ def _plot_elbow_points(
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     plt.scatter(elbow_points, dists[elbow_points], color="red", label="Minima")
 
-    leitmotifs = motifset_candidates[elbow_points]
+    # leitmotifs = motifset_candidates[elbow_points]
 
     plt.tight_layout()
-    plt.savefig("lord_of_the_rings_elbow_points.pdf")
+    # plt.savefig("lord_of_the_rings_elbow_points.pdf")
     plt.show()
 
 

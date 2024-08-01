@@ -860,7 +860,6 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
             m2 = (dists[i] - dists[i - 1]) + 0.00001
 
             # avoid detecting elbows in near constant data
-            # TODO adding this removes reproducability
             if dists[i - 1] == dists[i]:
                 m2 = 1.0  # peaks[i] = 0
 

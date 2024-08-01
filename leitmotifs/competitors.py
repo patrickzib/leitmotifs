@@ -162,6 +162,7 @@ def run_tests(
         file_prefix,
         plot=False,
       ):
+
     motifA, dimsA = test_lama(dataset_name, plot=plot)
     motifB, dimsB = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
     motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
@@ -169,7 +170,6 @@ def run_tests(
     motifE, dimsE = test_emd_pca(dataset_name, plot=plot)
     motifF, dimsF = test_kmotifs(dataset_name, first_dims=True, plot=plot)
     motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
-
     motifH, dimsH = test_lama(dataset_name, plot=plot, distance="cid")
     motifI, dimsI = test_lama(dataset_name, plot=plot, distance="ed")
     motifJ, dimsJ = test_lama(dataset_name, plot=plot, distance="cosine")
