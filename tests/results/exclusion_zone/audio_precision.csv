@@ -1,0 +1,21 @@
+,Dataset,Method,Precision,Recall
+0,What I've Done - Linkin Park,LAMA (alpha=0),1.0,1.0
+1,What I've Done - Linkin Park,LAMA (alpha=0.25),1.0,1.0
+2,What I've Done - Linkin Park,LAMA (alpha=0.5),1.0,1.0
+3,What I've Done - Linkin Park,LAMA (alpha=0.75),1.0,1.0
+4,What I've Done - Linkin Park,LAMA (alpha=1),1.0,1.0
+5,Numb - Linkin Park,LAMA (alpha=0),1.0,1.0
+6,Numb - Linkin Park,LAMA (alpha=0.25),1.0,1.0
+7,Numb - Linkin Park,LAMA (alpha=0.5),1.0,1.0
+8,Numb - Linkin Park,LAMA (alpha=0.75),1.0,1.0
+9,Numb - Linkin Park,LAMA (alpha=1),1.0,1.0
+10,Vanilla Ice - Ice Ice Baby,LAMA (alpha=0),0.65,0.8
+11,Vanilla Ice - Ice Ice Baby,LAMA (alpha=0.25),0.0,0.0
+12,Vanilla Ice - Ice Ice Baby,LAMA (alpha=0.5),0.65,0.8
+13,Vanilla Ice - Ice Ice Baby,LAMA (alpha=0.75),0.65,0.8
+14,Vanilla Ice - Ice Ice Baby,LAMA (alpha=1),0.65,0.8
+15,Queen David Bowie - Under Pressure,LAMA (alpha=0),0.8125,1.0
+16,Queen David Bowie - Under Pressure,LAMA (alpha=0.25),0.8125,1.0
+17,Queen David Bowie - Under Pressure,LAMA (alpha=0.5),0.8125,1.0
+18,Queen David Bowie - Under Pressure,LAMA (alpha=0.75),0.5,1.0
+19,Queen David Bowie - Under Pressure,LAMA (alpha=1),0.5,1.0

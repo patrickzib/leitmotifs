@@ -152,6 +152,7 @@ def test_lama(
         use_PCA=False,
         motifset_name="LAMA",
         distance="znormed_ed",
+        exclusion_range=None,
         plot=True):
     get_ds_parameters(dataset_name)
     audio_length_seconds, df, index_range, ground_truth \
@@ -166,14 +167,15 @@ def test_lama(
     else:
         df_transform = df
 
-    ml = LAMA(ds_name, df_transform,
-              dimension_labels=df.index,
-              distance=distance,
-              n_dims=n_dims,
-              slack=slack,
-              minimize_pairwise_dist=minimize_pairwise_dist,
-              ground_truth=ground_truth
-              )
+    ml = LAMA(
+        ds_name, df_transform,
+        dimension_labels=df.index,
+        distance=distance,
+        n_dims=n_dims,
+        minimize_pairwise_dist=minimize_pairwise_dist,
+        ground_truth=ground_truth,
+        slack = exclusion_range if exclusion_range else slack
+    )
 
     # motif_length_range = np.int32(motif_length_range_in_s /
     #                               audio_length_seconds * df.shape[1])
@@ -314,23 +316,24 @@ def plot_spectrogram(audio_file_urls):
     plt.savefig("images_paper/audio/lotr-spectrogram.pdf")
 
 
-def test_publication(plot=False, noise_level=None):
+def test_publication(plot=False, noise_level=None, method_names=None):
     dataset_names = [
         "Star Wars - The Imperial March",
         "Lord of the Rings Symphony - The Shire"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (TOP-f)",
+            "K-Motifs (all)",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
 
     if noise_level:
         print ("Adding noise to the data", noise_level)
@@ -353,39 +356,43 @@ def test_publication(plot=False, noise_level=None):
         )
 
 
-def test_plot_results(plot=True, noise_level=None):
+def test_plot_results(plot=True, noise_level=None, method_names=None, all_plot_names=None):
     dataset_names = [
         "Star Wars - The Imperial March",
         "Lord of the Rings Symphony - The Shire"
     ]
 
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
-    results = []
-    all_plot_names = {
-        "_new": [
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
             "mSTAMP+MDL",
             "mSTAMP",
             "EMD*",
+            "K-Motifs (TOP-f)",
             "K-Motifs (all)",
-            "LAMA",
-        ], "_distances": [
-            "LAMA",
             "LAMA (cid)",
             "LAMA (ed)",
             "LAMA (cosine)"
         ]
-    }
+
+    results = []
+
+    if all_plot_names is None:
+        all_plot_names = {
+            "_new": [
+                "mSTAMP+MDL",
+                "mSTAMP",
+                "EMD*",
+                "K-Motifs (all)",
+                "LAMA",
+            ], "_distances": [
+                "LAMA",
+                "LAMA (cid)",
+                "LAMA (ed)",
+                "LAMA (cosine)"
+            ]
+        }
 
     if noise_level:
         print ("Adding noise to the data", noise_level)

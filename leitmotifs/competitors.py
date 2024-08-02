@@ -163,16 +163,72 @@ def run_tests(
         plot=False,
       ):
 
-    motifA, dimsA = test_lama(dataset_name, plot=plot)
-    motifB, dimsB = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
-    motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
-    motifD, dimsD = test_mstamp(dataset_name, plot=plot, use_mdl=False)
-    motifE, dimsE = test_emd_pca(dataset_name, plot=plot)
-    motifF, dimsF = test_kmotifs(dataset_name, first_dims=True, plot=plot)
-    motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
-    motifH, dimsH = test_lama(dataset_name, plot=plot, distance="cid")
-    motifI, dimsI = test_lama(dataset_name, plot=plot, distance="ed")
-    motifJ, dimsJ = test_lama(dataset_name, plot=plot, distance="cosine")
+    motifs_list = []
+    dims_list = []
+    if "LAMA" in method_names:
+        motifA, dimsA = test_lama(dataset_name, plot=plot)
+        motifs_list.append(motifA)
+        dims_list.append(dimsA)
+    if "LAMA (naive)" in method_names:
+        motifB, dimsB = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
+        motifs_list.append(motifB)
+        dims_list.append(dimsB)
+    if "mSTAMP+MDL" in method_names:
+        motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
+        motifs_list.append(motifC)
+        dims_list.append(dimsC)
+    if "mSTAMP" in method_names:
+        motifD, dimsD = test_mstamp(dataset_name, plot=plot, use_mdl=False)
+        motifs_list.append(motifD)
+        dims_list.append(dimsD)
+    if "EMD*" in method_names:
+        motifE, dimsE = test_emd_pca(dataset_name, plot=plot)
+        motifs_list.append(motifE)
+        dims_list.append(dimsE)
+    if "K-Motifs (TOP-f)" in method_names:
+        motifF, dimsF = test_kmotifs(dataset_name, first_dims=True, plot=plot)
+        motifs_list.append(motifF)
+        dims_list.append(dimsF)
+    if "K-Motifs (all)" in method_names:
+        motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
+        motifs_list.append(motifG)
+        dims_list.append(dimsG)
+
+    # Distances
+    if "LAMA (cid)" in method_names:
+        motifH, dimsH = test_lama(dataset_name, plot=plot, distance="cid")
+        motifs_list.append(motifH)
+        dims_list.append(dimsH)
+    if "LAMA (ed)" in method_names:
+        motifI, dimsI = test_lama(dataset_name, plot=plot, distance="ed")
+        motifs_list.append(motifI)
+        dims_list.append(dimsI)
+    if "LAMA (cosine)" in method_names:
+        motifJ, dimsJ = test_lama(dataset_name, plot=plot, distance="cosine")
+        motifs_list.append(motifJ)
+        dims_list.append(dimsJ)
+
+    # Exclusion Zones
+    if "LAMA (alpha=0)" in method_names:
+        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=0.0)
+        motifs_list.append(motifJ)
+        dims_list.append(dimsJ)
+    if "LAMA (alpha=0.25)" in method_names:
+        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=0.25)
+        motifs_list.append(motifJ)
+        dims_list.append(dimsJ)
+    if "LAMA (alpha=0.5)" in method_names:
+        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=0.50)
+        motifs_list.append(motifJ)
+        dims_list.append(dimsJ)
+    if "LAMA (alpha=0.75)" in method_names:
+        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=0.75)
+        motifs_list.append(motifJ)
+        dims_list.append(dimsJ)
+    if "LAMA (alpha=1)" in method_names:
+        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=1.0)
+        motifs_list.append(motifJ)
+        dims_list.append(dimsJ)
 
     method_names_dims = [name + "_dims" for name in method_names]
     columns = ["dataset", "k"]
@@ -181,38 +237,26 @@ def run_tests(
     df = pd.DataFrame(columns=columns)
 
     for i, k in enumerate(ks):
-        df.loc[len(df.index)] \
-            = [dataset_name,
-               k,
-               motifA[i].tolist(),
-               motifB[i].tolist(),
-               motifC[0],  # just one
-               motifD[0],  # just one
-               motifE[i].tolist(),
-               motifF[i].tolist(),
-               motifG[i].tolist(),
-               motifH[i].tolist(),
-               motifI[i].tolist(),
-               motifJ[i].tolist(),
+        motif_sets = []
+        motif_dims = []
+        for j in range(len(motifs_list)):
+            if len(motifs_list[j]) > i:
+                # if there are multiple motifs
+                motif_sets.append(motifs_list[j][i].tolist())
+                motif_dims.append(dims_list[j][i].tolist())
+            else:
+                # if there is only one motif
+                motif_sets.append(motifs_list[j][0].tolist())
+                motif_dims.append(dims_list[j][0].tolist())
 
-               dimsA[i].tolist(),
-               dimsB[i].tolist(),
-               dimsC[0].tolist(),  # just one
-               dimsD[0].tolist(),  # just one
-               dimsE[i].tolist(),
-               dimsF[i].tolist(),
-               dimsG[i].tolist(),
-               dimsH[i].tolist(),
-               dimsI[i].tolist(),
-               dimsJ[i].tolist()]
+        # concatenate the three lists
+        df.loc[len(df.index)] = [dataset_name, k] + motif_sets + motif_dims
 
     print("--------------------------")
 
     # from datetime import datetime
-    # currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
     df.to_parquet(
-        f'results/{file_prefix}_{dataset_name}.gzip',  # _{currentDateTime}
-        compression='gzip')
+        f'results/{file_prefix}_{dataset_name}.gzip', compression='gzip')
 
 
 def eval_tests(

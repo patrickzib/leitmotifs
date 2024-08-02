@@ -1,0 +1,6 @@
+,Dataset,Method,Precision,Recall
+0,Physiodata,LAMA (alpha=0),0.5,1.0
+1,Physiodata,LAMA (alpha=0.25),0.5,1.0
+2,Physiodata,LAMA (alpha=0.5),0.5,1.0
+3,Physiodata,LAMA (alpha=0.75),0.5,1.0
+4,Physiodata,LAMA (alpha=1),0.4,1.0

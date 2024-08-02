@@ -12,7 +12,6 @@ path_to_wav = "../../motiflets_use_cases/audio/"
 path = "../datasets/audio/"
 write_audio = False
 
-
 datasets = {
     "Numb - Linkin Park": {
         "ks": [5],
@@ -71,6 +70,7 @@ datasets = {
     }
 }
 
+
 # dataset = datasets["The Rolling Stones - Paint It, Black"]
 # dataset = datasets["What I've Done - Linkin Park"]
 # dataset = datasets["Numb - Linkin Park"]
@@ -100,7 +100,6 @@ def get_ds_parameters(name):
 channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4',
             'MFCC 5', 'MFCC 6', 'MFCC 7', 'MFCC 8', 'MFCC 9', 'MFCC 10',
             ]
-
 
 
 def test_learn_parameters():
@@ -159,6 +158,7 @@ def test_lama(
         use_PCA=False,
         motifset_name="LAMA",
         distance="znormed_ed",
+        exclusion_range=None,
         plot=True):
     get_ds_parameters(dataset_name)
     audio_length_seconds, df, index_range, ground_truth \
@@ -179,7 +179,7 @@ def test_lama(
         n_dims=n_dims,
         ground_truth=ground_truth,
         minimize_pairwise_dist=minimize_pairwise_dist,
-        slack=slack
+        slack=exclusion_range if exclusion_range else slack
     )
 
     # motif_length_range = np.int32(motif_length_range_in_s /
@@ -270,7 +270,7 @@ def test_kmotifs(dataset_name="The Rolling Stones - Paint It, Black",
     return motif_sets, used_dims
 
 
-def test_publication(plot=False, noise_level=None):
+def test_publication(plot=False, noise_level=None, method_names=None):
     dataset_names = [
         # Does not work with the metric "The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
@@ -278,20 +278,22 @@ def test_publication(plot=False, noise_level=None):
         "Vanilla Ice - Ice Ice Baby",
         "Queen David Bowie - Under Pressure"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (TOP-f)",
+            "K-Motifs (all)",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
+
     if noise_level:
-        print ("Adding noise to the data", noise_level)
+        print("Adding noise to the data", noise_level)
         file_prefix = "results_audio_" + str(noise_level)
     else:
         file_prefix = "results_audio"
@@ -311,7 +313,8 @@ def test_publication(plot=False, noise_level=None):
         )
 
 
-def test_plot_results(plot=True, noise_level=None):
+def test_plot_results(plot=True, noise_level=None, method_names=None,
+                      all_plot_names=None):
     dataset_names = [
         # "The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
@@ -319,38 +322,42 @@ def test_plot_results(plot=True, noise_level=None):
         "Vanilla Ice - Ice Ice Baby",
         "Queen David Bowie - Under Pressure"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
-    results = []
-
-    all_plot_names = {
-        "_new": [
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
             "mSTAMP+MDL",
             "mSTAMP",
             "EMD*",
+            "K-Motifs (TOP-f)",
             "K-Motifs (all)",
-            "LAMA",
-        ], "_distances": [
-            "LAMA",
             "LAMA (cid)",
             "LAMA (ed)",
             "LAMA (cosine)"
         ]
-    }
+
+    results = []
+
+    if all_plot_names is None:
+        all_plot_names = {
+            "_new": [
+                "mSTAMP+MDL",
+                "mSTAMP",
+                "EMD*",
+                "K-Motifs (all)",
+                "LAMA",
+            ], "_distances": [
+                "LAMA",
+                "LAMA (cid)",
+                "LAMA (ed)",
+                "LAMA (cosine)"
+            ]
+        }
+
     if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_audio_"+str(noise_level)
-        output_file = "audio_precision_"+str(noise_level)
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_audio_" + str(noise_level)
+        output_file = "audio_precision_" + str(noise_level)
     else:
         file_prefix = "results_audio"
         output_file = "audio_precision"
@@ -376,7 +383,7 @@ def test_plot_results(plot=True, noise_level=None):
     pd.DataFrame(
         data=np.array(results),
         columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        "results/"+output_file+".csv")
+        "results/" + output_file + ".csv")
 
 
 def plot_spectrogram(audio_file_urls):

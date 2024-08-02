@@ -107,6 +107,7 @@ def test_lama(
         use_PCA=False,
         motifset_name="LAMA",
         distance="znormed_ed",
+        exclusion_range=None,
         plot=True):
     get_ds_parameters(dataset_name)
     audio_length_seconds, df, index_range, ground_truth \
@@ -120,14 +121,15 @@ def test_lama(
     else:
         df_transform = df
 
-    ml = LAMA(ds_name, df_transform,
-              dimension_labels=df.index,
-              distance=distance,
-              n_dims=n_dims,
-              slack=slack,
-              minimize_pairwise_dist=minimize_pairwise_dist,
-              ground_truth=ground_truth,
-              )
+    ml = LAMA(
+        ds_name, df_transform,
+        dimension_labels=df.index,
+        distance=distance,
+        n_dims=n_dims,
+        minimize_pairwise_dist=minimize_pairwise_dist,
+        ground_truth=ground_truth,
+        slack=exclusion_range if exclusion_range else slack
+    )
 
     # learn parameters
     # motif_length, all_minima = ml.fit_motif_length(
@@ -249,25 +251,26 @@ def test_kmotifs(dataset_name="Common-Starling", first_dims=True, plot=True):
     return motif_sets, used_dims
 
 
-def test_publication(plot=False, noise_level=None):
+def test_publication(plot=False, noise_level=None, method_names=None):
     dataset_names = [
         "Common-Starling"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (TOP-f)",
+            "K-Motifs (all)",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
     if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_birdsounds_"+str(noise_level)
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_birdsounds_" + str(noise_level)
     else:
         file_prefix = "results_birdsounds"
 
@@ -285,43 +288,47 @@ def test_publication(plot=False, noise_level=None):
             plot=plot
         )
 
-def test_plot_results(plot=True, noise_level=None):
+
+def test_plot_results(
+        plot=True, noise_level=None, method_names=None, all_plot_names=None):
     dataset_names = [
         "Common-Starling"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
-
-    results = []
-    all_plot_names = {
-        "_new": [
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
             "mSTAMP+MDL",
             "mSTAMP",
             "EMD*",
+            "K-Motifs (TOP-f)",
             "K-Motifs (all)",
-            "LAMA",
-        ], "_distances": [
-            "LAMA",
             "LAMA (cid)",
             "LAMA (ed)",
             "LAMA (cosine)"
         ]
-    }
+
+    results = []
+    if all_plot_names is None:
+        all_plot_names = {
+            "_new": [
+                "mSTAMP+MDL",
+                "mSTAMP",
+                "EMD*",
+                "K-Motifs (all)",
+                "LAMA",
+            ], "_distances": [
+                "LAMA",
+                "LAMA (cid)",
+                "LAMA (ed)",
+                "LAMA (cosine)"
+            ]
+        }
 
     if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_birdsounds_"+str(noise_level)
-        output_file = "birdsounds_precision_"+str(noise_level)
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_birdsounds_" + str(noise_level)
+        output_file = "birdsounds_precision_" + str(noise_level)
     else:
         file_prefix = "results_birdsounds"
         output_file = "birdsounds_precision"
@@ -347,4 +354,4 @@ def test_plot_results(plot=True, noise_level=None):
     pd.DataFrame(
         data=np.array(results),
         columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        "results/"+output_file+".csv")
+        "results/" + output_file + ".csv")

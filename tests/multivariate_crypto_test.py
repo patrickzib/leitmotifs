@@ -8,6 +8,7 @@ from leitmotifs.lama import *
 # Experiment with different noise levels to show robustness of the method
 noise_level = None
 
+
 def normalize(x):
     std = np.std(x)
     mean = np.mean(x)
@@ -75,7 +76,7 @@ def load_crypto():
     df_gt = read_ground_truth("../datasets/crypto/crypto")
 
     if noise_level:
-        print ("Adding noise to the data", noise_level)
+        print("Adding noise to the data", noise_level)
         df = add_gaussian_noise(df, noise_level)
 
     return df, df_gt
@@ -112,6 +113,7 @@ def test_lama(
         use_PCA=False,
         motifset_name="LAMA",
         distance="znormed_ed",
+        exclusion_range=None,
         plot=True):
     get_ds_parameters(dataset_name)
     df, ground_truth = load_crypto()
@@ -124,14 +126,15 @@ def test_lama(
     else:
         df_transform = df
 
-    ml = LAMA(ds_name, df_transform,
-              dimension_labels=df.index,
-              distance=distance,
-              n_dims=n_dims,
-              slack=slack,
-              minimize_pairwise_dist=minimize_pairwise_dist,
-              ground_truth=ground_truth,
-              )
+    ml = LAMA(
+        ds_name, df_transform,
+        dimension_labels=df.index,
+        distance=distance,
+        n_dims=n_dims,
+        ground_truth=ground_truth,
+        minimize_pairwise_dist=minimize_pairwise_dist,
+        slack=exclusion_range if exclusion_range else slack,
+    )
 
     # learn parameters
     # motif_length, all_minima = ml.fit_motif_length(
@@ -204,26 +207,27 @@ def test_kmotifs(dataset_name="Bitcoin-Halving", first_dims=True, plot=True):
     return motif_sets, used_dims
 
 
-def test_publication(plot=True):
+def test_publication(plot=False, method_names=None):
     dataset_names = [
         "Bitcoin-Halving"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (TOP-f)",
+            "K-Motifs (all)",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
 
     if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_stocks_"+str(noise_level)
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_stocks_" + str(noise_level)
     else:
         file_prefix = "results_stocks"
 
@@ -242,43 +246,46 @@ def test_publication(plot=True):
         )
 
 
-def test_plot_results(plot=True):
+def test_plot_results(plot=True, method_names=None, all_plot_names=None):
     dataset_names = [
         "Bitcoin-Halving"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
-
-    results = []
-    all_plot_names = {
-        "_new": [
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
             "mSTAMP+MDL",
             "mSTAMP",
             "EMD*",
+            "K-Motifs (TOP-f)",
             "K-Motifs (all)",
-            "LAMA",
-        ], "_distances": [
-            "LAMA",
             "LAMA (cid)",
             "LAMA (ed)",
             "LAMA (cosine)"
         ]
-    }
+
+    results = []
+
+    if all_plot_names is None:
+        all_plot_names = {
+            "_new": [
+                "mSTAMP+MDL",
+                "mSTAMP",
+                "EMD*",
+                "K-Motifs (all)",
+                "LAMA",
+            ], "_distances": [
+                "LAMA",
+                "LAMA (cid)",
+                "LAMA (ed)",
+                "LAMA (cosine)"
+            ]
+        }
 
     if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_stocks_"+str(noise_level)
-        output_file = "stocks_precision_"+str(noise_level)
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_stocks_" + str(noise_level)
+        output_file = "stocks_precision_" + str(noise_level)
     else:
         file_prefix = "results_stocks"
         output_file = "stocks_precision"
@@ -303,4 +310,4 @@ def test_plot_results(plot=True):
     pd.DataFrame(
         data=np.array(results),
         columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-            "results/"+output_file+".csv")
+        "results/" + output_file + ".csv")

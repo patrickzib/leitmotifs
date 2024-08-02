@@ -10,6 +10,7 @@ mpl.rcParams['figure.dpi'] = 150
 # Experiment with different noise levels to show robustness of the method
 noise_level = None
 
+
 def get_joint_pos_dict(c_joints, c_motion):
     c_joints['root'].set_motion(c_motion)
     out_dict = {}
@@ -57,7 +58,7 @@ def read_motion_dataset(add_xyz=True):
     df.name = ds_name
 
     if noise_level:
-        print ("Adding noise to the data", noise_level)
+        print("Adding noise to the data", noise_level)
         df = add_gaussian_noise(df, noise_level)
 
     return df, df_gt, joints, motions
@@ -281,10 +282,10 @@ def test_ground_truth():
     ml.plot_dataset()
 
 
-#"Boxing",
-#"Swordplay",
-#"Basketball",
-#"Charleston - Side By Side Female"
+# "Boxing",
+# "Swordplay",
+# "Basketball",
+# "Charleston - Side By Side Female"
 
 def test_lama(
         dataset_name="Charleston - Side By Side Female",
@@ -292,6 +293,7 @@ def test_lama(
         use_PCA=False,
         motifset_name="LAMA",
         distance="znormed_ed",
+        exclusion_range=None,
         plot=True):
     get_ds_parameters(dataset_name)
     df, ground_truth, joints, motions = read_motion_dataset()
@@ -315,9 +317,9 @@ def test_lama(
         dimension_labels=df.index,
         distance=distance,
         n_dims=n_dims,
-        slack=slack,
         ground_truth=ground_truth,
-        minimize_pairwise_dist=minimize_pairwise_dist
+        minimize_pairwise_dist=minimize_pairwise_dist,
+        slack=exclusion_range if exclusion_range else slack
     )
 
     # learn parameters
@@ -436,29 +438,30 @@ def generate_gif(motif, m, motions, joints):
             fps=20)
 
 
-def test_publication(plot=False):
+def test_publication(plot=False, method_names=None):
     dataset_names = [
         "Boxing",
         "Swordplay",
         "Basketball",
         "Charleston - Side By Side Female"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (TOP-f)",
+            "K-Motifs (all)",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
 
     if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_motion_"+str(noise_level)
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_motion_" + str(noise_level)
     else:
         file_prefix = "results_motion"
 
@@ -477,7 +480,7 @@ def test_publication(plot=False):
         )
 
 
-def test_plot_results(plot=True):
+def test_plot_results(plot=True, method_names=None, all_plot_names=None):
     dataset_names = [
         "Boxing",
         "Swordplay",
@@ -485,38 +488,41 @@ def test_plot_results(plot=True):
         "Charleston - Side By Side Female"
     ]
 
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)",
-        "LAMA (cid)",
-        "LAMA (ed)",
-        "LAMA (cosine)"
-    ]
-    results = []
-    all_plot_names = {
-        "_new": [
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
             "mSTAMP+MDL",
             "mSTAMP",
             "EMD*",
-            # "K-Motifs (TOP-f)",
+            "K-Motifs (TOP-f)",
             "K-Motifs (all)",
-            "LAMA",
-        ], "_distances": [
-            "LAMA",
             "LAMA (cid)",
             "LAMA (ed)",
             "LAMA (cosine)"
         ]
-    }
+
+    results = []
+    if all_plot_names is None:
+        all_plot_names = {
+            "_new": [
+                "mSTAMP+MDL",
+                "mSTAMP",
+                "EMD*",
+                # "K-Motifs (TOP-f)",
+                "K-Motifs (all)",
+                "LAMA",
+            ], "_distances": [
+                "LAMA",
+                "LAMA (cid)",
+                "LAMA (ed)",
+                "LAMA (cosine)"
+            ]
+        }
     if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_motion_"+str(noise_level)
-        output_file = "motion_precision_"+str(noise_level)
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_motion_" + str(noise_level)
+        output_file = "motion_precision_" + str(noise_level)
     else:
         file_prefix = "results_motion"
         output_file = "motion_precision"
@@ -541,8 +547,7 @@ def test_plot_results(plot=True):
     pd.DataFrame(
         data=np.array(results),
         columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        "results/"+output_file+".csv")
-
+        "results/" + output_file + ".csv")
 
 
 def test_motif_length():
