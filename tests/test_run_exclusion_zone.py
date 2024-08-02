@@ -13,56 +13,43 @@ import multivariate_soundtracks_test as soundtracks
 
 print("Running all tests")
 
-
-# Define the functions to run tests
-def run_test(test_function):
-    test_function(plot=False)
-
-
-# Define the functions to evaluate tests
-def evaluate_test(test_function):
-    test_function(plot=False)
-
-
-# List of test functions
-test_functions = [
-    audio.test_publication,
-    crypto.test_publication,
-    motion.test_publication,
-    physiodata.test_publication,
-    birds.test_publication,
-    soundtracks.test_publication
+method_names = [
+    "LAMA (alpha=0)",
+    "LAMA (alpha=0.25)",
+    "LAMA (alpha=0.5)",
+    "LAMA (alpha=0.75)",
+    "LAMA (alpha=1)"
 ]
 
-# List of evaluation functions
-evaluation_functions = [
-    audio.test_plot_results,
-    crypto.test_plot_results,
-    motion.test_plot_results,
-    physiodata.test_plot_results,
-    birds.test_plot_results,
-    soundtracks.test_plot_results
-]
+all_plot_names = {
+    "_exclusion": [
+        "LAMA (alpha=0)",
+        "LAMA (alpha=0.25)",
+        "LAMA (alpha=0.5)",
+        "LAMA (alpha=0.75)",
+        "LAMA (alpha=1)"
+    ]
+}
 
-# Run all tests in parallel
-Parallel(n_jobs=-1)(delayed(run_test)(func) for func in test_functions)
 
-# Evaluate all tests in parallel
-Parallel(n_jobs=-1)(delayed(evaluate_test)(func) for func in evaluation_functions)
+# Run all tests
+audio.test_publication(method_names=method_names)
+crypto.test_publication(method_names=method_names)
+motion.test_publication(method_names=method_names)
+physiodata.test_publication(method_names=method_names)
+birds.test_publication(method_names=method_names)
+soundtracks.test_publication(method_names=method_names)
 
-#
-# # Run all tests
-# audio.test_publication()
-# crypto.test_publication()
-# motion.test_publication()
-# physiodata.test_publication()
-# birds.test_publication()
-# soundtracks.test_publication()
-#
-# # Evaluate all tests
-# audio.test_plot_results(plot=False)
-# crypto.test_plot_results(plot=False)
-# motion.test_plot_results(plot=False)
-# physiodata.test_plot_results(plot=False)
-# birds.test_plot_results(plot=False)
-# soundtracks.test_plot_results(plot=False)
+# Evaluate all tests
+audio.test_plot_results(
+    plot=False, method_names=method_names, all_plot_names=all_plot_names)
+crypto.test_plot_results(
+    plot=False, method_names=method_names, all_plot_names=all_plot_names)
+motion.test_plot_results(
+    plot=False, method_names=method_names, all_plot_names=all_plot_names)
+physiodata.test_plot_results(
+    plot=False, method_names=method_names, all_plot_names=all_plot_names)
+birds.test_plot_results(
+    plot=False, method_names=method_names, all_plot_names=all_plot_names)
+soundtracks.test_plot_results(
+    plot=False, method_names=method_names, all_plot_names=all_plot_names)
