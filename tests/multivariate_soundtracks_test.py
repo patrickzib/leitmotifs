@@ -147,7 +147,7 @@ channels = [
 
 
 def test_lama(
-        dataset_name="Lord of the Rings Symphony - The Shire",
+        dataset_name="Star Wars - The Imperial March",
         minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
@@ -247,6 +247,19 @@ def test_mstamp(dataset_name="Star Wars - The Imperial March",
     return motif, dims
 
 
+def test_smm(dataset_name="Star Wars - The Imperial March", plot=True):
+    get_ds_parameters(dataset_name)
+    audio_length_seconds, df, index_range, ground_truth \
+        = read_audio_from_dataframe(pandas_file_url, channels)
+
+    motif, dims = load_smm_results(
+        df,
+        ds_name,
+        ground_truth=ground_truth,
+        plot=plot)
+
+    return motif, dims
+
 def test_kmotifs(dataset_name="Lord of the Rings Symphony - The Shire",
                  first_dims=True, plot=True):
     get_ds_parameters(dataset_name)
@@ -318,7 +331,7 @@ def plot_spectrogram(audio_file_urls):
 
 def test_publication(plot=False, noise_level=None, method_names=None):
     dataset_names = [
-        "Star Wars - The Imperial March",
+        # "Star Wars - The Imperial March",
         "Lord of the Rings Symphony - The Shire"
     ]
     if method_names is None:
@@ -330,6 +343,7 @@ def test_publication(plot=False, noise_level=None, method_names=None):
             "EMD*",
             "K-Motifs (TOP-f)",
             "K-Motifs (all)",
+            "SMM",
             "LAMA (cid)",
             "LAMA (ed)",
             "LAMA (cosine)"
@@ -351,6 +365,7 @@ def test_publication(plot=False, noise_level=None, method_names=None):
             test_mstamp=test_mstamp,
             test_emd_pca=test_emd_pca,
             test_kmotifs=test_kmotifs,
+            test_smm=test_smm,
             file_prefix=file_prefix,
             plot=plot
         )
@@ -371,6 +386,7 @@ def test_plot_results(plot=True, noise_level=None, method_names=None, all_plot_n
             "EMD*",
             "K-Motifs (TOP-f)",
             "K-Motifs (all)",
+            "SMM",
             "LAMA (cid)",
             "LAMA (ed)",
             "LAMA (cosine)"
@@ -382,9 +398,11 @@ def test_plot_results(plot=True, noise_level=None, method_names=None, all_plot_n
         all_plot_names = {
             "_new": [
                 "mSTAMP+MDL",
-                "mSTAMP",
+                # "mSTAMP",
                 "EMD*",
                 "K-Motifs (all)",
+                # "K-Motifs (TOP-f)",
+                # "SMM",
                 "LAMA",
             ], "_distances": [
                 "LAMA",

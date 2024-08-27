@@ -272,11 +272,11 @@ def test_kmotifs(dataset_name="The Rolling Stones - Paint It, Black",
 
 def test_publication(plot=False, noise_level=None, method_names=None):
     dataset_names = [
-        # Does not work with the metric "The Rolling Stones - Paint It, Black",
-        "What I've Done - Linkin Park",
-        "Numb - Linkin Park",
-        "Vanilla Ice - Ice Ice Baby",
-        "Queen David Bowie - Under Pressure"
+        "The Rolling Stones - Paint It, Black",
+        #"What I've Done - Linkin Park",
+        #"Numb - Linkin Park",
+        #"Vanilla Ice - Ice Ice Baby",
+        #"Queen David Bowie - Under Pressure"
     ]
     if method_names is None:
         method_names = [
@@ -316,7 +316,7 @@ def test_publication(plot=False, noise_level=None, method_names=None):
 def test_plot_results(plot=True, noise_level=None, method_names=None,
                       all_plot_names=None):
     dataset_names = [
-        # "The Rolling Stones - Paint It, Black",
+        #"The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
         "Numb - Linkin Park",
         "Vanilla Ice - Ice Ice Baby",

@@ -7,7 +7,6 @@ __author__ = ["patrickzib"]
 import time
 
 import matplotlib
-import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -16,7 +15,6 @@ from matplotlib.ticker import MaxNLocator
 from scipy.stats import zscore
 
 import leitmotifs.lama as ml
-from leitmotifs.distances import map_distances
 from leitmotifs.distances import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -399,18 +397,24 @@ def plot_motifsets(
 
     data_index, data_raw = ml.pd_series_to_numpy(data)
 
+    data_raw_sampled, factor = ml._resample(data_raw, sampling_factor=500)
+    data_index_sampled, _ = ml._resample(data_index, sampling_factor=500)
+
+    motifsets = list(map(lambda x: x // factor, motifsets))
+
     color_offset = 1
     offset = 0
     tick_offsets = []
     axes[0, 0].set_title(ds_name, fontsize=22)
 
     for dim in range(data_raw.shape[0]):
-        dim_data_raw = zscore(data_raw[dim])
-        offset -= 1.2 * (np.max(dim_data_raw) - np.min(dim_data_raw))
+        dim_raw = zscore(data_raw[dim])
+        dim_raw_sampled = zscore(data_raw_sampled[dim])
+        offset -= 1.2 * (np.max(dim_raw_sampled) - np.min(dim_raw_sampled))
         tick_offsets.append(offset)
 
-        _ = sns.lineplot(x=data_index,
-                         y=dim_data_raw + offset,
+        _ = sns.lineplot(x=data_index_sampled,
+                         y=dim_raw_sampled + offset,
                          ax=axes[0, 0],
                          linewidth=0.5,
                          # color=sns.color_palette("tab10")[0],
@@ -422,19 +426,27 @@ def plot_motifsets(
 
         if motifsets is not None:
             for i, motifset in enumerate(motifsets):
+                # TODO fixme/hack: pass actual motif length for SMM
+                if motifset_names[i] == "SMM":
+                    motif_length_sampled = max(4, 10 // factor)
+                else:
+                    motif_length_sampled = max(2, motif_length // factor)
+
                 if (leitmotif_dims is None or
                         (leitmotif_dims[i] is not None and dim in leitmotif_dims[i])):
                     if motifset is not None:
                         for a, pos in enumerate(motifset):
+
                             # Do not plot, if all dimensions are covered
-                            if leitmotif_dims is None or leitmotif_dims[i].shape[0] < \
-                                    data.shape[0]:
+                            if ((leitmotif_dims is None or
+                                leitmotif_dims[i].shape[0] < data_raw.shape[0])
+                                    and (pos + motif_length_sampled < dim_raw_sampled.shape[0])):
                                 _ = sns.lineplot(ax=axes[0, 0],
-                                                 x=data_index[
+                                                 x=data_index_sampled[
                                                      np.arange(pos,
-                                                               pos + motif_length)],
-                                                 y=dim_data_raw[
-                                                   pos:pos + motif_length] + offset,
+                                                               pos + motif_length_sampled)],
+                                                 y=dim_raw_sampled[
+                                                   pos:pos + motif_length_sampled] + offset,
                                                  linewidth=3,
                                                  color=sns.color_palette("tab10")[
                                                      (color_offset + i) % len(
@@ -443,19 +455,23 @@ def plot_motifsets(
                                                  # alpha=0.9,
                                                  estimator=None)
 
+                            motif_length_disp = motif_length
+                            if motifset_names[i] == "SMM":
+                                motif_length_disp = 10
+
                             axes[0, 1 + i].set_title(
                                 (("Motif Set " + str(i + 1)) if motifset_names is None
                                  else motifset_names[i % len(motifset_names)]) + "\n" +
                                 "k=" + str(len(motifset)) +
                                 # ", d=" + str(np.round(dist[i], 2)) +
-                                ", l=" + str(motif_length),
+                                ", l=" + str(motif_length_disp),
                                 fontsize=18)
 
                             df = pd.DataFrame()
-                            df["time"] = range(0, motif_length)
+                            df["time"] = range(0, motif_length_disp)
 
                             for aa, pos in enumerate(motifset):
-                                values = dim_data_raw[pos:pos + motif_length]
+                                values = dim_raw[pos:pos + motif_length_disp]
                                 df[str(aa)] = (values - values.mean()) / (
                                         values.std() + 1e-4) + offset
 
@@ -480,47 +496,55 @@ def plot_motifsets(
         for offsets in ground_truth[column]:
             for off in offsets:
                 ratio = 0.8
-                start = off[0]
-                end = off[1]
-                rect = Rectangle(
-                    (data_index[start], 0),
-                    data_index[end - 1] - data_index[start],
-                    ratio,
-                    facecolor=sns.color_palette("tab10")[
-                        (color_offset + motif_set_count + aaa) %
-                        len(sns.color_palette("tab10"))],
-                    alpha=0.7
-                )
+                start = off[0] // factor
+                end = off[1] // factor
+                if end - 1 < dim_raw_sampled.shape[0]:
+                    rect = Rectangle(
+                        (data_index_sampled[start], 0),
+                        data_index_sampled[end - 1] - data_index_sampled[start],
+                        ratio,
+                        facecolor=sns.color_palette("tab10")[
+                            (color_offset + motif_set_count + aaa) %
+                            len(sns.color_palette("tab10"))],
+                        alpha=0.7
+                    )
 
-                rx, ry = rect.get_xy()
-                cx = rx + rect.get_width() / 2.0
-                cy = ry + rect.get_height() / 2.0
-                axes[1, 0].annotate(column, (cx, cy),
-                                    color='black',
-                                    weight='bold',
-                                    fontsize=12,
-                                    ha='center',
-                                    va='center')
+                    rx, ry = rect.get_xy()
+                    cx = rx + rect.get_width() / 2.0
+                    cy = ry + rect.get_height() / 2.0
+                    axes[1, 0].annotate(column, (cx, cy),
+                                        color='black',
+                                        weight='bold',
+                                        fontsize=12,
+                                        ha='center',
+                                        va='center')
 
-                axes[1, 0].add_patch(rect)
+                    axes[1, 0].add_patch(rect)
+
     if ground_truth is not None and len(ground_truth) > 0:
         gt_count = 1
         y_labels.append("Ground Truth")
 
     if motifsets is not None:
         for i, leitmotif in enumerate(motifsets):
+            if motifset_names[i] == "SMM":
+                motif_length_sampled = max(4, 10 // factor)
+            else:
+                motif_length_sampled = max(2, motif_length // factor)
+
             if leitmotif is not None:
                 for pos in leitmotif:
-                    ratio = 0.8
-                    rect = Rectangle(
-                        (data_index[pos], -i - gt_count),
-                        data_index[pos + motif_length - 1] - data_index[pos],
-                        ratio,
-                        facecolor=sns.color_palette("tab10")[
-                            (color_offset + i) % len(sns.color_palette("tab10"))],
-                        alpha=0.7
-                    )
-                    axes[1, 0].add_patch(rect)
+                    if pos + motif_length_sampled - 1 < dim_raw_sampled.shape[0]:
+                        ratio = 0.8
+                        rect = Rectangle(
+                            (data_index_sampled[pos], -i - gt_count),
+                            data_index_sampled[pos + motif_length_sampled - 1] - data_index_sampled[pos],
+                            ratio,
+                            facecolor=sns.color_palette("tab10")[
+                                (color_offset + i) % len(sns.color_palette("tab10"))],
+                            alpha=0.7
+                        )
+                        axes[1, 0].add_patch(rect)
 
                 label = (("Motif Set " + str(i + 1)) if motifset_names is None
                          else motifset_names[i % len(motifset_names)])

@@ -1,7 +1,96 @@
 import stumpy
+import os
+import scipy
 
 from leitmotifs.plotting import *
 from numba import njit
+
+
+def load_smm_results(
+        series,
+        ds_name,
+        ground_truth,
+        plot=True
+):
+
+    dataset_names = [
+        'physio',
+        'Boxing',
+        'Swordplay',
+        'Basketball',
+        'Charleston - Side By Side Female',
+        'crypto',
+        'birds',
+        "What I've Done - Linkin Park",
+        'Numb - Linkin Park',
+        'Vanilla Ice - Ice Ice Baby',
+        'Queen David Bowie - Under Pressure',
+        'The Rolling Stones - Paint It, Black',
+        'Star Wars - The Imperial March',
+        'Lord of the Rings Symphony - The Shire']
+
+    i = dataset_names.index(ds_name) + 1
+    file = "../tests/smm_benchmark/results/1/Motif_"+str(i)+"_DepO_2_DepT_2.mat"
+    if not os.path.exists(file):
+        print(f"The file {file} does not exist.")
+        return
+
+    print(dataset_names[i - 1])
+
+    mat_file = scipy.io.loadmat(file, struct_as_record=False, squeeze_me=True)
+    motif_bag = mat_file["MotifBag"]
+
+    if not isinstance(motif_bag, np.ndarray):
+        motif_bag = [motif_bag]
+
+    best_f_score = 0.0
+    best_motif_set = []
+    best_dims = []
+    best_length = 0
+    precision, recall = 0, 0
+
+    for motif_bag in motif_bag:
+        if motif_bag:
+            startIdx = motif_bag.startIdx
+
+            motif_set = startIdx
+            dims = motif_bag.depd[0] - 1  # matlab uses 1-indexing but python 0-indexing
+            if not isinstance(dims, np.ndarray):
+                dims = [dims]
+
+            length = motif_bag.Tscope[0]
+            if length == 0:
+                length = 1
+
+            precision, recall = compute_precision_recall(
+                np.sort(motif_set), ground_truth.values[0, 0], length)
+
+            f_score = 2 * (precision * recall) / (precision + recall + 1e-8)
+            if f_score > best_f_score:
+                best_f_score = f_score
+                best_motif_set = motif_set
+                best_length = length
+                best_dims = dims
+
+    if len(best_motif_set) > 0:
+        if best_length == 1:
+            best_length = 5
+        print("\t", best_motif_set)
+        print("\t", best_dims)
+        print("\t", best_length)
+
+        if plot:
+            _, znormed_euclidean_distance = plot_motifsets(
+                dataset_names[i - 1],
+                series,
+                motifsets=np.array([best_motif_set]),
+                motifset_names=["SMM"],
+                leitmotif_dims=np.array([best_dims]),
+                motif_length=best_length,
+                ground_truth=ground_truth,
+                show=True)
+
+    return np.array([best_motif_set]), np.array([best_dims])
 
 
 def run_mstamp(df, ds_name, motif_length,
@@ -38,8 +127,8 @@ def run_mstamp(df, ds_name, motif_length,
     print("\tpos:\t", motif)
     print("\tf:  \t", subspaces[k])
 
-    dims = [subspaces[k]]
-    motifs = [[motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]]
+    dims = np.array([subspaces[k]])
+    motifs = np.array([[motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]])
     motifset_names = ["mStamp"]
 
     if plot:
@@ -159,6 +248,7 @@ def run_tests(
         test_mstamp,  # function
         test_emd_pca, # function
         test_kmotifs, # function
+        test_smm,     # function
         file_prefix,
         plot=False,
       ):
@@ -193,6 +283,10 @@ def run_tests(
         motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
         motifs_list.append(motifG)
         dims_list.append(dimsG)
+    if "SMM" in method_names:
+        motifX, dimsX = test_smm(dataset_name, plot=plot)
+        motifs_list.append(motifX)
+        dims_list.append(dimsX)
 
     # Distances
     if "LAMA (cid)" in method_names:
