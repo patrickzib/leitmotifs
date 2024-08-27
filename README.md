@@ -68,6 +68,7 @@ LAMA has a simple OO-API.
     ml = LAMA(
         ds_name,     # Name of the dataset
         series,      # Multidimensional time series
+        distance,    # Distance measure used, default: z-normed ED
         n_dims,      # Number of sub-dimensions to use
         n_jobs,      # number of parallel jobs
     )
@@ -224,12 +225,12 @@ scalability of the LAMA algorithm.
 ## Aggregated Results
 
 
-| Method              |   Mean Precision        |   Median Precision        |  Mean Recall         |   Median Recall        |
+| Method              |   ('Precision', 'mean') |   ('Precision', 'median') |   ('Recall', 'mean') |   ('Recall', 'median') |
 |:--------------------|------------------------:|--------------------------:|---------------------:|-----------------------:|
 | EMD*                |                 59.3 |                   65      |              75.9 |                     80 |
 | K-Motifs (TOP-f)    |                 61.1 |                   70      |              70.8 |                    100 |
-| K-Motifs (all dims) |                 76.8 |                   83.3    |              82.6 |                    100 |
-| SMM                 |                 33.8 |                   27.3    |              70.4 |                    100 |
+| K-Motifs (all dims) |                 76.8 |                   83.3 |              82.6 |                    100 |
+| SMM                 |                 31.8 |                   26.5 |              65.4 |                     95 |
 | mSTAMP              |                 53.8 |                  100      |              36.7 |                     20 |
 | mSTAMP+MDL          |                 46.2 |                    0      |              29.0 |                      0 |
 | LAMA                |                 88.7 |                  100      |              95.1 |                    100 |
@@ -238,11 +239,16 @@ See all results in <a href="notebooks/plot_ground_truth.ipynb">Results Notebook<
 
 ## Notebooks
 
-
 - Jupyter-Notebooks for finding subdimensional Leitmotifs in a multidimensional time series
 <a href="notebooks/use_case.ipynb">Multivariate Use Case</a>:
 highlights a use case used in the paper, and shows the unique ability 
 to learn its parameters from the data and find interesting motif sets.
+
+- Jupter-Notebook showcasing SMM-Results (SMM ran using Matlab): <a href="notebooks/smm_motif_plot.ipynb">SMM-Results</a>.
+
+- Jupter-Notebook showcasing using Leitmotifs for Summarization: <a href="notebooks/har_pamap.ipynb">Summarization</a>.
+
+- Jupter-Notebook showcasing BitCoint-Halving Events: <a href="notebooks/crypto.ipynb">Bitcoin-Halving</a>.
 
 - All other use cases presented in the paper can be found in the <a href="tests">test folder</a>
 
