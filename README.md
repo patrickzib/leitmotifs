@@ -14,7 +14,7 @@ Supporting Material
 
 # Leitmotif Use Case
 
-<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/leitmotifs.png" width="500">
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/leitmotifs.png" width="800">
 
 A **leitmotif** (*leading motif*) is a recurring theme or motif that carries 
 symbolic significance in various forms of art, particularly literature, movies, 
