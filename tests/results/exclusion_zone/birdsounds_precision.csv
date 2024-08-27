@@ -1,0 +1,6 @@
+,Dataset,Method,Precision,Recall
+0,Common-Starling,LAMA (alpha=0),1.0,1.0
+1,Common-Starling,LAMA (alpha=0.25),1.0,1.0
+2,Common-Starling,LAMA (alpha=0.5),1.0,1.0
+3,Common-Starling,LAMA (alpha=0.75),1.0,1.0
+4,Common-Starling,LAMA (alpha=1),1.0,1.0

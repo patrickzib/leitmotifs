@@ -1,12 +1,14 @@
 from matplotlib.animation import FuncAnimation
 
 import amc.amc_parser as amc_parser
-from leitmotifs.plotting import *
-from leitmotifs.lama import read_ground_truth
 import matplotlib as mpl
 from leitmotifs.competitors import *
+from leitmotifs.lama import *
 
 mpl.rcParams['figure.dpi'] = 150
+
+# Experiment with different noise levels to show robustness of the method
+noise_level = None
 
 
 def get_joint_pos_dict(c_joints, c_motion):
@@ -41,9 +43,11 @@ def include_joints(df, include, add_xyz=True):
 
 
 def read_motion_dataset(add_xyz=True):
+    global noise_level
+
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
-    ground_truth = read_ground_truth(amc_path)
+    df_gt = read_ground_truth(amc_path)
     df = pd.DataFrame(
         [get_joint_pos_dict(joints, c_motion) for c_motion in motions]).T
     df = include_joints(exclude_body_joints(df), used_joints, add_xyz=add_xyz)
@@ -53,7 +57,11 @@ def read_motion_dataset(add_xyz=True):
     df.columns = time[:len(df.columns)]
     df.name = ds_name
 
-    return df, ground_truth, joints, motions
+    if noise_level:
+        print("Adding noise to the data", noise_level)
+        df = add_gaussian_noise(df, noise_level)
+
+    return df, df_gt, joints, motions
 
 
 def draw_frame(ax, motions, joints, i, joints_to_highlight=None):
@@ -274,16 +282,18 @@ def test_ground_truth():
     ml.plot_dataset()
 
 
-#"Boxing",
-#"Swordplay",
-#"Basketball",
-#"Charleston - Side By Side Female"
+# "Boxing",
+# "Swordplay",
+# "Basketball",
+# "Charleston - Side By Side Female"
 
 def test_lama(
         dataset_name="Charleston - Side By Side Female",
         minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
+        distance="znormed_ed",
+        exclusion_range=None,
         plot=True):
     get_ds_parameters(dataset_name)
     df, ground_truth, joints, motions = read_motion_dataset()
@@ -305,10 +315,11 @@ def test_lama(
     ml = LAMA(
         amc_name, df_transform,
         dimension_labels=df.index,
+        distance=distance,
         n_dims=n_dims,
-        slack=slack,
         ground_truth=ground_truth,
-        minimize_pairwise_dist=minimize_pairwise_dist
+        minimize_pairwise_dist=minimize_pairwise_dist,
+        slack=exclusion_range if exclusion_range else slack
     )
 
     # learn parameters
@@ -427,132 +438,116 @@ def generate_gif(motif, m, motions, joints):
             fps=20)
 
 
-def test_publication():
+def test_publication(plot=False, method_names=None):
     dataset_names = [
         "Boxing",
         "Swordplay",
         "Basketball",
         "Charleston - Side By Side Female"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)"
-    ]
-    plot = False
-    for dataset_name in dataset_names:
-        motifA, dimsA = test_lama(dataset_name, plot=plot)
-        motifB, dimsB = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
-        motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
-        motifD, dimsD = test_mstamp(dataset_name, plot=plot, use_mdl=False)
-        motifE, dimsE = test_emd_pca(dataset_name, plot=plot)
-        motifF, dimsF = test_kmotifs(dataset_name, first_dims=True, plot=plot)
-        motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (TOP-f)",
+            "K-Motifs (all)",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
 
-        method_names_dims = [name+"_dims" for name in method_names]
-        columns = ["dataset", "k"]
-        columns.extend(method_names)
-        columns.extend(method_names_dims)
-        df = pd.DataFrame(columns=columns)
-
-        for i, k in enumerate(ks):
-            df.loc[len(df.index)] \
-                = [dataset_name, k,
-                   motifA[i].tolist(), motifB[i].tolist(), motifC[0], motifD[0],
-                   motifE[i].tolist(), motifF[i].tolist(), motifG[i].tolist(),
-                   dimsA[i].tolist(), dimsB[i].tolist(), dimsC[0].tolist(), dimsD[0].tolist(),
-                   dimsE[i].tolist(), dimsF[i].tolist(), dimsG[i].tolist()]
-
-        print("--------------------------")
-
-        # from datetime import datetime
-        # currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
-        df.to_parquet(
-            f'results/results_motion_{dataset_name}.gzip',  # _{currentDateTime}
-            compression='gzip')
-
-
-def test_plot_results():
-    dataset_names = [
-        "Boxing",
-        "Swordplay",
-        "Basketball",
-        "Charleston - Side By Side Female"
-    ]
-
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)"
-    ]
-    results = []
+    if noise_level:
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_motion_" + str(noise_level)
+    else:
+        file_prefix = "results_motion"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
-        df, ground_truth, joints, motions = read_motion_dataset()
+        run_tests(
+            dataset_name,
+            ks=ks,
+            method_names=method_names,
+            test_lama=test_lama,
+            test_mstamp=test_mstamp,
+            test_emd_pca=test_emd_pca,
+            test_kmotifs=test_kmotifs,
+            file_prefix=file_prefix,
+            plot=plot
+        )
 
-        df_loc = pd.read_parquet(
-            f"results/results_motion_{dataset_name}.gzip")
 
-        motifs = []
-        dims = []
-        for id in range(df_loc.shape[0]):
-            for motif_method in method_names:
-                motifs.append(df_loc.loc[id][motif_method])
-                dims.append(df_loc.loc[id][motif_method+"_dims"])
+def test_plot_results(plot=True, method_names=None, all_plot_names=None):
+    dataset_names = [
+        "Boxing",
+        "Swordplay",
+        "Basketball",
+        "Charleston - Side By Side Female"
+    ]
 
-        # write results to file
-        for id in range(df_loc.shape[0]):
-            for method, motif_set in zip(
-                    method_names,
-                    motifs[id * len(method_names): (id + 1) * len(method_names)]
-            ):
-                precision, recall = compute_precision_recall(
-                    np.sort(motif_set), ground_truth.values[0, 0], motif_length)
-                results.append([ds_name, method, precision, recall])
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (TOP-f)",
+            "K-Motifs (all)",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
 
-        pd.DataFrame(
-            data=np.array(results),
-            columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-            "results/motion_precision.csv")
-
-        print(results)
-
-        if True:
-            plot_names = [
+    results = []
+    if all_plot_names is None:
+        all_plot_names = {
+            "_new": [
                 "mSTAMP+MDL",
                 "mSTAMP",
                 "EMD*",
                 # "K-Motifs (TOP-f)",
                 "K-Motifs (all)",
                 "LAMA",
+            ], "_distances": [
+                "LAMA",
+                "LAMA (cid)",
+                "LAMA (ed)",
+                "LAMA (cosine)"
             ]
+        }
+    if noise_level:
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_motion_" + str(noise_level)
+        output_file = "motion_precision_" + str(noise_level)
+    else:
+        file_prefix = "results_motion"
+        output_file = "motion_precision"
 
-            # FIXME this will not work with multiple motifsets
-            positions = [method_names.index(name) for name in plot_names]
-            out_path = "results/images/" + dataset_name + "_new.pdf"
-            plot_motifsets(
-                ds_name,
-                df,
-                motifsets=[motifs[pos] for pos in positions],
-                leitmotif_dims=[dims[pos] for pos in positions],
-                motifset_names=plot_names,
-                motif_length=motif_length,
-                ground_truth=ground_truth,
-                show=out_path is None)
+    for dataset_name in dataset_names:
+        get_ds_parameters(dataset_name)
+        df, ground_truth, joints, motions = read_motion_dataset()
 
-            if out_path is not None:
-                plt.savefig(out_path)
-                plt.show()
+        eval_tests(
+            dataset_name,
+            ds_name,
+            df,
+            method_names,
+            motif_length,
+            ground_truth,
+            all_plot_names,
+            file_prefix,
+            results,
+            plot=plot
+        )
 
+    pd.DataFrame(
+        data=np.array(results),
+        columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
+        "results/" + output_file + ".csv")
 
 
 def test_motif_length():

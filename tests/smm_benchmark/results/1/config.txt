@@ -1,0 +1,10 @@
+    DeOctTime = USER_OT_targhet;
+    DeOctDepd = USER_OD_targhet;
+    DeLevelTime = 4;
+    DeLevelDepd = 4;
+    DeSigmaDepd = 0.5;
+    DeSigmaTime = 4*sqrt(2)/2;
+    thresh = 0.04 / DeLevelTime / 2;
+    DeGaussianThres = 0.1; % TRESHOLD with the normalization of hte distance matrix should be  between 0 and 1
+    DeSpatialBins = 4; %NUMBER OF BINs
+    r = 10; %5 threshould variates

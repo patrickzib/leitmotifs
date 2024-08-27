@@ -1,0 +1,11 @@
+,Dataset,Method,Precision,Recall
+0,Bitcoin-Halving,LAMA,0.6666666666666666,0.6666666666666666
+1,Bitcoin-Halving,LAMA (naive),0.3333333333333333,0.3333333333333333
+2,Bitcoin-Halving,mSTAMP+MDL,0.0,0.0
+3,Bitcoin-Halving,mSTAMP,0.0,0.0
+4,Bitcoin-Halving,EMD*,0.6666666666666666,0.6666666666666666
+5,Bitcoin-Halving,K-Motifs (TOP-f),0.3333333333333333,0.3333333333333333
+6,Bitcoin-Halving,K-Motifs (all),0.3333333333333333,0.3333333333333333
+7,Bitcoin-Halving,LAMA (cid),0.3333333333333333,0.3333333333333333
+8,Bitcoin-Halving,LAMA (ed),0.0,0.0
+9,Bitcoin-Halving,LAMA (cosine),0.0,0.0

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Compute leitmotifs using LAMA.
-
-
 """
 
 __author__ = ["patrickzib"]
@@ -10,7 +8,7 @@ from ast import literal_eval
 from os.path import exists
 import os
 
-import numpy as np
+# import numpy as np
 import numpy.fft as fft
 import pandas as pd
 from numba import njit, prange, objmode, types
@@ -18,6 +16,8 @@ from numba.typed import Dict, List
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
 from tqdm.auto import tqdm
+
+from leitmotifs.distances import *
 
 
 def _resample(data, sampling_factor=10000):
@@ -65,20 +65,44 @@ def read_ground_truth(dataset):
         A series of ground-truth data
 
     """
-    file = os.path.splitext(dataset)[0] + "_gt.csv"
+    if "_gt.csv" not in dataset:
+        file = os.path.splitext(dataset)[0] + "_gt.csv"
+    else:
+        file = os.path.splitext(dataset)[0]
+
     if exists(file):
-        print(file)
+        # print(file)
         series = pd.read_csv(file, index_col=0)
 
         for i in range(0, series.shape[0]):
             series.iloc[i] = series.iloc[i].apply(literal_eval)
 
         return series
+    else:
+        print("No ground truth found for ", dataset)
     return None
+
+#######################
+# TODO remove - only for noise experiments
+noise_level = None
+
+def add_gaussian_noise(df, noise_level=None):
+    if noise_level:
+        df_noisy = df.copy()
+        for col in df_noisy.columns:
+            std_dev = df_noisy[col].std()
+            noise = np.random.normal(0, std_dev * noise_level, df_noisy[col].shape)
+            df_noisy[col] += noise
+        return df_noisy
+    else:
+        return df
+
+#######################
 
 
 def read_audio_from_dataframe(pandas_file_url, channels=None):
     """Reads a time series with an index (e.g. time) from a CSV with MFCC features."""
+    global noise_level
 
     df = pd.read_csv(pandas_file_url, index_col=0, compression='gzip')
     audio_length_seconds = 2 * float(df.columns[-1]) - float(df.columns[-2])
@@ -86,9 +110,13 @@ def read_audio_from_dataframe(pandas_file_url, channels=None):
     if channels:
         df = df.loc[channels]
 
-    ground_truth = read_ground_truth(pandas_file_url)
+    df_gt = read_ground_truth(pandas_file_url)
 
-    return audio_length_seconds, df, np.float64(df.columns), ground_truth
+    if noise_level:         # TODO only for experiments
+        print("Adding noise to the data", noise_level)
+        df = add_gaussian_noise(df, noise_level)
+
+    return audio_length_seconds, df, np.float64(df.columns), df_gt
 
 
 def read_dataset_with_index(dataset, sampling_factor=10000):
@@ -124,8 +152,7 @@ def read_dataset_with_index(dataset, sampling_factor=10000):
     if gt is not None:
         if factor > 1:
             for column in gt:
-                gt[column] = gt[column].transform(
-                    lambda l: (np.array(l)) // factor)
+                gt[column] = gt[column].transform(lambda l: (np.array(l)) // factor)
         return data, gt
     else:
         return data
@@ -157,7 +184,11 @@ def pd_series_to_numpy(data):
     else:
         data_raw = data
         data_index = np.arange(data.shape[-1])
-    return data_index.astype(np.float64), data_raw.astype(np.float64, copy=False)
+
+    try:
+        return (data_index.astype(np.float64), data_raw.astype(np.float64, copy=False))
+    except TypeError:  # datetime index cannot be cast to float64
+        return (data_index, data_raw.astype(np.float64, copy=False))
 
 
 def read_dataset(dataset, sampling_factor=10000):
@@ -230,45 +261,6 @@ def _sliding_dot_product(query, time_series):
     return dot_product[trim:]
 
 
-@njit(fastmath=True, cache=True)
-def _sliding_mean_std(ts, m):
-    """Computes the incremental mean, std, given a time series and windows of length m.
-
-    Computes a total of n-m+1 sliding mean and std-values.
-
-    This implementation is efficient and in O(n), given TS length n.
-
-    Parameters
-    ----------
-    ts : array-like
-        The time series
-    m : int
-        The length of the sliding window to compute std and mean over.
-
-    Returns
-    -------
-    Tuple
-        movmean : array-like
-            The n-m+1 mean values
-        movstd : array-like
-            The n-m+1 std values
-    """
-    # if isinstance(ts, pd.Series):
-    #     ts = ts.to_numpy()
-    s = np.concatenate((np.zeros(1, dtype=np.float64), np.cumsum(ts)))
-    sSq = np.concatenate((np.zeros(1, dtype=np.float64), np.cumsum(ts ** 2)))
-    segSum = s[m:] - s[:-m]
-    segSumSq = sSq[m:] - sSq[:-m]
-
-    movmean = segSum / m
-
-    # avoid dividing by too small std, like 0
-    movstd = np.sqrt(np.clip(segSumSq / m - (segSum / m) ** 2, 0, None))
-    movstd = np.where(np.abs(movstd) < 0.1, 1, movstd)
-
-    return [movmean, movstd]
-
-
 @njit(fastmath=True, cache=True, parallel=True)
 def compute_distance_matrix(time_series,
                             m,
@@ -277,7 +269,10 @@ def compute_distance_matrix(time_series,
                             compute_knns=True,
                             n_jobs=4,
                             slack=0.5,
-                            sum_dims=True):
+                            sum_dims=True,
+                            distance=znormed_euclidean_distance,
+                            distance_preprocessing=sliding_mean_std
+                            ):
     """ Compute the full Distance Matrix between all pairs of subsequences of a
         multivariate time series.
 
@@ -306,6 +301,10 @@ def compute_distance_matrix(time_series,
         sum_dims : bool
             Sum distances overa ll dimensions into one row for
             multidimensional time series
+        distance: callable
+                The distance function to be computed.
+        distance_preprocessing: callable
+                The distance preprocessing function to be computed.
 
         Returns
         -------
@@ -330,7 +329,6 @@ def compute_distance_matrix(time_series,
             knns = np.zeros((dims, 1, 1), dtype=np.int32)
     else:
         D_all = np.zeros((dims, n, n), dtype=np.float32)
-
         if compute_knns:
             knns = np.zeros((dims, n, k), dtype=np.int32)
         else:
@@ -346,7 +344,8 @@ def compute_distance_matrix(time_series,
 
         for d in np.arange(dims):
             ts = time_series[d, :]
-            means, stds = _sliding_mean_std(ts, m)
+            # means, stds = _sliding_mean_std(ts, m)
+            preprocessing = distance_preprocessing(ts, m)
             dot_first = _sliding_dot_product(ts[:m], ts)
 
             dot_prev = None
@@ -361,7 +360,7 @@ def compute_distance_matrix(time_series,
                                  - ts[order - 1] * np.roll(ts[:n], 1)
                     dot_rolled[0] = dot_first[order]
 
-                dist = distance(dot_rolled, n, m, means, stds, order, halve_m)
+                dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
                 if sum_dims:
                     D_all[0, order] += dist
                 else:
@@ -389,12 +388,16 @@ def compute_distance_matrix(time_series,
 
 
 @njit(fastmath=True, cache=True, parallel=True)
-def compute_distance_matrix_sparse(time_series,
-                                   m,
-                                   k,
-                                   exclude_trivial_match=True,
-                                   n_jobs=4,
-                                   slack=0.5):
+def compute_distance_matrix_sparse(
+        time_series,
+        m,
+        k,
+        exclude_trivial_match=True,
+        n_jobs=4,
+        slack=0.5,
+        distance=znormed_euclidean_distance,
+        distance_preprocessing=sliding_mean_std
+    ):
     """ Compute the full Distance Matrix between all pairs of subsequences of a
         multivariate time series.
 
@@ -420,6 +423,10 @@ def compute_distance_matrix_sparse(time_series,
         slack: float
             Defines an exclusion zone around each subsequence to avoid trivial matches.
             Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+        distance: callable
+                The distance function to be computed.
+        distance_preprocessing: callable
+                The distance preprocessing function to be computed.
 
         Returns
         -------
@@ -456,7 +463,8 @@ def compute_distance_matrix_sparse(time_series,
     # first pass, computing the k-nns
     for d in range(dims):
         ts = time_series[d, :]
-        means, stds = _sliding_mean_std(ts, m)
+        # means, stds = _sliding_mean_std(ts, m)
+        preprocessing = distance_preprocessing(ts, m)
 
         dot_first = _sliding_dot_product(ts[:m], ts)
         bin_size = ts.shape[0] // n_jobs
@@ -476,7 +484,7 @@ def compute_distance_matrix_sparse(time_series,
                                  - ts[order - 1] * np.roll(ts[:n], 1)
                     dot_rolled[0] = dot_first[order]
 
-                dist = distance(dot_rolled, n, m, means, stds, order, halve_m)
+                dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
                 dot_prev = dot_rolled
 
                 knn = _argknn(dist, k, m, slack=slack)
@@ -511,7 +519,8 @@ def compute_distance_matrix_sparse(time_series,
     # second pass, filling only the pairs needed
     for d in range(dims):
         ts = time_series[d, :]
-        means, stds = _sliding_mean_std(ts, m)
+        # means, stds = _sliding_mean_std(ts, m)
+        preprocessing = distance_preprocessing(ts, m)
 
         dot_first = _sliding_dot_product(ts[:m], ts)
         bin_size = ts.shape[0] // n_jobs
@@ -531,7 +540,7 @@ def compute_distance_matrix_sparse(time_series,
                                  - ts[order - 1] * np.roll(ts[:n], 1)
                     dot_rolled[0] = dot_first[order]
 
-                dist = distance(dot_rolled, n, m, means, stds, order, halve_m)
+                dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
                 dot_prev = dot_rolled
 
                 # fill the knns now with the distances computed
@@ -539,23 +548,6 @@ def compute_distance_matrix_sparse(time_series,
                     D_sparse[d][order][key] = dist[key]
 
     return D_knn, D_sparse, knns
-
-
-@njit(fastmath=True, cache=True)
-def distance(dot_rolled, n, m, means, stds, order, halve_m):
-    # Implementation of z-normalized Euclidean distance
-    dist = 2 * m * (1 - (dot_rolled - m * means * means[order]) / (
-            m * stds * stds[order]))
-
-    # self-join: exclusion zone
-    trivialMatchRange = (max(0, order - halve_m),
-                         min(order + halve_m, n))
-    dist[trivialMatchRange[0]:trivialMatchRange[1]] = np.inf
-
-    # allow subsequenceg itself to be in result
-    dist[order] = 0
-
-    return dist
 
 
 @njit(fastmath=True, cache=True)
@@ -868,7 +860,6 @@ def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
             m2 = (dists[i] - dists[i - 1]) + 0.00001
 
             # avoid detecting elbows in near constant data
-            # TODO adding this removes reproducability
             if dists[i - 1] == dists[i]:
                 m2 = 1.0  # peaks[i] = 0
 
@@ -898,7 +889,9 @@ def select_subdimensions(
         minimize_pairwise_dist=False,
         n_jobs=4,
         elbow_deviation=1.00,
-        slack=0.5):
+        slack=0.5,
+        distance=znormed_euclidean_distance,
+        distance_preprocessing=sliding_mean_std):
     """Findes the optimal number of dimensions
 
     Parameters
@@ -920,6 +913,10 @@ def select_subdimensions(
     slack : float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+    distance: callable
+        The distance function to be computed.
+    distance_preprocessing: callable
+        The distance preprocessing function to be computed.
 
     Returns
     -------
@@ -958,7 +955,9 @@ def select_subdimensions(
                 minimize_pairwise_dist=minimize_pairwise_dist,
                 D_full=D_full,
                 knns=knns,  # reuse distances from last runs
-                n_jobs=n_jobs
+                n_jobs=n_jobs,
+                distance=distance,
+                distance_preprocessing=distance_preprocessing
             )
 
             elbow_points = _filter_unique(elbow_points, candidates, motif_length)
@@ -983,7 +982,10 @@ def find_au_ef_motif_length(
         n_jobs=4,
         elbow_deviation=1.00,
         slack=0.5,
-        subsample=2):
+        subsample=2,
+        distance=znormed_euclidean_distance,
+        distance_preprocessing=sliding_mean_std
+    ):
     """Computes the Area under the Elbow-Function within an of motif lengths.
 
     Parameters
@@ -1005,6 +1007,10 @@ def find_au_ef_motif_length(
     slack: float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+    distance: callable
+        The distance function to be computed.
+    distance_preprocessing: callable
+        The distance preprocessing function to be computed.
 
     Returns
     -------
@@ -1047,7 +1053,10 @@ def find_au_ef_motif_length(
                 n_jobs=n_jobs,
                 elbow_deviation=elbow_deviation,
                 minimize_pairwise_dist=minimize_pairwise_dist,
-                slack=slack)
+                slack=slack,
+                distance=distance,
+                distance_preprocessing=distance_preprocessing
+            )
 
             dists_ = dist[(~np.isinf(dist)) & (~np.isnan(dist))]
             # dists_ = dists_[:min(elbow_points[-1] + 1, len(dists_))]
@@ -1107,6 +1116,8 @@ def search_leitmotifs_elbow(
         knns=None,
         minimize_pairwise_dist=False,
         n_jobs=4,
+        distance=znormed_euclidean_distance,
+        distance_preprocessing=sliding_mean_std
 ):
     """Computes the elbow-function.
 
@@ -1136,7 +1147,10 @@ def search_leitmotifs_elbow(
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
     n_jobs : int
         Number of jobs to be used.
-
+    distance: callable
+            The distance function to be computed.
+    distance_preprocessing: callable
+            The distance preprocessing function to be computed.
 
     Returns
     -------
@@ -1171,7 +1185,7 @@ def search_leitmotifs_elbow(
 
     # compute the distance matrix
     if D_full is None:
-        if minimize_pairwise_dist: # FIXME: find better name
+        if minimize_pairwise_dist:  # FIXME: find better name
             # this has the drawback, that each pair of subsequences may
             # have different smallest dimensions
 
@@ -1181,7 +1195,10 @@ def search_leitmotifs_elbow(
                 compute_knns=False,
                 n_jobs=n_jobs,
                 slack=slack,
-                sum_dims=False)
+                sum_dims=False,
+                distance=distance,
+                distance_preprocessing=distance_preprocessing,
+            )
 
             D_full = np.sort(D_full, axis=0)[:n_dims].sum(axis=0, dtype=np.float32)
             knns = _argknns(D_full, k_max_, m, n, slack)
@@ -1193,14 +1210,20 @@ def search_leitmotifs_elbow(
             D_knns, D_full, knns = compute_distance_matrix_sparse(
                 data_raw, m, k_max_,
                 n_jobs=n_jobs,
-                slack=slack)
+                slack=slack,
+                distance=distance,
+                distance_preprocessing=distance_preprocessing
+            )
         else:
-            print("Using Default Backend", flush=True)
+            # print("Using Default Backend", flush=True)
             D_full, knns = compute_distance_matrix(
                 data_raw, m, k_max_,
                 n_jobs=n_jobs,
                 slack=slack,
-                sum_dims=sum_dims)
+                sum_dims=sum_dims,
+                distance=distance,
+                distance_preprocessing=distance_preprocessing
+            )
 
     # non-overlapping motifs only
     k_leitmotif_distances = np.zeros(k_max_ + 1)
@@ -1255,7 +1278,7 @@ def search_leitmotifs_elbow(
     k_leitmotif_distances[0:2] = k_leitmotif_distances[2]
     for i in range(len(k_leitmotif_distances), 2):
         k_leitmotif_distances[i - 1] = min(k_leitmotif_distances[i],
-                                          k_leitmotif_distances[i - 1])
+                                           k_leitmotif_distances[i - 1])
 
     elbow_points = find_elbow_points(k_leitmotif_distances,
                                      elbow_deviation=elbow_deviation)

@@ -12,7 +12,6 @@ path_to_wav = "../../motiflets_use_cases/audio/"
 path = "../datasets/audio/"
 write_audio = False
 
-
 datasets = {
     "Numb - Linkin Park": {
         "ks": [5],
@@ -71,6 +70,7 @@ datasets = {
     }
 }
 
+
 # dataset = datasets["The Rolling Stones - Paint It, Black"]
 # dataset = datasets["What I've Done - Linkin Park"]
 # dataset = datasets["Numb - Linkin Park"]
@@ -102,8 +102,9 @@ channels = ['MFCC 0', 'MFCC 1', 'MFCC 2', 'MFCC 3', 'MFCC 4',
             ]
 
 
-
 def test_learn_parameters():
+    dataset_name = "Vanilla Ice - Ice Ice Baby"
+    get_ds_parameters(dataset_name)
     audio_length_seconds, df, index_range, ground_truth \
         = read_audio_from_dataframe(pandas_file_url)
 
@@ -144,11 +145,11 @@ def test_learn_parameters():
                     length_in_seconds, index_range, m, motiflet, id=(a + 1))
 
 
-def test_publication():
-    test_lama()
-    test_emd_pca()
-    test_mstamp()
-    test_kmotifs()
+# def test_publication():
+#     test_lama()
+#     test_emd_pca()
+#     test_mstamp()
+#     test_kmotifs()
 
 
 def test_lama(
@@ -156,6 +157,8 @@ def test_lama(
         minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
+        distance="znormed_ed",
+        exclusion_range=None,
         plot=True):
     get_ds_parameters(dataset_name)
     audio_length_seconds, df, index_range, ground_truth \
@@ -172,10 +175,11 @@ def test_lama(
     ml = LAMA(
         ds_name, df_transform,
         dimension_labels=df.index,
+        distance=distance,
         n_dims=n_dims,
         ground_truth=ground_truth,
         minimize_pairwise_dist=minimize_pairwise_dist,
-        slack=slack
+        slack=exclusion_range if exclusion_range else slack
     )
 
     # motif_length_range = np.int32(motif_length_range_in_s /
@@ -266,136 +270,120 @@ def test_kmotifs(dataset_name="The Rolling Stones - Paint It, Black",
     return motif_sets, used_dims
 
 
-def test_publication():
-    dataset_names = [
-        # Does not work with the metric "The Rolling Stones - Paint It, Black",
-        "What I've Done - Linkin Park",
-        "Numb - Linkin Park",
-        "Vanilla Ice - Ice Ice Baby",
-        "Queen David Bowie - Under Pressure"
-    ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)"
-    ]
-    plot = False
-    for dataset_name in dataset_names:
-        motifA, dimsA = test_lama(dataset_name, plot=plot)
-        motifB, dimsB = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
-        motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
-        motifD, dimsD = test_mstamp(dataset_name, plot=plot, use_mdl=False)
-        motifE, dimsE = test_emd_pca(dataset_name, plot=plot)
-        motifF, dimsF = test_kmotifs(dataset_name, first_dims=True, plot=plot)
-        motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
-
-        method_names_dims = [name+"_dims" for name in method_names]
-        columns = ["dataset", "k"]
-        columns.extend(method_names)
-        columns.extend(method_names_dims)
-        df = pd.DataFrame(columns=columns)
-
-        for i, k in enumerate(ks):
-            df.loc[len(df.index)] \
-                = [dataset_name, k,
-                   motifA[i].tolist(), motifB[i].tolist(), motifC[0], motifD[0],
-                   motifE[i].tolist(), motifF[i].tolist(), motifG[i].tolist(),
-                   dimsA[i].tolist(), dimsB[i].tolist(), dimsC[0].tolist(), dimsD[0].tolist(),
-                   dimsE[i].tolist(), dimsF[i].tolist(), dimsG[i].tolist()]
-
-        # from datetime import datetime
-        # currentDateTime = datetime.now().strftime("%m-%d-%Y-%H-%M-%S")
-        df.to_parquet(
-            f'results/results_audio_{dataset_name}.gzip',  # _{currentDateTime}
-            compression='gzip')
-
-
-def test_plot_results():
+def test_publication(plot=False, noise_level=None, method_names=None):
     dataset_names = [
         "The Rolling Stones - Paint It, Black",
+        #"What I've Done - Linkin Park",
+        #"Numb - Linkin Park",
+        #"Vanilla Ice - Ice Ice Baby",
+        #"Queen David Bowie - Under Pressure"
+    ]
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (TOP-f)",
+            "K-Motifs (all)",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
+
+    if noise_level:
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_audio_" + str(noise_level)
+    else:
+        file_prefix = "results_audio"
+
+    for dataset_name in dataset_names:
+        get_ds_parameters(dataset_name)
+        run_tests(
+            dataset_name,
+            ks=ks,
+            method_names=method_names,
+            test_lama=test_lama,
+            test_mstamp=test_mstamp,
+            test_emd_pca=test_emd_pca,
+            test_kmotifs=test_kmotifs,
+            file_prefix=file_prefix,
+            plot=plot
+        )
+
+
+def test_plot_results(plot=True, noise_level=None, method_names=None,
+                      all_plot_names=None):
+    dataset_names = [
+        #"The Rolling Stones - Paint It, Black",
         "What I've Done - Linkin Park",
         "Numb - Linkin Park",
         "Vanilla Ice - Ice Ice Baby",
         "Queen David Bowie - Under Pressure"
     ]
-    method_names = [
-        "LAMA",
-        "LAMA (naive)",
-        "mSTAMP+MDL",
-        "mSTAMP",
-        "EMD*",
-        "K-Motifs (TOP-f)",
-        "K-Motifs (all)"
-    ]
+    if method_names is None:
+        method_names = [
+            "LAMA",
+            "LAMA (naive)",
+            "mSTAMP+MDL",
+            "mSTAMP",
+            "EMD*",
+            "K-Motifs (TOP-f)",
+            "K-Motifs (all)",
+            "LAMA (cid)",
+            "LAMA (ed)",
+            "LAMA (cosine)"
+        ]
+
     results = []
+
+    if all_plot_names is None:
+        all_plot_names = {
+            "_new": [
+                "mSTAMP+MDL",
+                "mSTAMP",
+                "EMD*",
+                "K-Motifs (all)",
+                "LAMA",
+            ], "_distances": [
+                "LAMA",
+                "LAMA (cid)",
+                "LAMA (ed)",
+                "LAMA (cosine)"
+            ]
+        }
+
+    if noise_level:
+        print("Adding noise to the data", noise_level)
+        file_prefix = "results_audio_" + str(noise_level)
+        output_file = "audio_precision_" + str(noise_level)
+    else:
+        file_prefix = "results_audio"
+        output_file = "audio_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
         audio_length_seconds, df, index_range, ground_truth \
             = read_audio_from_dataframe(pandas_file_url, channels)
 
-        df_loc = pd.read_parquet(
-            f"results/results_audio_{dataset_name}.gzip")
+        eval_tests(
+            dataset_name,
+            ds_name,
+            df,
+            method_names,
+            motif_length,
+            ground_truth,
+            all_plot_names,
+            file_prefix,
+            results,
+            plot=plot
+        )
 
-        motifs = []
-        dims = []
-        for id in range(df_loc.shape[0]):
-            for motif_method in method_names:
-                motifs.append(df_loc.loc[id][motif_method])
-                dims.append(df_loc.loc[id][motif_method + "_dims"])
-
-        # write results to file
-        for id in range(df_loc.shape[0]):
-            for method, motif_set in zip(
-                    method_names,
-                    motifs[id * len(method_names): (id + 1) * len(method_names)]
-            ):
-                precision, recall = compute_precision_recall(
-                    np.sort(motif_set), ground_truth.values[0, 0], motif_length)
-                results.append([ds_name, method, precision, recall])
-
-        pd.DataFrame(
-            data=np.array(results),
-            columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-            "results/audio_precision.csv")
-
-        print(results)
-
-        if True:
-            plot_names = [
-                "mSTAMP+MDL",
-                "mSTAMP",
-                "EMD*",
-                "K-Motifs (all)",
-                "LAMA",
-            ]
-
-            motifset_names = []
-            positions = []
-
-            for a, id in enumerate(range(df_loc.shape[0])):  # last index
-                motifset_names.extend(method_names)
-                pos = np.array([method_names.index(name) for name in plot_names])
-                positions.extend(pos + len(method_names) * a)
-
-            out_path = "results/images/" + dataset_name + "_new.pdf"
-            plot_motifsets(
-                ds_name,
-                df,
-                motifsets=[motifs[pos] for pos in positions],
-                leitmotif_dims=[dims[pos] for pos in positions],
-                motifset_names=plot_names,
-                motif_length=motif_length,
-                ground_truth=ground_truth,
-                show=out_path is None)
-
-            if out_path is not None:
-                plt.savefig(out_path)
-                plt.show()
+    pd.DataFrame(
+        data=np.array(results),
+        columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
+        "results/" + output_file + ".csv")
 
 
 def plot_spectrogram(audio_file_urls):

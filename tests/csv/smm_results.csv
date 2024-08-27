@@ -1,0 +1,15 @@
+Dataset,Precision,Recall
+physio,0,0
+Boxing,0.46875,0.9
+Swordplay,0,0
+Basketball,0.5,0.2
+Charleston - Side By Side Female,1.0,1.0
+crypto,0.0,0.0
+birds,0.2,0.25
+What I've Done - Linkin Park,0.3684210526315789,1.0
+Numb - Linkin Park,0.22857142857142856,0.8
+Vanilla Ice - Ice Ice Baby,0.49122807017543857,1.0
+Queen David Bowie - Under Pressure,0.24761904761904763,1.0
+"The Rolling Stones - Paint It, Black",0.21359223300970873,1.0
+Star Wars - The Imperial March,0.2727272727272727,1.0
+Lord of the Rings Symphony - The Shire,0.4,1.0

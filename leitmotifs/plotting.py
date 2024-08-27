@@ -7,7 +7,6 @@ __author__ = ["patrickzib"]
 import time
 
 import matplotlib
-import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -16,13 +15,55 @@ from matplotlib.ticker import MaxNLocator
 from scipy.stats import zscore
 
 import leitmotifs.lama as ml
+from leitmotifs.distances import *
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 
 
 class LAMA:
+    """
+        Class implementing the LAMA.
 
+        Parameters
+        ----------
+        ds_name : str
+            Name of the dataset.
+        series : array-like
+            The time series data.
+        minimize_pairwise_dist: bool (default=False)
+            If True, the pairwise distance is minimized. This is the mStamp-approach.
+            It has the potential drawback, that each pair of subsequences may have
+            different smallest dimensions.
+        ground_truth : pd.Series
+            Ground-truth information as pd.Series.
+        dimension_labels : array-like (default=None)
+            Labels used for the dimensions' axis for plotting.
+            If None, numeric indices are used.
+        elbow_deviation : float, optional (default=1.00)
+            The minimal absolute deviation needed to detect an elbow.
+            It measures the absolute change in deviation from k to k+1.
+            1.05 corresponds to 5% increase in deviation.
+        n_dims : int, optional (default=2)
+            The number of dimensions to be used in the subdimensional motif discovery.
+        distance: str (default="znormed_ed")
+            The name of the distance function to be computed.
+            Available options are:
+                - 'znormed_ed' or 'znormed_euclidean' for z-normalized ED
+                - 'ed' or 'euclidean' for the "normal" ED.
+        n_jobs : int, optional (default=1)
+            Amount of threads used in the k-nearest neighbour calculation.
+        slack: float, optional (default=0.5)
+            Defines an exclusion zone around each subsequence to avoid trivial matches.
+            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+
+        Methods
+        -------
+        fit(time_series)
+            Fit the KSN model to the input time series data.
+        constrain(self, lbound, ubound)
+            Return a constrained KSN model for the given temporal constraint.
+        """
     def __init__(
             self,
             ds_name,
@@ -32,6 +73,7 @@ class LAMA:
             dimension_labels=None,
             elbow_deviation=1.00,
             n_dims=None,
+            distance="znormed_ed",
             n_jobs=4,
             slack=0.5
     ) -> None:
@@ -43,6 +85,9 @@ class LAMA:
         self.dimension_labels = dimension_labels
         self.ground_truth = ground_truth
         self.minimize_pairwise_dist = minimize_pairwise_dist
+
+        # distance function used
+        self.distance_preprocessing, self.distance = map_distances(distance)
 
         self.motif_length_range = None
         self.motif_length = 0
@@ -98,7 +143,10 @@ class LAMA:
             plot_motif=plot_motifsets,
             ground_truth=self.ground_truth,
             plot=plot,
-            plot_best_only=plot_best_only)
+            plot_best_only=plot_best_only,
+            distance=self.distance,
+            distance_preprocessing=self.distance_preprocessing
+        )
 
         return self.motif_length, self.all_extrema
 
@@ -131,7 +179,9 @@ class LAMA:
             minimize_pairwise_dist=self.minimize_pairwise_dist,
             n_jobs=self.n_jobs,
             elbow_deviation=self.elbow_deviation,
-            slack=self.slack
+            slack=self.slack,
+            distance=self.distance,
+            distance_preprocessing=self.distance_preprocessing
         )
 
         return self.dists, self.leitmotifs, self.elbow_points
@@ -153,6 +203,8 @@ class LAMA:
             n_jobs=self.n_jobs,
             elbow_deviation=self.elbow_deviation,
             slack=self.slack,
+            distance=self.distance,
+            distance_preprocessing=self.distance_preprocessing
         )
 
         fig, ax = plt.subplots(figsize=(10, 4))
@@ -199,7 +251,7 @@ class LAMA:
             motifsets=self.leitmotifs[elbow_points],
             leitmotif_dims=self.leitmotifs_dims[elbow_points],
             motifset_names=motifset_names,
-            dist=self.dists[elbow_points],
+            # dist=self.dists[elbow_points],
             ground_truth=self.ground_truth,
             motif_length=self.motif_length,
             show=path is None)
@@ -345,18 +397,24 @@ def plot_motifsets(
 
     data_index, data_raw = ml.pd_series_to_numpy(data)
 
+    data_raw_sampled, factor = ml._resample(data_raw, sampling_factor=500)
+    data_index_sampled, _ = ml._resample(data_index, sampling_factor=500)
+
+    motifsets = list(map(lambda x: x // factor, motifsets))
+
     color_offset = 1
     offset = 0
     tick_offsets = []
     axes[0, 0].set_title(ds_name, fontsize=22)
 
     for dim in range(data_raw.shape[0]):
-        dim_data_raw = zscore(data_raw[dim])
-        offset -= 1.2 * (np.max(dim_data_raw) - np.min(dim_data_raw))
+        dim_raw = zscore(data_raw[dim])
+        dim_raw_sampled = zscore(data_raw_sampled[dim])
+        offset -= 1.2 * (np.max(dim_raw_sampled) - np.min(dim_raw_sampled))
         tick_offsets.append(offset)
 
-        _ = sns.lineplot(x=data_index,
-                         y=dim_data_raw + offset,
+        _ = sns.lineplot(x=data_index_sampled,
+                         y=dim_raw_sampled + offset,
                          ax=axes[0, 0],
                          linewidth=0.5,
                          # color=sns.color_palette("tab10")[0],
@@ -368,19 +426,27 @@ def plot_motifsets(
 
         if motifsets is not None:
             for i, motifset in enumerate(motifsets):
+                # TODO fixme/hack: pass actual motif length for SMM
+                if motifset_names[i] == "SMM":
+                    motif_length_sampled = max(4, 10 // factor)
+                else:
+                    motif_length_sampled = max(2, motif_length // factor)
+
                 if (leitmotif_dims is None or
                         (leitmotif_dims[i] is not None and dim in leitmotif_dims[i])):
                     if motifset is not None:
                         for a, pos in enumerate(motifset):
+
                             # Do not plot, if all dimensions are covered
-                            if leitmotif_dims is None or leitmotif_dims[i].shape[0] < \
-                                    data.shape[0]:
+                            if ((leitmotif_dims is None or
+                                leitmotif_dims[i].shape[0] < data_raw.shape[0])
+                                    and (pos + motif_length_sampled < dim_raw_sampled.shape[0])):
                                 _ = sns.lineplot(ax=axes[0, 0],
-                                                 x=data_index[
+                                                 x=data_index_sampled[
                                                      np.arange(pos,
-                                                               pos + motif_length)],
-                                                 y=dim_data_raw[
-                                                   pos:pos + motif_length] + offset,
+                                                               pos + motif_length_sampled)],
+                                                 y=dim_raw_sampled[
+                                                   pos:pos + motif_length_sampled] + offset,
                                                  linewidth=3,
                                                  color=sns.color_palette("tab10")[
                                                      (color_offset + i) % len(
@@ -389,19 +455,23 @@ def plot_motifsets(
                                                  # alpha=0.9,
                                                  estimator=None)
 
+                            motif_length_disp = motif_length
+                            if motifset_names[i] == "SMM":
+                                motif_length_disp = 10
+
                             axes[0, 1 + i].set_title(
                                 (("Motif Set " + str(i + 1)) if motifset_names is None
                                  else motifset_names[i % len(motifset_names)]) + "\n" +
                                 "k=" + str(len(motifset)) +
                                 # ", d=" + str(np.round(dist[i], 2)) +
-                                ", l=" + str(motif_length),
+                                ", l=" + str(motif_length_disp),
                                 fontsize=18)
 
                             df = pd.DataFrame()
-                            df["time"] = range(0, motif_length)
+                            df["time"] = range(0, motif_length_disp)
 
                             for aa, pos in enumerate(motifset):
-                                values = dim_data_raw[pos:pos + motif_length]
+                                values = dim_raw[pos:pos + motif_length_disp]
                                 df[str(aa)] = (values - values.mean()) / (
                                         values.std() + 1e-4) + offset
 
@@ -426,46 +496,55 @@ def plot_motifsets(
         for offsets in ground_truth[column]:
             for off in offsets:
                 ratio = 0.8
-                start = off[0]
-                end = off[1]
-                rect = Rectangle(
-                    (data_index[start], 0),
-                    data_index[end - 1] - data_index[start],
-                    ratio,
-                    facecolor=sns.color_palette("tab10")[
-                        (color_offset + motif_set_count + aaa) %
-                        len(sns.color_palette("tab10"))],
-                    alpha=0.7
-                )
+                start = off[0] // factor
+                end = off[1] // factor
+                if end - 1 < dim_raw_sampled.shape[0]:
+                    rect = Rectangle(
+                        (data_index_sampled[start], 0),
+                        data_index_sampled[end - 1] - data_index_sampled[start],
+                        ratio,
+                        facecolor=sns.color_palette("tab10")[
+                            (color_offset + motif_set_count + aaa) %
+                            len(sns.color_palette("tab10"))],
+                        alpha=0.7
+                    )
 
-                rx, ry = rect.get_xy()
-                cx = rx + rect.get_width() / 2.0
-                cy = ry + rect.get_height() / 2.0
-                axes[1, 0].annotate(column, (cx, cy),
-                                    color='black',
-                                    weight='bold',
-                                    fontsize=12,
-                                    ha='center', va='center')
+                    rx, ry = rect.get_xy()
+                    cx = rx + rect.get_width() / 2.0
+                    cy = ry + rect.get_height() / 2.0
+                    axes[1, 0].annotate(column, (cx, cy),
+                                        color='black',
+                                        weight='bold',
+                                        fontsize=12,
+                                        ha='center',
+                                        va='center')
 
-                axes[1, 0].add_patch(rect)
+                    axes[1, 0].add_patch(rect)
+
     if ground_truth is not None and len(ground_truth) > 0:
         gt_count = 1
         y_labels.append("Ground Truth")
 
     if motifsets is not None:
         for i, leitmotif in enumerate(motifsets):
+            if motifset_names[i] == "SMM":
+                motif_length_sampled = max(4, 10 // factor)
+            else:
+                motif_length_sampled = max(2, motif_length // factor)
+
             if leitmotif is not None:
                 for pos in leitmotif:
-                    ratio = 0.8
-                    rect = Rectangle(
-                        (data_index[pos], -i - gt_count),
-                        data_index[pos + motif_length - 1] - data_index[pos],
-                        ratio,
-                        facecolor=sns.color_palette("tab10")[
-                            (color_offset + i) % len(sns.color_palette("tab10"))],
-                        alpha=0.7
-                    )
-                    axes[1, 0].add_patch(rect)
+                    if pos + motif_length_sampled - 1 < dim_raw_sampled.shape[0]:
+                        ratio = 0.8
+                        rect = Rectangle(
+                            (data_index_sampled[pos], -i - gt_count),
+                            data_index_sampled[pos + motif_length_sampled - 1] - data_index_sampled[pos],
+                            ratio,
+                            facecolor=sns.color_palette("tab10")[
+                                (color_offset + i) % len(sns.color_palette("tab10"))],
+                            alpha=0.7
+                        )
+                        axes[1, 0].add_patch(rect)
 
                 label = (("Motif Set " + str(i + 1)) if motifset_names is None
                          else motifset_names[i % len(motifset_names)])
@@ -476,6 +555,8 @@ def plot_motifsets(
         axes[1, 0].set_yticklabels(y_labels, fontsize=18)
         axes[1, 0].set_ylim([-abs(len(y_labels)) + 1, 1])
         axes[1, 0].set_xlim(axes[0, 0].get_xlim())
+        axes[1, 0].set_xticklabels([])
+        axes[1, 0].set_xticks([])
 
         if motifsets is not None:
             axes[1, 0].set_title("Positions", fontsize=22)
@@ -544,10 +625,10 @@ def _plot_elbow_points(
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     plt.scatter(elbow_points, dists[elbow_points], color="red", label="Minima")
 
-    leitmotifs = motifset_candidates[elbow_points]
+    # leitmotifs = motifset_candidates[elbow_points]
 
     plt.tight_layout()
-    plt.savefig("lord_of_the_rings_elbow_points.pdf")
+    # plt.savefig("lord_of_the_rings_elbow_points.pdf")
     plt.show()
 
 
@@ -564,7 +645,10 @@ def plot_elbow(k_max,
                filter=True,
                n_jobs=4,
                elbow_deviation=1.00,
-               slack=0.5):
+               slack=0.5,
+               distance=znormed_euclidean_distance,
+               distance_preprocessing=sliding_mean_std
+               ):
     """Plots the elbow-plot for leitmotifs.
 
     This is the method to find and plot the characteristic leitmotifs within range
@@ -603,6 +687,10 @@ def plot_elbow(k_max,
     slack : float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+    distance: callable
+        The distance function to be computed.
+    distance_preprocessing: callable
+        The distance preprocessing function to be computed.
 
     Returns
     -------
@@ -632,11 +720,14 @@ def plot_elbow(k_max,
         filter=filter,
         n_jobs=n_jobs,
         minimize_pairwise_dist=minimize_pairwise_dist,
-        slack=slack)
+        slack=slack,
+        distance=distance,
+        distance_preprocessing=distance_preprocessing
+    )
     endTime = (time.perf_counter() - startTime)
 
-    print("Chosen window-size:", m, "in", np.round(endTime, 1), "s")
-    print("Elbow Points", elbow_points)
+    print("Window-size:", m)
+    print("Elbow Points", elbow_points, " found in", np.round(endTime, 1), "s")
 
     if plot_elbows:
         _plot_elbow_points(
@@ -650,6 +741,7 @@ def plot_elbow(k_max,
             motifsets=candidates[elbow_points],
             leitmotif_dims=candidate_dims[elbow_points],
             motif_length=motif_length,
+            ground_truth=ground_truth,
             show=True)
 
         # plot_grid_leitmotifs(
@@ -676,6 +768,8 @@ def plot_motif_length_selection(
         plot_best_only=True,
         plot_elbows=True,
         plot_motif=True,
+        distance=znormed_euclidean_distance,
+        distance_preprocessing=sliding_mean_std
 ):
     """Computes the AU_EF plot to extract the best motif lengths
 
@@ -703,6 +797,10 @@ def plot_motif_length_selection(
     slack : float
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+    distance: callable
+        The distance function to be computed.
+    distance_preprocessing: callable
+        The distance preprocessing function to be computed.
 
     Returns
     -------
@@ -736,7 +834,10 @@ def plot_motif_length_selection(
             n_jobs=n_jobs,
             elbow_deviation=elbow_deviation,
             slack=slack,
-            subsample=subsample)
+            subsample=subsample,
+            distance=distance,
+            distance_preprocessing=distance_preprocessing
+        )
     endTime = (time.perf_counter() - startTime)
     print("\tTime", np.round(endTime, 1), "s")
 
