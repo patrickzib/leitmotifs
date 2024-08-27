@@ -28,7 +28,7 @@ channels arranged by Howard Shore for Lord of the Rings. The suite opens and end
 the Hobbits' leitmotif, which is played by a solo tin whistle, and manifests in a 
 distinct pattern in several, but not all channels of the piece.
 
-Our LAMA (in purple) is the only method to correctly identify **4** 
+Our LAMA (in brown) is the only method to correctly identify **4** 
 occurrences within the leitmotif using a distinctive subset of channels. 
 Other than EMD*, LAMA's occurrences show high pairwise similarity, too.
 
