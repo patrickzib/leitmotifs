@@ -1,7 +1,7 @@
 [project]
 name = "leitmotif"
 
-version = "0.2.0"
+version = "0.2.1"
 
 description = "Discovering Leitmotifs in Multidimensional Time Series"
 readme = "README.md"
@@ -49,6 +49,7 @@ dependencies = [
     "seaborn>=0.11.2",
     "tqdm>=4.63.0",
     "matplotlib>=3.5.1",
+    "tsdownsample>=0.1.3"
 ]
 
 [project.urls]

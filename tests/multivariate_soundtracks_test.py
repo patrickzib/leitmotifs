@@ -147,7 +147,7 @@ channels = [
 
 
 def test_lama(
-        dataset_name="Star Wars - The Imperial March",
+        dataset_name="Lord of the Rings Symphony - The Shire",
         minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
@@ -191,7 +191,7 @@ def test_lama(
     dists, motif_sets, elbow_points = ml.fit_k_elbow(
         k_max=k_max,
         motif_length=motif_length,
-        plot_elbows=False,
+        plot_elbows=True,
         plot_motifsets=False,
     )
     if plot:
@@ -386,7 +386,7 @@ def test_plot_results(plot=True, noise_level=None, method_names=None, all_plot_n
             "EMD*",
             "K-Motifs (TOP-f)",
             "K-Motifs (all)",
-            "SMM",
+            # "SMM",
             "LAMA (cid)",
             "LAMA (ed)",
             "LAMA (cosine)"

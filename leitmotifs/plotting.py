@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import zscore
+from tsdownsample import MinMaxLTTBDownsampler
 
 import leitmotifs.lama as ml
 from leitmotifs.distances import *
@@ -396,11 +397,21 @@ def plot_motifsets(
         ground_truth = []
 
     data_index, data_raw = ml.pd_series_to_numpy(data)
+    # data_raw_sampled, factor = ml._resample(data_raw, sampling_factor=500)
+    # data_index_sampled, _ = ml._resample(data_index, sampling_factor=500)
 
-    data_raw_sampled, factor = ml._resample(data_raw, sampling_factor=500)
-    data_index_sampled, _ = ml._resample(data_index, sampling_factor=500)
+    data_raw_sampled, data_index_sampled = data_raw, data_index
 
-    motifsets = list(map(lambda x: x // factor, motifsets))
+    if data_raw.shape[-1] > 1000:
+        data_raw_sampled = np.zeros((data_raw.shape[0], 1000))
+        for i in range(data_raw.shape[0]):
+            data_index_sampled = MinMaxLTTBDownsampler().downsample(
+                np.ascontiguousarray(data_raw[i]), n_out=1000)
+            data_raw_sampled[i] = data_raw[i, data_index_sampled]
+
+        factor = max(1, data_raw.shape[-1] / data_raw_sampled.shape[-1])
+        if motifsets is not None:
+            motifsets = list(map(lambda x: np.int32(x // factor), motifsets))
 
     color_offset = 1
     offset = 0
@@ -430,23 +441,21 @@ def plot_motifsets(
                 # if motifset_names[i] == "SMM":
                 #    motif_length_sampled = max(4, 10 // factor)
                 # else:
-                motif_length_sampled = max(2, motif_length // factor)
+                motif_length_sampled = np.int32(max(2, motif_length // factor))
 
                 if (leitmotif_dims is None or
                         (leitmotif_dims[i] is not None and dim in leitmotif_dims[i])):
                     if motifset is not None:
                         for a, pos in enumerate(motifset):
-
                             # Do not plot, if all dimensions are covered
                             if ((leitmotif_dims is None or
                                 leitmotif_dims[i].shape[0] < data_raw.shape[0])
                                     and (pos + motif_length_sampled < dim_raw_sampled.shape[0])):
                                 _ = sns.lineplot(ax=axes[0, 0],
                                                  x=data_index_sampled[
-                                                     np.arange(pos,
-                                                               pos + motif_length_sampled)],
+                                                     pos : pos + motif_length_sampled],
                                                  y=dim_raw_sampled[
-                                                   pos:pos + motif_length_sampled] + offset,
+                                                     pos : pos + motif_length_sampled] + offset,
                                                  linewidth=3,
                                                  color=sns.color_palette("tab10")[
                                                      (color_offset + i) % len(
@@ -496,8 +505,8 @@ def plot_motifsets(
         for offsets in ground_truth[column]:
             for off in offsets:
                 ratio = 0.8
-                start = off[0] // factor
-                end = off[1] // factor
+                start = np.int32(off[0] // factor)
+                end = np.int32(off[1] // factor)
                 if end - 1 < dim_raw_sampled.shape[0]:
                     rect = Rectangle(
                         (data_index_sampled[start], 0),
@@ -530,7 +539,7 @@ def plot_motifsets(
             # if motifset_names[i] == "SMM":
             #     motif_length_sampled = max(4, 10 // factor)
             # else:
-            motif_length_sampled = max(2, motif_length // factor)
+            motif_length_sampled = np.int32(max(2, motif_length // factor))
 
             if leitmotif is not None:
                 for pos in leitmotif:
