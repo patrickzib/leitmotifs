@@ -35,7 +35,7 @@ dataset_names = [
 scores = {}
 # Load the .mat file
 
-root_directory = "smm_benchmark/results/"
+root_directory = "results/smm_benchmark/results/"
 for dirpath, dirnames, filenames in os.walk(root_directory):
     for dirname in dirnames:
         path = os.path.join(dirpath, dirname)
@@ -45,8 +45,9 @@ for dirpath, dirnames, filenames in os.walk(root_directory):
             file_path = Path(os.path.join(path, "config.txt"))
             # print(file_path.read_text())
 
-            series = pd.read_csv("smm_benchmark/" + str(i) + ".csv", header=None).T
-            df_gt = read_ground_truth("../notebooks/smm_results/lama_benchmark/" + str(i) + ".csv")
+            series_path = "../datasets/benchmark/" + str(i) + ".csv"
+            series = pd.read_csv(series_path, header=None).T
+            df_gt = read_ground_truth(series_path)
             file = path + "/Motif_" + str(i) + "_DepO_2_DepT_2.mat"
 
             # only for plotting
