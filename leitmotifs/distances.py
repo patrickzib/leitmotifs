@@ -165,10 +165,12 @@ def znormed_euclidean_distance(dot_rolled, n, m, preprocessing, order, halve_m):
 _DISTANCE_MAPPING = {
     "znormed_euclidean": (sliding_mean_std, znormed_euclidean_distance),
     "znormed_ed": (sliding_mean_std, znormed_euclidean_distance),
+
     "ed": (sliding_csum, euclidean_distance),
     "euclidean": (sliding_csum, euclidean_distance),
+
     "cosine": (sliding_csum, cosine_distance),
-    "CID": (sliding_csum, complexity_invariant_distance),
+    "CID": (sliding_csum_dcsum, complexity_invariant_distance),
     "cid": (sliding_csum_dcsum, complexity_invariant_distance)
 }
 
