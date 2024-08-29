@@ -225,7 +225,7 @@ scalability of the LAMA algorithm.
 ## Aggregated Results
 
 
-| Method              |   ('Precision', 'mean') |   ('Precision', 'median') |   ('Recall', 'mean') |   ('Recall', 'median') |
+| Method              |   Precision, mean |   Precision, median |   Recall, mean |   Recall, median |
 |:--------------------|------------------------:|--------------------------:|---------------------:|-----------------------:|
 | EMD*                |                 59.3 |                   65      |              75.9 |                     80 |
 | K-Motifs (TOP-f)    |                 61.1 |                   70      |              70.8 |                    100 |
