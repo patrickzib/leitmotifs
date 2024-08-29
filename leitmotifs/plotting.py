@@ -427,10 +427,10 @@ def plot_motifsets(
         if motifsets is not None:
             for i, motifset in enumerate(motifsets):
                 # TODO fixme/hack: pass actual motif length for SMM
-                if motifset_names[i] == "SMM":
-                    motif_length_sampled = max(4, 10 // factor)
-                else:
-                    motif_length_sampled = max(2, motif_length // factor)
+                # if motifset_names[i] == "SMM":
+                #    motif_length_sampled = max(4, 10 // factor)
+                # else:
+                motif_length_sampled = max(2, motif_length // factor)
 
                 if (leitmotif_dims is None or
                         (leitmotif_dims[i] is not None and dim in leitmotif_dims[i])):
@@ -456,8 +456,8 @@ def plot_motifsets(
                                                  estimator=None)
 
                             motif_length_disp = motif_length
-                            if motifset_names[i] == "SMM":
-                                motif_length_disp = 10
+                            # if motifset_names[i] == "SMM":
+                            #    motif_length_disp = 10
 
                             axes[0, 1 + i].set_title(
                                 (("Motif Set " + str(i + 1)) if motifset_names is None
@@ -527,10 +527,10 @@ def plot_motifsets(
 
     if motifsets is not None:
         for i, leitmotif in enumerate(motifsets):
-            if motifset_names[i] == "SMM":
-                motif_length_sampled = max(4, 10 // factor)
-            else:
-                motif_length_sampled = max(2, motif_length // factor)
+            # if motifset_names[i] == "SMM":
+            #     motif_length_sampled = max(4, 10 // factor)
+            # else:
+            motif_length_sampled = max(2, motif_length // factor)
 
             if leitmotif is not None:
                 for pos in leitmotif:
