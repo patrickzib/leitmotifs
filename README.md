@@ -3,7 +3,7 @@
 This page was built in support of our paper "Discovering Leitmotifs in Multidimensional 
 Time Series" by Patrick Schäfer and Ulf Leser.
 
-A leitmotif is a recurring theme in literature, movies or music that carries symbolic significance for the piece it is contained in. When this piece can be represented as a multi-dimensional time series (MDTS), such as acoustic or visual observations, finding a leitmotif is equivalent to the pattern discovery problem, which is an unsupervised and complex problem in time series analytics. Compared to the univariate case, it carries additional complexity because patterns typically do not occur in all dimensions but only in a few - which are, however, unknown and must be detected by the method itself. In this paper, we present the novel, efficient and highly effective leitmotif discovery algorithm LAMA for MDTS. LAMA rests on two core principals: (a) a leitmotif manifests solely given a yet unknown number of sub-dimensions - neither too few, nor too many, and (b) the set of sub-dimensions are not independent from the best pattern found therein, necessitating both problems to be approached in a joint manner. In contrast to all previous methods, LAMA is the first to tackle both problems jointly - instead of first selecting dimensions (or leitmotifs) and then finding the best leitmotifs (or dimensions). 
+A leitmotif is a recurring theme in literature, movies or music that carries symbolic significance for the piece it is contained in. When this piece can be represented as a multi-dimensional time series (MDTS), such as acoustic or visual observations, finding a leitmotif is equivalent to the pattern discovery problem, which is an unsupervised and complex problem in time series analytics. Compared to the univariate case, it carries additional complexity because patterns typically do not occur in all dimensions but only in a few - which are, however, unknown and must be detected by the method itself. In this paper, we present the novel, efficient and highly effective leitmotif discovery algorithm **LAMA** for MDTS. **LAMA** rests on two core principals: (a) a leitmotif manifests solely given a yet unknown number of sub-dimensions - neither too few, nor too many, and (b) the set of sub-dimensions are not independent from the best pattern found therein, necessitating both problems to be approached in a joint manner. In contrast to all previous methods, **LAMA** is the first to tackle both problems jointly - instead of first selecting dimensions (or leitmotifs) and then finding the best leitmotifs (or dimensions). 
 
 Supporting Material
 - `tests`: Please see the python tests for use cases
@@ -12,7 +12,7 @@ Supporting Material
 - `leitmotifs`: Code implementing multidimensonal leitmotif discovery using LAMA
 - `datasets`: Use cases in the paper
 
-# Leitmotif Use Case
+# Mining Leitmotifs - Use Case
 
 <img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/leitmotifs.png" width="800">
 
@@ -28,7 +28,7 @@ channels arranged by Howard Shore for Lord of the Rings. The suite opens and end
 the Hobbits' leitmotif, which is played by a solo tin whistle, and manifests in a 
 distinct pattern in several, but not all channels of the piece.
 
-Our LAMA (in brown) is the only method to correctly identify **4** 
+Our **LAMA (in brown)** is the only method to correctly identify **4** 
 occurrences within the leitmotif using a distinctive subset of channels. 
 Other than EMD*, LAMA's occurrences show high pairwise similarity, too.
 
@@ -55,16 +55,16 @@ Change into the directory and build the package from source.
 pip install .
 ```
 
-# Usage
+# Usage of LAMA
 
-The parameters of LAMA are:
-
+The three hyper-parameters of **LAMA** are:
 - *n_dims* : Number of subdimensions to use
 - *k_max* : The largest expected number of repeats. LAMA will search from  to  for motif sets
-- *motif_length_range*
+- *motif_length_range*: The range of lengths to test
 
 LAMA has a simple OO-API.
 
+```python
     ml = LAMA(
         ds_name,     # Name of the dataset
         series,      # Multidimensional time series
@@ -72,6 +72,7 @@ LAMA has a simple OO-API.
         n_dims,      # Number of sub-dimensions to use
         n_jobs,      # number of parallel jobs
     )
+```
   
 LAMA has a unique feature to automatically find suitable values for the motif length  and set size  so, that meaningful Leitmotifs of an input TS can be found without domain knowledge. The methods for determining values for  and  are based on an analysis of the extent function for different .
 
@@ -79,6 +80,7 @@ LAMA has a unique feature to automatically find suitable values for the motif le
 
 To learn the motif length, we may simply call:
 
+```python
     ml.fit_motif_length(
         k_max,               # expected number of repeats
         motif_length_range,  # motif length range
@@ -86,19 +88,23 @@ To learn the motif length, we may simply call:
         plot_elbows,         # Create an elbow plot 
         plot_motifsets,      # Plot the found motif sets
         plot_best_only       # Plot only the motif sets of the optimal length. Otherwise plot all local optima in lengths
-    )    
+    )
+```
+    
 To do variable length motif discovery simply set plot_best_only=False
 
 ## Learning the number of repeats
 
 To do an elbow plot, and learn the number of repeats of the motif, we may simply call:
 
+```python
     ml.fit_k_elbow(
         k_max,                # expected number of repeats
         motif_length,         # motif length to use
         plot_elbows,          # Plot the elbow plot
         plot_motifsets        # Plot the found motif sets
     )
+```
     
 # Use Cases
 
