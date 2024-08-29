@@ -402,16 +402,17 @@ def plot_motifsets(
 
     data_raw_sampled, data_index_sampled = data_raw, data_index
 
-    if data_raw.shape[-1] > 1000:
-        data_raw_sampled = np.zeros((data_raw.shape[0], 1000))
+    if data_raw.shape[-1] > 500:
+        data_raw_sampled = np.zeros((data_raw.shape[0], 500))
         for i in range(data_raw.shape[0]):
-            data_index_sampled = MinMaxLTTBDownsampler().downsample(
-                np.ascontiguousarray(data_raw[i]), n_out=1000)
-            data_raw_sampled[i] = data_raw[i, data_index_sampled]
+            index = MinMaxLTTBDownsampler().downsample(
+                np.ascontiguousarray(data_raw[i]), n_out=500)
+            data_raw_sampled[i] = data_raw[i, index]
 
+        data_index_sampled = data_index[index]
         factor = max(1, data_raw.shape[-1] / data_raw_sampled.shape[-1])
         if motifsets is not None:
-            motifsets = list(map(lambda x: np.int32(x // factor), motifsets))
+            motifsets_sampled = list(map(lambda x: np.int32(x // factor), motifsets))
 
     color_offset = 1
     offset = 0
@@ -436,11 +437,11 @@ def plot_motifsets(
         sns.despine()
 
         if motifsets is not None:
-            for i, motifset in enumerate(motifsets):
+            for i, motifset in enumerate(motifsets_sampled):
                 # TODO fixme/hack: pass actual motif length for SMM
-                # if motifset_names[i] == "SMM":
-                #    motif_length_sampled = max(4, 10 // factor)
-                # else:
+                #if motifset_names[i] == "SMM":
+                #   motif_length_sampled = max(4, 10 // factor)
+                #else:
                 motif_length_sampled = np.int32(max(2, motif_length // factor))
 
                 if (leitmotif_dims is None or
@@ -465,8 +466,8 @@ def plot_motifsets(
                                                  estimator=None)
 
                             motif_length_disp = motif_length
-                            # if motifset_names[i] == "SMM":
-                            #    motif_length_disp = 10
+                            #if motifset_names[i] == "SMM":
+                            #   motif_length_disp = 10
 
                             axes[0, 1 + i].set_title(
                                 (("Motif Set " + str(i + 1)) if motifset_names is None
@@ -479,7 +480,7 @@ def plot_motifsets(
                             df = pd.DataFrame()
                             df["time"] = range(0, motif_length_disp)
 
-                            for aa, pos in enumerate(motifset):
+                            for aa, pos in enumerate(motifsets[i]):
                                 values = dim_raw[pos:pos + motif_length_disp]
                                 df[str(aa)] = (values - values.mean()) / (
                                         values.std() + 1e-4) + offset
@@ -535,10 +536,10 @@ def plot_motifsets(
         y_labels.append("Ground Truth")
 
     if motifsets is not None:
-        for i, leitmotif in enumerate(motifsets):
-            # if motifset_names[i] == "SMM":
-            #     motif_length_sampled = max(4, 10 // factor)
-            # else:
+        for i, leitmotif in enumerate(motifsets_sampled):
+            #if motifset_names[i] == "SMM":
+            #    motif_length_sampled = max(4, 10 // factor)
+            #else:
             motif_length_sampled = np.int32(max(2, motif_length // factor))
 
             if leitmotif is not None:

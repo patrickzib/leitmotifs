@@ -30,7 +30,7 @@ def load_smm_results(
         'Lord of the Rings Symphony - The Shire']
 
     i = dataset_names.index(ds_name) + 1
-    file = "../tests/smm_benchmark/results/1/Motif_"+str(i)+"_DepO_2_DepT_2.mat"
+    file = "../tests/results/smm_benchmark/results/1/Motif_"+str(i)+"_DepO_2_DepT_2.mat"
     if not os.path.exists(file):
         print(f"The file {file} does not exist.")
         return
