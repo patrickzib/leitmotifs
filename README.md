@@ -14,8 +14,6 @@ Supporting Material
 
 # Mining Leitmotifs - Use Case
 
-<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/leitmotifs.png" width="800">
-
 A **leitmotif** (*leading motif*) is a recurring theme or motif that carries 
 symbolic significance in various forms of art, particularly literature, movies, 
 and music. The distinct feature of any leitmotif is that humans associate them to 
@@ -26,7 +24,16 @@ A genre that often uses leitmotifs are soundtracks, for instance in the composit
 Hans Zimmer or Howard Shore. The above figure shows a suite from *The Shire* with 14 
 channels arranged by Howard Shore for Lord of the Rings. The suite opens and ends with 
 the Hobbits' leitmotif, which is played by a solo tin whistle, and manifests in a 
-distinct pattern in several, but not all channels of the piece.
+distinct pattern in several, but not all channels of the piece. 
+
+You may listen to the song on youtube - starting from second ~6, the tin whistle leitmotif 
+is played twice, and the same theme is repeated after 2 minutes in the song: 
+
+[![The Shire](https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/hobbit_theme.jpg)](http://www.youtube.com/watch?v=SRgBI0WqWp4&t=7s "Video Title")
+
+The result of leitmotif discovery is shown next:
+
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/leitmotifs.png" width="800">
 
 Our **LAMA (in brown)** is the only method to correctly identify **4** 
 occurrences within the leitmotif using a distinctive subset of channels. 
