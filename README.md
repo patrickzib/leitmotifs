@@ -33,7 +33,7 @@ is played twice, and the same theme is repeated after 2 minutes into the song:
 
 The result of leitmotif discovery is shown next:
 
-<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/leitmotifs.png" width="800">
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/leitmotifs.png" width="100%">
 
 Our **LAMA (in brown)** is the only method to correctly identify **4** 
 occurrences within the leitmotif using a distinctive subset of channels. 
@@ -82,7 +82,7 @@ LAMA has a simple OO-API.
 ```
 
 The result will look like this, indicating the found motif set to the right, its dimensions and the k locations to the bottom.
-<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/lotr-motifset-lama.png" width="600">
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/lotr-motifset-lama.png" width="100%">
 
 LAMA has a unique feature to automatically find suitable values for the motif length  and set size  so, that meaningful Leitmotifs of an input TS can be found without domain knowledge. The methods for determining values for $k$ and $l$ are based on an analysis of the extent function for different input value ranges.
 
