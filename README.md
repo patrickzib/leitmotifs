@@ -77,7 +77,7 @@ LAMA has a simple OO-API.
 The result will look like this, indicating the found motif set to the right, its dimensions and the k locations to the bottom.
 <img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/lotr-motifset-lama.png" width="600">
 
-LAMA has a unique feature to automatically find suitable values for the motif length  and set size  so, that meaningful Leitmotifs of an input TS can be found without domain knowledge. The methods for determining values for  and  are based on an analysis of the extent function for different .
+LAMA has a unique feature to automatically find suitable values for the motif length  and set size  so, that meaningful Leitmotifs of an input TS can be found without domain knowledge. The methods for determining values for $k$ and $l$ are based on an analysis of the extent function for different input value ranges.
 
 ## Learning the Leitmotif length 
 
