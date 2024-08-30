@@ -74,10 +74,8 @@ LAMA has a simple OO-API.
     )
 ```
 
-The result will look like this, indicating the found motif sets, dimensions and the locations.
-<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/lotr-motifset.png" width="800">
-
-
+The result will look like this, indicating the found motif set to the right, its dimensions and the k locations to the bottom.
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/lotr-motifset-lama.png" width="600">
 
 LAMA has a unique feature to automatically find suitable values for the motif length  and set size  so, that meaningful Leitmotifs of an input TS can be found without domain knowledge. The methods for determining values for  and  are based on an analysis of the extent function for different .
 
@@ -98,9 +96,9 @@ To learn the motif length, we may simply call:
     
 To do variable length motif discovery simply set `plot_best_only=False`
 
-The generated plots looks like, with good window lengths at local minima:
+The generated plots looks like this, with good window lengths at local minima:
 
-<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/window_length_selection.png" width="800">
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/window_length_selection.png" width="600">
 
 
 ## Learning the number of repeats
@@ -115,9 +113,9 @@ To do an elbow plot, and learn the number of repeats of the motif, we may simply
         plot_motifsets        # Plot the found motif sets
     )
 ```
-The generated plots looks like, with good number of repeats at local minima:
+The generated plots looks like this, with good number of repeats at local minima:
 
-<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/elbow_points.png" width="800">
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/elbow_points.png" width="600">
     
 # Use Cases
 
