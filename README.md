@@ -91,7 +91,12 @@ To learn the motif length, we may simply call:
     )
 ```
     
-To do variable length motif discovery simply set plot_best_only=False
+To do variable length motif discovery simply set `plot_best_only=False`
+
+The generated plots looks like, with good window lengths at local minima:
+
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/window_length_selection.png" width="800">
+
 
 ## Learning the number of repeats
 
@@ -105,6 +110,9 @@ To do an elbow plot, and learn the number of repeats of the motif, we may simply
         plot_motifsets        # Plot the found motif sets
     )
 ```
+The generated plots looks like, with good number of repeats at local minima:
+
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/elbow_points.png" width="800">
     
 # Use Cases
 
