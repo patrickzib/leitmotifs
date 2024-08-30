@@ -26,8 +26,7 @@ channels arranged by Howard Shore for Lord of the Rings. The suite opens and end
 the Hobbits' leitmotif, which is played by a solo tin whistle, and manifests in a 
 distinct pattern in several, but not all channels of the piece. 
 
-You may listen to the song on youtube - starting from second ~6, the tin whistle leitmotif 
-is played twice, and the same theme is repeated after 2 minutes into the song: 
+You may listen to the song on youtube - starting from second ~6, the same melody (leitmotif) is played by the tin whistle twice, and the this theme is repeated after 2 minutes into the song: 
 
 [![The Shire](https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/hobbit_theme.jpg)](http://www.youtube.com/watch?v=SRgBI0WqWp4&t=7s "Video Title")
 
