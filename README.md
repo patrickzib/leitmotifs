@@ -73,7 +73,12 @@ LAMA has a simple OO-API.
         n_jobs,      # number of parallel jobs
     )
 ```
-  
+
+The result will look like this, indicating the found motif sets, dimensions and the locations.
+<img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/lotr-motifset.png" width="800">
+
+
+
 LAMA has a unique feature to automatically find suitable values for the motif length  and set size  so, that meaningful Leitmotifs of an input TS can be found without domain knowledge. The methods for determining values for  and  are based on an analysis of the extent function for different .
 
 ## Learning the Leitmotif length 
