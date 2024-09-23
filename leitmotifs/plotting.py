@@ -65,6 +65,7 @@ class LAMA:
         constrain(self, lbound, ubound)
             Return a constrained KSN model for the given temporal constraint.
         """
+
     def __init__(
             self,
             ds_name,
@@ -439,9 +440,9 @@ def plot_motifsets(
         if motifsets is not None:
             for i, motifset in enumerate(motifsets_sampled):
                 # TODO fixme/hack: pass actual motif length for SMM
-                #if motifset_names[i] == "SMM":
+                # if motifset_names[i] == "SMM":
                 #   motif_length_sampled = max(4, 10 // factor)
-                #else:
+                # else:
                 motif_length_sampled = np.int32(max(2, motif_length // factor))
 
                 if (leitmotif_dims is None or
@@ -450,13 +451,14 @@ def plot_motifsets(
                         for a, pos in enumerate(motifset):
                             # Do not plot, if all dimensions are covered
                             if ((leitmotif_dims is None or
-                                leitmotif_dims[i].shape[0] < data_raw.shape[0])
-                                    and (pos + motif_length_sampled < dim_raw_sampled.shape[0])):
+                                 leitmotif_dims[i].shape[0] < data_raw.shape[0])
+                                    and (pos + motif_length_sampled <
+                                         dim_raw_sampled.shape[0])):
                                 _ = sns.lineplot(ax=axes[0, 0],
                                                  x=data_index_sampled[
-                                                     pos : pos + motif_length_sampled],
+                                                   pos: pos + motif_length_sampled],
                                                  y=dim_raw_sampled[
-                                                     pos : pos + motif_length_sampled] + offset,
+                                                   pos: pos + motif_length_sampled] + offset,
                                                  linewidth=3,
                                                  color=sns.color_palette("tab10")[
                                                      (color_offset + i) % len(
@@ -466,7 +468,7 @@ def plot_motifsets(
                                                  estimator=None)
 
                             motif_length_disp = motif_length
-                            #if motifset_names[i] == "SMM":
+                            # if motifset_names[i] == "SMM":
                             #   motif_length_disp = 10
 
                             axes[0, 1 + i].set_title(
@@ -537,9 +539,9 @@ def plot_motifsets(
 
     if motifsets is not None:
         for i, leitmotif in enumerate(motifsets_sampled):
-            #if motifset_names[i] == "SMM":
+            # if motifset_names[i] == "SMM":
             #    motif_length_sampled = max(4, 10 // factor)
-            #else:
+            # else:
             motif_length_sampled = np.int32(max(2, motif_length // factor))
 
             if leitmotif is not None:
@@ -548,7 +550,8 @@ def plot_motifsets(
                         ratio = 0.8
                         rect = Rectangle(
                             (data_index_sampled[pos], -i - gt_count),
-                            data_index_sampled[pos + motif_length_sampled - 1] - data_index_sampled[pos],
+                            data_index_sampled[pos + motif_length_sampled - 1] -
+                            data_index_sampled[pos],
                             ratio,
                             facecolor=sns.color_palette("tab10")[
                                 (color_offset + i) % len(sns.color_palette("tab10"))],

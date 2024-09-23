@@ -82,9 +82,11 @@ def read_ground_truth(dataset):
         print("No ground truth found for ", dataset)
     return None
 
+
 #######################
 # TODO remove - only for noise experiments
 noise_level = None
+
 
 def add_gaussian_noise(df, noise_level=None):
     if noise_level:
@@ -96,6 +98,7 @@ def add_gaussian_noise(df, noise_level=None):
         return df_noisy
     else:
         return df
+
 
 #######################
 
@@ -112,7 +115,7 @@ def read_audio_from_dataframe(pandas_file_url, channels=None):
 
     df_gt = read_ground_truth(pandas_file_url)
 
-    if noise_level:         # TODO only for experiments
+    if noise_level:  # TODO only for experiments
         print("Adding noise to the data", noise_level)
         df = add_gaussian_noise(df, noise_level)
 
@@ -387,7 +390,7 @@ def compute_distance_matrix(time_series,
     return D_all, knns
 
 
-@njit(fastmath=True, cache=True, parallel=True)
+# @njit(fastmath=True, cache=True, parallel=True)
 def compute_distance_matrix_sparse(
         time_series,
         m,
@@ -395,9 +398,10 @@ def compute_distance_matrix_sparse(
         exclude_trivial_match=True,
         n_jobs=4,
         slack=0.5,
+        n_dims=3,
         distance=znormed_euclidean_distance,
         distance_preprocessing=sliding_mean_std
-    ):
+):
     """ Compute the full Distance Matrix between all pairs of subsequences of a
         multivariate time series.
 
@@ -446,16 +450,22 @@ def compute_distance_matrix_sparse(
     knns = np.zeros((dims, n, k), dtype=np.int32)
 
     # TODO: no sparse matrix support in numba. Thus we use this hack
-    # TODO set???
     D_bool = [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
               range(n)]
 
-    D_sparse = List()
+    # D_sparse = List()
+    # for d in range(dims):
+    #     _list2 = List()
+    #     D_sparse.append(_list2)
+    #     for i in range(n):
+    #         _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
+
+    D_sparse = []
     for d in range(dims):
-        _list2 = List()
-        D_sparse.append(_list2)
-        for i in range(n):
-            _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
+       _list2 = []
+       D_sparse.append(_list2)
+       for i in range(n):
+           _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
     lowest_distance = np.zeros(k, dtype=np.float32)
     lowest_distance[:] = np.inf
@@ -463,7 +473,6 @@ def compute_distance_matrix_sparse(
     # first pass, computing the k-nns
     for d in range(dims):
         ts = time_series[d, :]
-        # means, stds = _sliding_mean_std(ts, m)
         preprocessing = distance_preprocessing(ts, m)
 
         dot_first = _sliding_dot_product(ts[:m], ts)
@@ -491,16 +500,6 @@ def compute_distance_matrix_sparse(
                 D_knn[d, order] = dist[knn]
                 knns[d, order] = knn
 
-    # compute a lower bound for the distance
-    # for d in range(dims):
-    #    for dist_knn in D_knn[d]:
-    #        # np.minimum does not work with numba
-    #        for i in range(len(dist_knn)):
-    #            lowest_distance[i] = min(lowest_distance[i], dist_knn[i])
-
-    # 2*r is the maximal distance between two subsequences
-    # lowest_distance = 4 * lowest_distance * dims  # FIXME: depends on worst dimension
-
     # Parallelizm does not work, as Dict is not thread safe :(
     # FIXME : given a large number of dimensions, the memory usage explodes
     for d in np.arange(dims):
@@ -508,18 +507,29 @@ def compute_distance_matrix_sparse(
             for ks in knns[d, order]:  # needed to compute the k-nn distances
                 D_bool[order][ks] = True
 
+    # Determine best dimensions
+    for test_k in np.arange(k, 1, -1):  # TODO needed all or last ???
+        # Choose best dims
+        knn_idx = knns[:, :, test_k - 1]
+        D_knn_subset = take_along_axis(D_knn, d, knn_idx, n)
+
+        with objmode(dim_index="int64[:,:]"):
+            dim_index = np.argsort(D_knn_subset, axis=0)[:n_dims]
+            dim_index = np.transpose(dim_index, (1, 0))
+
         for order in np.arange(0, n):
-            # all pairs only needed when lower bound is given
-            # if np.any(D_knn[d, order][1:] <= lowest_distance[1:]):
+            # Choose k-NNs to use
+            knn_idx = knns[dim_index[order, 0], order][:test_k]
+
+            # for d in dim_index[order]:
             # memorize which pairs are needed
-            for ks in knns[d, order]:
-                for ks2 in knns[d, order]:
+            for ks in knn_idx:
+                for ks2 in knn_idx:
                     D_bool[ks][ks2] = True
 
     # second pass, filling only the pairs needed
-    for d in range(dims):
+    for d in np.arange(dims):
         ts = time_series[d, :]
-        # means, stds = _sliding_mean_std(ts, m)
         preprocessing = distance_preprocessing(ts, m)
 
         dot_first = _sliding_dot_product(ts[:m], ts)
@@ -580,7 +590,7 @@ def get_radius(D_full, motifset_pos):
     return leitmotif_radius
 
 
-@njit(fastmath=True, cache=True)
+# @njit(fastmath=True, cache=True)
 def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
     """Computes the extent of the motifset.
 
@@ -616,7 +626,12 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
             extent = np.float64(0.0)
             for kk in range(len(idx)):
-                extent += D_full[idx[kk]][i][j]
+                try:
+                    extent += D_full[idx[kk]][i][j]
+                except KeyError as e:
+                    print(f"KeyError: The key {e} does not exist")
+                except IndexError as e:
+                    print(f"IndexError: The key {e} does not exist")
 
             motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
@@ -690,7 +705,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-@njit(fastmath=True, cache=True)
+# @njit(fastmath=True, cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index, upper_bound=np.inf
 ):
@@ -726,9 +741,6 @@ def run_LAMA(
     leitmotif_candidate = None
 
     for order in np.arange(n, dtype=np.int32):
-        # for dim in np.arange(ts.shape[0], dtype=np.int32):
-        # knn_idx = knns[dim_index[order, dim], order]
-
         # Use the first (best) dimension for ordering of k-NNs
         knn_idx = knns[dim_index[order, 0], order]
         if np.any(knn_idx[:k] == -1):
@@ -985,7 +997,7 @@ def find_au_ef_motif_length(
         subsample=2,
         distance=znormed_euclidean_distance,
         distance_preprocessing=sliding_mean_std
-    ):
+):
     """Computes the Area under the Elbow-Function within an of motif lengths.
 
     Parameters
@@ -1181,7 +1193,7 @@ def search_leitmotifs_elbow(
     # switch to sparse matrix representation when length is above 30_000
     # sparse matrix is 2x slower but needs less memory
     sparse_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
-    sparse = sparse_gb > 8.0
+    sparse = True  # sparse_gb > 8.0
 
     # compute the distance matrix
     if D_full is None:
@@ -1212,7 +1224,8 @@ def search_leitmotifs_elbow(
                 n_jobs=n_jobs,
                 slack=slack,
                 distance=distance,
-                distance_preprocessing=distance_preprocessing
+                distance_preprocessing=distance_preprocessing,
+                n_dims=n_dims
             )
         else:
             # print("Using Default Backend", flush=True)
@@ -1238,14 +1251,15 @@ def search_leitmotifs_elbow(
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
 
+        print(test_k)
         if minimize_pairwise_dist or sum_dims:
             # Do nothing
             dim_index = np.zeros((n, 1), dtype=np.int32)
         elif not sum_dims:
             # k-th NN and it's distance along all dimensions
             knn_idx = knns[:, :, test_k - 1]
-            if isinstance(D_full, List) or isinstance(D_full, list):
-                D_knn = take_along_axis(D_full, d, knn_idx, n)
+            if sparse or isinstance(D_full, List) or isinstance(D_full, list):
+                D_knn = take_along_axis(D_knns, d, knn_idx, n)
             else:
                 D_knn = np.take_along_axis(
                     D_full,
