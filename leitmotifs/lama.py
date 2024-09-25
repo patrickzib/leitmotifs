@@ -758,14 +758,8 @@ def run_LAMA(
         # sum over the knns from the best dimensions
         # TODO
         knn_distance = 0.0
-        for d in dim_index[order]: #np.arange(dim_index.shape[-1]):
-            #try:
-                knn_distance += D[d][order][knn_idx[k - 1]]
-            #except KeyError as e:
-            #    print(f"KeyError: The key {e} does not exist")
-            #except IndexError as e:
-            #    print(f"IndexError: The key {e} does not exist")
-
+        for d in dim_index[order]:
+            knn_distance += D[d][order][knn_idx[k - 1]]
 
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distance <= leitmotif_dist:
