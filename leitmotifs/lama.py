@@ -390,7 +390,7 @@ def compute_distance_matrix(time_series,
     return D_all, knns
 
 
-# @njit(fastmath=True, cache=True, parallel=True)
+@njit(fastmath=True, cache=True, parallel=True)
 def compute_distance_matrix_sparse(
         time_series,
         m,
@@ -398,7 +398,7 @@ def compute_distance_matrix_sparse(
         exclude_trivial_match=True,
         n_jobs=4,
         slack=0.5,
-        n_dims=3,
+        use_dim=3,
         distance=znormed_euclidean_distance,
         distance_preprocessing=sliding_mean_std
 ):
@@ -453,19 +453,19 @@ def compute_distance_matrix_sparse(
     D_bool = [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
               range(n)]
 
-    # D_sparse = List()
-    # for d in range(dims):
-    #     _list2 = List()
-    #     D_sparse.append(_list2)
-    #     for i in range(n):
-    #         _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
-
-    D_sparse = []
+    D_sparse = List()
     for d in range(dims):
-       _list2 = []
-       D_sparse.append(_list2)
-       for i in range(n):
-           _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
+        _list2 = List()
+        D_sparse.append(_list2)
+        for i in range(n):
+            _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
+
+    # D_sparse = []
+    # for d in range(dims):
+    #    _list2 = []
+    #    D_sparse.append(_list2)
+    #    for i in range(n):
+    #        _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
     lowest_distance = np.zeros(k, dtype=np.float32)
     lowest_distance[:] = np.inf
@@ -497,8 +497,10 @@ def compute_distance_matrix_sparse(
                 dot_prev = dot_rolled
 
                 knn = _argknn(dist, k, m, slack=slack)
-                D_knn[d, order] = dist[knn]
-                knns[d, order] = knn
+                D_knn[d, order, :len(knn)] = dist[knn]
+                D_knn[d, order, len(knn):] = -1  # in case there are not enough knn
+                knns[d, order, :len(knn)] = knn
+                knns[d, order, len(knn):] = -1
 
     # Parallelizm does not work, as Dict is not thread safe :(
     # FIXME : given a large number of dimensions, the memory usage explodes
@@ -508,20 +510,19 @@ def compute_distance_matrix_sparse(
                 D_bool[order][ks] = True
 
     # Determine best dimensions
-    for test_k in np.arange(k, 1, -1):  # TODO needed all or last ???
+    for test_k in np.arange(k, 1, -1):
         # Choose best dims
         knn_idx = knns[:, :, test_k - 1]
-        D_knn_subset = take_along_axis(D_knn, d, knn_idx, n)
+        D_knn_subset = take_along_axis(D_knn, dims, knn_idx, n)
 
         with objmode(dim_index="int64[:,:]"):
-            dim_index = np.argsort(D_knn_subset, axis=0)[:n_dims]
+            dim_index = np.argsort(D_knn_subset, axis=0)[:use_dim]
             dim_index = np.transpose(dim_index, (1, 0))
 
         for order in np.arange(0, n):
             # Choose k-NNs to use
             knn_idx = knns[dim_index[order, 0], order][:test_k]
 
-            # for d in dim_index[order]:
             # memorize which pairs are needed
             for ks in knn_idx:
                 for ks2 in knn_idx:
@@ -590,7 +591,7 @@ def get_radius(D_full, motifset_pos):
     return leitmotif_radius
 
 
-# @njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
     """Computes the extent of the motifset.
 
@@ -626,12 +627,12 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
             extent = np.float64(0.0)
             for kk in range(len(idx)):
-                try:
-                    extent += D_full[idx[kk]][i][j]
-                except KeyError as e:
-                    print(f"KeyError: The key {e} does not exist")
-                except IndexError as e:
-                    print(f"IndexError: The key {e} does not exist")
+                #try:
+                extent += D_full[idx[kk]][i][j]
+                # except KeyError as e:
+                #    print(f"KeyError: The key {e} does not exist")
+                #except IndexError as e:
+                #    print(f"IndexError: The key {e} does not exist")
 
             motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
@@ -705,7 +706,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-# @njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index, upper_bound=np.inf
 ):
@@ -1193,7 +1194,10 @@ def search_leitmotifs_elbow(
     # switch to sparse matrix representation when length is above 30_000
     # sparse matrix is 2x slower but needs less memory
     sparse_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
-    sparse = True  # sparse_gb > 8.0
+    sparse = sparse_gb > 8.0
+
+    # order dimensions by increasing distance
+    use_dim = min(n_dims, d)  # dimensions indexed by 0
 
     # compute the distance matrix
     if D_full is None:
@@ -1225,7 +1229,7 @@ def search_leitmotifs_elbow(
                 slack=slack,
                 distance=distance,
                 distance_preprocessing=distance_preprocessing,
-                n_dims=n_dims
+                use_dim=use_dim
             )
         else:
             # print("Using Default Backend", flush=True)
@@ -1243,15 +1247,11 @@ def search_leitmotifs_elbow(
     k_leitmotif_candidates = np.empty(k_max_ + 1, dtype=object)
     k_leitmotif_dims = np.empty(k_max_ + 1, dtype=object)
 
-    # order dimensions by increasing distance
-    use_dim = min(n_dims, len(D_full))  # dimensions indexed by 0
-
     upper_bound = np.inf
     for test_k in tqdm(range(k_max_, 1, -1),
                        desc='Compute ks (' + str(k_max_) + ")",
                        position=0, leave=False):
 
-        print(test_k)
         if minimize_pairwise_dist or sum_dims:
             # Do nothing
             dim_index = np.zeros((n, 1), dtype=np.int32)
