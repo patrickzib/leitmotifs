@@ -106,7 +106,9 @@ class LAMA:
 
         self.n_dims = n_dims
         self.n_jobs = n_jobs
+
         self.motif_length = 0
+        self.memory_usage = 0
         self.k_max = 0
         self.dists = []
         self.leitmotifs = []
@@ -174,7 +176,8 @@ class LAMA:
         else:
             self.motif_length = motif_length
 
-        self.dists, self.leitmotifs, self.leitmotifs_dims, self.elbow_points = plot_elbow(
+        (self.dists, self.leitmotifs, self.leitmotifs_dims,
+         self.elbow_points, self.memory_usage) = plot_elbow(
             k_max,
             self.series,
             n_dims=self.n_dims,
@@ -736,19 +739,21 @@ def plot_elbow(k_max,
     print("Data", raw_data.shape)
 
     startTime = time.perf_counter()
-    dists, candidates, candidate_dims, elbow_points, m = ml.search_leitmotifs_elbow(
-        k_max,
-        raw_data,
-        motif_length,
-        n_dims=n_dims,
-        elbow_deviation=elbow_deviation,
-        filter=filter,
-        n_jobs=n_jobs,
-        minimize_pairwise_dist=minimize_pairwise_dist,
-        slack=slack,
-        distance=distance,
-        distance_preprocessing=distance_preprocessing,
-        backend=backend
+    dists, candidates, candidate_dims, elbow_points, m, memory_usage = (
+        ml.search_leitmotifs_elbow(
+            k_max,
+            raw_data,
+            motif_length,
+            n_dims=n_dims,
+            elbow_deviation=elbow_deviation,
+            filter=filter,
+            n_jobs=n_jobs,
+            minimize_pairwise_dist=minimize_pairwise_dist,
+            slack=slack,
+            distance=distance,
+            distance_preprocessing=distance_preprocessing,
+            backend=backend
+        )
     )
     endTime = (time.perf_counter() - startTime)
 
@@ -778,7 +783,7 @@ def plot_elbow(k_max,
         #    ground_truth=ground_truth,
         #    dimension_labels=dimension_labels)
 
-    return dists, candidates, candidate_dims, elbow_points
+    return dists, candidates, candidate_dims, elbow_points, memory_usage
 
 
 def plot_motif_length_selection(

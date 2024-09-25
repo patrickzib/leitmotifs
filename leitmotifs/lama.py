@@ -8,7 +8,7 @@ from ast import literal_eval
 from os.path import exists
 import os
 
-# import numpy as np
+import psutil
 import numpy.fft as fft
 import pandas as pd
 from numba import njit, prange, objmode, types
@@ -450,8 +450,10 @@ def compute_distance_matrix_sparse(
     knns = np.zeros((dims, n, k), dtype=np.int32)
 
     # TODO: no sparse matrix support in numba. Thus we use this hack
-    D_bool = [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
-              range(n)]
+    D_bool = [
+              [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
+              range(n)] for _ in range(dims)
+             ]
 
     D_sparse = List()
     for d in range(dims):
@@ -507,7 +509,7 @@ def compute_distance_matrix_sparse(
     for d in np.arange(dims):
         for order in np.arange(0, n):
             for ks in knns[d, order]:  # needed to compute the k-nn distances
-                D_bool[order][ks] = True
+                D_bool[d][order][ks] = True
 
     # Determine best dimensions
     for test_k in np.arange(k, 1, -1):
@@ -524,9 +526,16 @@ def compute_distance_matrix_sparse(
             knn_idx = knns[dim_index[order, 0], order][:test_k]
 
             # memorize which pairs are needed
-            for ks in knn_idx:
-                for ks2 in knn_idx:
-                    D_bool[ks][ks2] = True
+            for d in dim_index[order]:
+                # For lower bounding
+                D_bool[dim_index[order, d]][order][knn_idx[-1]] = True
+
+            # For pairwise extent computations
+            dim_idx = dim_index[knn_idx[-1]]
+            for d in dim_idx:
+                for ks in knn_idx:
+                    for ks2 in knn_idx:
+                        D_bool[d][ks][ks2] = True
 
     # second pass, filling only the pairs needed
     for d in np.arange(dims):
@@ -555,7 +564,7 @@ def compute_distance_matrix_sparse(
                 dot_prev = dot_rolled
 
                 # fill the knns now with the distances computed
-                for key in D_bool[order]:
+                for key in D_bool[d][order]:
                     D_sparse[d][order][key] = dist[key]
 
     return D_knn, D_sparse, knns
@@ -591,7 +600,7 @@ def get_radius(D_full, motifset_pos):
     return leitmotif_radius
 
 
-@njit(fastmath=True, cache=True)
+# @njit(fastmath=True, cache=True)
 def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
     """Computes the extent of the motifset.
 
@@ -627,12 +636,12 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
             extent = np.float64(0.0)
             for kk in range(len(idx)):
-                #try:
-                extent += D_full[idx[kk]][i][j]
-                # except KeyError as e:
-                #    print(f"KeyError: The key {e} does not exist")
-                #except IndexError as e:
-                #    print(f"IndexError: The key {e} does not exist")
+                try:
+                    extent += D_full[idx[kk]][i][j]
+                except KeyError as e:
+                    print(f"KeyError: The key {e} does not exist")
+                except IndexError as e:
+                    print(f"IndexError: The key {e} does not exist")
 
             motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
@@ -706,7 +715,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-@njit(fastmath=True, cache=True)
+# @njit(fastmath=True, cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index, upper_bound=np.inf
 ):
@@ -752,6 +761,7 @@ def run_LAMA(
         knn_distance = 0.0
         for a in np.arange(dim_index.shape[-1]):  # dimensions
             knn_distance += D[dim_index[order, a]][order][knn_idx[k - 1]]
+
 
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distance <= leitmotif_dist:
@@ -961,7 +971,7 @@ def select_subdimensions(
     knns = None
     for i, n_dims in enumerate(dim_range):
         if n_dims <= data.shape[0]:
-            dist, candidates, candidate_dims, elbow_points, D_full, knns \
+            dist, candidates, candidate_dims, elbow_points, D_full, knns, _ \
                 = search_leitmotifs_elbow(
                 k_max,
                 data,
@@ -1069,18 +1079,19 @@ def find_au_ef_motif_length(
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m // subsample < data.shape[-1]:
-            dist, candidates, candidate_dims, elbow_points, _ = search_leitmotifs_elbow(
-                k_max,
-                data,
-                m // subsample,
-                n_dims=n_dims,
-                n_jobs=n_jobs,
-                elbow_deviation=elbow_deviation,
-                minimize_pairwise_dist=minimize_pairwise_dist,
-                slack=slack,
-                distance=distance,
-                distance_preprocessing=distance_preprocessing,
-                backend=backend
+            dist, candidates, candidate_dims, elbow_points, _, _ \
+                = search_leitmotifs_elbow(
+                    k_max,
+                    data,
+                    m // subsample,
+                    n_dims=n_dims,
+                    n_jobs=n_jobs,
+                    elbow_deviation=elbow_deviation,
+                    minimize_pairwise_dist=minimize_pairwise_dist,
+                    slack=slack,
+                    distance=distance,
+                    distance_preprocessing=distance_preprocessing,
+                    backend=backend
             )
 
             dists_ = dist[(~np.isinf(dist)) & (~np.isnan(dist))]
@@ -1197,6 +1208,9 @@ def search_leitmotifs_elbow(
     # convert to numpy array
     _, data_raw = pd_series_to_numpy(data)
 
+    # used memory
+    process = psutil.Process()
+
     # m: motif size, n: number of subsequences, d: dimensions
     m = motif_length
     n = data_raw.shape[-1] - m + 1
@@ -1259,6 +1273,8 @@ def search_leitmotifs_elbow(
                 distance_preprocessing=distance_preprocessing
             )
 
+    memory_usage = process.memory_info().rss / (1024 * 1024)  # MB
+
     # non-overlapping motifs only
     k_leitmotif_distances = np.zeros(k_max_ + 1)
     k_leitmotif_candidates = np.empty(k_max_ + 1, dtype=object)
@@ -1320,10 +1336,10 @@ def search_leitmotifs_elbow(
 
     if return_distances:
         return (k_leitmotif_distances, k_leitmotif_candidates, k_leitmotif_dims,
-                elbow_points, D_full, knns)
+                elbow_points, D_full, knns, memory_usage)
     else:
         return (k_leitmotif_distances, k_leitmotif_candidates, k_leitmotif_dims,
-                elbow_points, m)
+                elbow_points, m, memory_usage)
 
 
 @njit(fastmath=True, cache=True)
