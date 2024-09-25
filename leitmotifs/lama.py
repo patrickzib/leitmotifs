@@ -528,11 +528,10 @@ def compute_distance_matrix_sparse(
             # memorize which pairs are needed
             for d in dim_index[order]:
                 # For lower bounding
-                D_bool[dim_index[order, d]][order][knn_idx[-1]] = True
+                D_bool[d][order][knn_idx[-1]] = True
 
             # For pairwise extent computations
-            dim_idx = dim_index[knn_idx[-1]]
-            for d in dim_idx:
+            for d in dim_index[knn_idx[-1]]:
                 for ks in knn_idx:
                     for ks2 in knn_idx:
                         D_bool[d][ks][ks2] = True
@@ -600,7 +599,7 @@ def get_radius(D_full, motifset_pos):
     return leitmotif_radius
 
 
-# @njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
     """Computes the extent of the motifset.
 
@@ -636,12 +635,12 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
             extent = np.float64(0.0)
             for kk in range(len(idx)):
-                try:
+                #try:
                     extent += D_full[idx[kk]][i][j]
-                except KeyError as e:
-                    print(f"KeyError: The key {e} does not exist")
-                except IndexError as e:
-                    print(f"IndexError: The key {e} does not exist")
+                #except KeyError as e:
+                #    print(f"KeyError: The key {e} does not exist")
+                #except IndexError as e:
+                #    print(f"IndexError: The key {e} does not exist")
 
             motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
@@ -715,7 +714,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-# @njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index, upper_bound=np.inf
 ):
@@ -759,8 +758,13 @@ def run_LAMA(
         # sum over the knns from the best dimensions
         # TODO
         knn_distance = 0.0
-        for a in np.arange(dim_index.shape[-1]):  # dimensions
-            knn_distance += D[dim_index[order, a]][order][knn_idx[k - 1]]
+        for d in dim_index[order]: #np.arange(dim_index.shape[-1]):
+            #try:
+                knn_distance += D[d][order][knn_idx[k - 1]]
+            #except KeyError as e:
+            #    print(f"KeyError: The key {e} does not exist")
+            #except IndexError as e:
+            #    print(f"IndexError: The key {e} does not exist")
 
 
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
