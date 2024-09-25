@@ -904,7 +904,8 @@ def select_subdimensions(
         elbow_deviation=1.00,
         slack=0.5,
         distance=znormed_euclidean_distance,
-        distance_preprocessing=sliding_mean_std):
+        distance_preprocessing=sliding_mean_std,
+        backend='default'):
     """Findes the optimal number of dimensions
 
     Parameters
@@ -930,6 +931,10 @@ def select_subdimensions(
         The distance function to be computed.
     distance_preprocessing: callable
         The distance preprocessing function to be computed.
+    backend : String, default="default"
+        The backend to use. As of now 'scalable' and 'default' are supported.
+        Use default for the original exact implementation, and scalable for a
+        scalable but slower implementation.
 
     Returns
     -------
@@ -970,7 +975,8 @@ def select_subdimensions(
                 knns=knns,  # reuse distances from last runs
                 n_jobs=n_jobs,
                 distance=distance,
-                distance_preprocessing=distance_preprocessing
+                distance_preprocessing=distance_preprocessing,
+                backend=backend
             )
 
             elbow_points = _filter_unique(elbow_points, candidates, motif_length)
@@ -997,7 +1003,8 @@ def find_au_ef_motif_length(
         slack=0.5,
         subsample=2,
         distance=znormed_euclidean_distance,
-        distance_preprocessing=sliding_mean_std
+        distance_preprocessing=sliding_mean_std,
+        backend='default'
 ):
     """Computes the Area under the Elbow-Function within an of motif lengths.
 
@@ -1024,6 +1031,10 @@ def find_au_ef_motif_length(
         The distance function to be computed.
     distance_preprocessing: callable
         The distance preprocessing function to be computed.
+    backend : String, default="default"
+        The backend to use. As of now 'scalable' and 'default' are supported.
+        Use default for the original exact implementation, and scalable for a
+        scalable but slower implementation.
 
     Returns
     -------
@@ -1068,7 +1079,8 @@ def find_au_ef_motif_length(
                 minimize_pairwise_dist=minimize_pairwise_dist,
                 slack=slack,
                 distance=distance,
-                distance_preprocessing=distance_preprocessing
+                distance_preprocessing=distance_preprocessing,
+                backend=backend
             )
 
             dists_ = dist[(~np.isinf(dist)) & (~np.isnan(dist))]
@@ -1130,7 +1142,8 @@ def search_leitmotifs_elbow(
         minimize_pairwise_dist=False,
         n_jobs=4,
         distance=znormed_euclidean_distance,
-        distance_preprocessing=sliding_mean_std
+        distance_preprocessing=sliding_mean_std,
+        backend='default'
 ):
     """Computes the elbow-function.
 
@@ -1164,6 +1177,10 @@ def search_leitmotifs_elbow(
             The distance function to be computed.
     distance_preprocessing: callable
             The distance preprocessing function to be computed.
+    backend : String, default="default"
+        The backend to use. As of now 'scalable' and 'default' are supported.
+        Use default for the original exact implementation, and scalable for a
+        scalable but slower implementation.
 
     Returns
     -------
@@ -1194,7 +1211,7 @@ def search_leitmotifs_elbow(
     # switch to sparse matrix representation when length is above 30_000
     # sparse matrix is 2x slower but needs less memory
     sparse_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
-    sparse = sparse_gb > 8.0
+    sparse = (sparse_gb > 8.0) or (backend == "scalable")
 
     # order dimensions by increasing distance
     use_dim = min(n_dims, d)  # dimensions indexed by 0

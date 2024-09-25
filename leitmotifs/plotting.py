@@ -57,6 +57,10 @@ class LAMA:
         slack: float, optional (default=0.5)
             Defines an exclusion zone around each subsequence to avoid trivial matches.
             Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+        backend : String, default="default"
+            The backend to use. As of now 'scalable' and 'default' are supported.
+            Use default for the original exact implementation, and scalable for a
+            scalable but slower implementation.
 
         Methods
         -------
@@ -77,7 +81,8 @@ class LAMA:
             n_dims=None,
             distance="znormed_ed",
             n_jobs=4,
-            slack=0.5
+            slack=0.5,
+            backend="default"
     ) -> None:
         self.ds_name = ds_name
         self.series = convert_to_2d(series)
@@ -90,6 +95,7 @@ class LAMA:
 
         # distance function used
         self.distance_preprocessing, self.distance = map_distances(distance)
+        self.backend = backend
 
         self.motif_length_range = None
         self.motif_length = 0
@@ -147,7 +153,8 @@ class LAMA:
             plot=plot,
             plot_best_only=plot_best_only,
             distance=self.distance,
-            distance_preprocessing=self.distance_preprocessing
+            distance_preprocessing=self.distance_preprocessing,
+            backend=self.backend
         )
 
         return self.motif_length, self.all_extrema
@@ -183,7 +190,8 @@ class LAMA:
             elbow_deviation=self.elbow_deviation,
             slack=self.slack,
             distance=self.distance,
-            distance_preprocessing=self.distance_preprocessing
+            distance_preprocessing=self.distance_preprocessing,
+            backend=self.backend
         )
 
         return self.dists, self.leitmotifs, self.elbow_points
@@ -660,7 +668,8 @@ def plot_elbow(k_max,
                elbow_deviation=1.00,
                slack=0.5,
                distance=znormed_euclidean_distance,
-               distance_preprocessing=sliding_mean_std
+               distance_preprocessing=sliding_mean_std,
+               backend="default"
                ):
     """Plots the elbow-plot for leitmotifs.
 
@@ -704,7 +713,10 @@ def plot_elbow(k_max,
         The distance function to be computed.
     distance_preprocessing: callable
         The distance preprocessing function to be computed.
-
+    backend : String, default="default"
+        The backend to use. As of now 'scalable' and 'default' are supported.
+        Use default for the original exact implementation, and scalable for a
+        scalable but slower implementation.
     Returns
     -------
     Tuple
@@ -735,7 +747,8 @@ def plot_elbow(k_max,
         minimize_pairwise_dist=minimize_pairwise_dist,
         slack=slack,
         distance=distance,
-        distance_preprocessing=distance_preprocessing
+        distance_preprocessing=distance_preprocessing,
+        backend=backend
     )
     endTime = (time.perf_counter() - startTime)
 
@@ -782,7 +795,8 @@ def plot_motif_length_selection(
         plot_elbows=True,
         plot_motif=True,
         distance=znormed_euclidean_distance,
-        distance_preprocessing=sliding_mean_std
+        distance_preprocessing=sliding_mean_std,
+        backend="default"
 ):
     """Computes the AU_EF plot to extract the best motif lengths
 
@@ -814,6 +828,10 @@ def plot_motif_length_selection(
         The distance function to be computed.
     distance_preprocessing: callable
         The distance preprocessing function to be computed.
+    backend : String, default="default"
+        The backend to use. As of now 'scalable' and 'default' are supported.
+        Use default for the original exact implementation, and scalable for a
+        scalable but slower implementation.
 
     Returns
     -------
@@ -849,7 +867,8 @@ def plot_motif_length_selection(
             slack=slack,
             subsample=subsample,
             distance=distance,
-            distance_preprocessing=distance_preprocessing
+            distance_preprocessing=distance_preprocessing,
+            backend=backend
         )
     endTime = (time.perf_counter() - startTime)
     print("\tTime", np.round(endTime, 1), "s")
