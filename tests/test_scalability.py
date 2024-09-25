@@ -59,8 +59,10 @@ def test_penguins_univ():
 
 
 def test_penguins_multivariate():
-    lengths = [1_000, 5_000,
-               10_000, 30_000,
+    lengths = [1_000,
+               5_000,
+               10_000,
+               30_000,
                #50_000,
                # 100_000,
                # 150_000, 200_000,
@@ -77,7 +79,7 @@ def test_penguins_multivariate():
         ml = LAMA(ds_name,
                   series,
                   n_dims=3,
-                  backend="scalable",
+                  # backend="scalable",
                   )
 
         k_max = 5
