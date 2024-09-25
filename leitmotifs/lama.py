@@ -8,7 +8,7 @@ from ast import literal_eval
 from os.path import exists
 import os
 
-# import numpy as np
+import psutil
 import numpy.fft as fft
 import pandas as pd
 from numba import njit, prange, objmode, types
@@ -450,8 +450,10 @@ def compute_distance_matrix_sparse(
     knns = np.zeros((dims, n, k), dtype=np.int32)
 
     # TODO: no sparse matrix support in numba. Thus we use this hack
-    D_bool = [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
-              range(n)]
+    D_bool = [
+              [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
+              range(n)] for _ in range(dims)
+             ]
 
     D_sparse = List()
     for d in range(dims):
@@ -507,7 +509,7 @@ def compute_distance_matrix_sparse(
     for d in np.arange(dims):
         for order in np.arange(0, n):
             for ks in knns[d, order]:  # needed to compute the k-nn distances
-                D_bool[order][ks] = True
+                D_bool[d][order][ks] = True
 
     # Determine best dimensions
     for test_k in np.arange(k, 1, -1):
@@ -524,9 +526,15 @@ def compute_distance_matrix_sparse(
             knn_idx = knns[dim_index[order, 0], order][:test_k]
 
             # memorize which pairs are needed
-            for ks in knn_idx:
-                for ks2 in knn_idx:
-                    D_bool[ks][ks2] = True
+            for d in dim_index[order]:
+                # For lower bounding
+                D_bool[d][order][knn_idx[-1]] = True
+
+            # For pairwise extent computations
+            for d in dim_index[knn_idx[-1]]:
+                for ks in knn_idx:
+                    for ks2 in knn_idx:
+                        D_bool[d][ks][ks2] = True
 
     # second pass, filling only the pairs needed
     for d in np.arange(dims):
@@ -555,7 +563,7 @@ def compute_distance_matrix_sparse(
                 dot_prev = dot_rolled
 
                 # fill the knns now with the distances computed
-                for key in D_bool[order]:
+                for key in D_bool[d][order]:
                     D_sparse[d][order][key] = dist[key]
 
     return D_knn, D_sparse, knns
@@ -628,8 +636,8 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
             extent = np.float64(0.0)
             for kk in range(len(idx)):
                 #try:
-                extent += D_full[idx[kk]][i][j]
-                # except KeyError as e:
+                    extent += D_full[idx[kk]][i][j]
+                #except KeyError as e:
                 #    print(f"KeyError: The key {e} does not exist")
                 #except IndexError as e:
                 #    print(f"IndexError: The key {e} does not exist")
@@ -750,8 +758,8 @@ def run_LAMA(
         # sum over the knns from the best dimensions
         # TODO
         knn_distance = 0.0
-        for a in np.arange(dim_index.shape[-1]):  # dimensions
-            knn_distance += D[dim_index[order, a]][order][knn_idx[k - 1]]
+        for d in dim_index[order]:
+            knn_distance += D[d][order][knn_idx[k - 1]]
 
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distance <= leitmotif_dist:
@@ -904,7 +912,8 @@ def select_subdimensions(
         elbow_deviation=1.00,
         slack=0.5,
         distance=znormed_euclidean_distance,
-        distance_preprocessing=sliding_mean_std):
+        distance_preprocessing=sliding_mean_std,
+        backend='default'):
     """Findes the optimal number of dimensions
 
     Parameters
@@ -930,6 +939,10 @@ def select_subdimensions(
         The distance function to be computed.
     distance_preprocessing: callable
         The distance preprocessing function to be computed.
+    backend : String, default="default"
+        The backend to use. As of now 'scalable' and 'default' are supported.
+        Use default for the original exact implementation, and scalable for a
+        scalable but slower implementation.
 
     Returns
     -------
@@ -956,7 +969,7 @@ def select_subdimensions(
     knns = None
     for i, n_dims in enumerate(dim_range):
         if n_dims <= data.shape[0]:
-            dist, candidates, candidate_dims, elbow_points, D_full, knns \
+            dist, candidates, candidate_dims, elbow_points, D_full, knns, _ \
                 = search_leitmotifs_elbow(
                 k_max,
                 data,
@@ -970,7 +983,8 @@ def select_subdimensions(
                 knns=knns,  # reuse distances from last runs
                 n_jobs=n_jobs,
                 distance=distance,
-                distance_preprocessing=distance_preprocessing
+                distance_preprocessing=distance_preprocessing,
+                backend=backend
             )
 
             elbow_points = _filter_unique(elbow_points, candidates, motif_length)
@@ -997,7 +1011,8 @@ def find_au_ef_motif_length(
         slack=0.5,
         subsample=2,
         distance=znormed_euclidean_distance,
-        distance_preprocessing=sliding_mean_std
+        distance_preprocessing=sliding_mean_std,
+        backend='default'
 ):
     """Computes the Area under the Elbow-Function within an of motif lengths.
 
@@ -1024,6 +1039,10 @@ def find_au_ef_motif_length(
         The distance function to be computed.
     distance_preprocessing: callable
         The distance preprocessing function to be computed.
+    backend : String, default="default"
+        The backend to use. As of now 'scalable' and 'default' are supported.
+        Use default for the original exact implementation, and scalable for a
+        scalable but slower implementation.
 
     Returns
     -------
@@ -1058,17 +1077,19 @@ def find_au_ef_motif_length(
     # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m // subsample < data.shape[-1]:
-            dist, candidates, candidate_dims, elbow_points, _ = search_leitmotifs_elbow(
-                k_max,
-                data,
-                m // subsample,
-                n_dims=n_dims,
-                n_jobs=n_jobs,
-                elbow_deviation=elbow_deviation,
-                minimize_pairwise_dist=minimize_pairwise_dist,
-                slack=slack,
-                distance=distance,
-                distance_preprocessing=distance_preprocessing
+            dist, candidates, candidate_dims, elbow_points, _, _ \
+                = search_leitmotifs_elbow(
+                    k_max,
+                    data,
+                    m // subsample,
+                    n_dims=n_dims,
+                    n_jobs=n_jobs,
+                    elbow_deviation=elbow_deviation,
+                    minimize_pairwise_dist=minimize_pairwise_dist,
+                    slack=slack,
+                    distance=distance,
+                    distance_preprocessing=distance_preprocessing,
+                    backend=backend
             )
 
             dists_ = dist[(~np.isinf(dist)) & (~np.isnan(dist))]
@@ -1130,7 +1151,8 @@ def search_leitmotifs_elbow(
         minimize_pairwise_dist=False,
         n_jobs=4,
         distance=znormed_euclidean_distance,
-        distance_preprocessing=sliding_mean_std
+        distance_preprocessing=sliding_mean_std,
+        backend='default'
 ):
     """Computes the elbow-function.
 
@@ -1164,6 +1186,10 @@ def search_leitmotifs_elbow(
             The distance function to be computed.
     distance_preprocessing: callable
             The distance preprocessing function to be computed.
+    backend : String, default="default"
+        The backend to use. As of now 'scalable' and 'default' are supported.
+        Use default for the original exact implementation, and scalable for a
+        scalable but slower implementation.
 
     Returns
     -------
@@ -1180,6 +1206,9 @@ def search_leitmotifs_elbow(
     # convert to numpy array
     _, data_raw = pd_series_to_numpy(data)
 
+    # used memory
+    process = psutil.Process()
+
     # m: motif size, n: number of subsequences, d: dimensions
     m = motif_length
     n = data_raw.shape[-1] - m + 1
@@ -1194,7 +1223,7 @@ def search_leitmotifs_elbow(
     # switch to sparse matrix representation when length is above 30_000
     # sparse matrix is 2x slower but needs less memory
     sparse_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
-    sparse = sparse_gb > 8.0
+    sparse = (sparse_gb > 8.0) or (backend == "scalable")
 
     # order dimensions by increasing distance
     use_dim = min(n_dims, d)  # dimensions indexed by 0
@@ -1241,6 +1270,8 @@ def search_leitmotifs_elbow(
                 distance=distance,
                 distance_preprocessing=distance_preprocessing
             )
+
+    memory_usage = process.memory_info().rss / (1024 * 1024)  # MB
 
     # non-overlapping motifs only
     k_leitmotif_distances = np.zeros(k_max_ + 1)
@@ -1303,10 +1334,10 @@ def search_leitmotifs_elbow(
 
     if return_distances:
         return (k_leitmotif_distances, k_leitmotif_candidates, k_leitmotif_dims,
-                elbow_points, D_full, knns)
+                elbow_points, D_full, knns, memory_usage)
     else:
         return (k_leitmotif_distances, k_leitmotif_candidates, k_leitmotif_dims,
-                elbow_points, m)
+                elbow_points, m, memory_usage)
 
 
 @njit(fastmath=True, cache=True)

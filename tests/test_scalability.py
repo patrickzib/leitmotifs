@@ -59,9 +59,11 @@ def test_penguins_univ():
 
 
 def test_penguins_multivariate():
-    lengths = [#1_000, 5_000,
-               #10_000, 30_000,
-               50_000,
+    lengths = [1_000,
+               5_000,
+               10_000,
+               30_000,
+               #50_000,
                # 100_000,
                # 150_000, 200_000,
                # 250_000
@@ -76,7 +78,8 @@ def test_penguins_multivariate():
 
         ml = LAMA(ds_name,
                   series,
-                  n_dims=3
+                  n_dims=3,
+                  # backend="scalable",
                   )
 
         k_max = 5
@@ -84,9 +87,13 @@ def test_penguins_multivariate():
         t_before = time.time()
         _ = ml.fit_k_elbow(
             k_max,
-            22,
+            motif_length=22,
             plot_elbows=False,
+            plot_motifsets=False
         )
         t_after = time.time()
         time_s[i] = t_after - t_before
-        print("Time:", time_s[i])
+        memory_usage = ml.memory_usage
+
+        print("\tTime:", time_s[i])
+        print("\tMemory:", memory_usage, "MB")
