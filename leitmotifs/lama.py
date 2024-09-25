@@ -82,9 +82,11 @@ def read_ground_truth(dataset):
         print("No ground truth found for ", dataset)
     return None
 
+
 #######################
 # TODO remove - only for noise experiments
 noise_level = None
+
 
 def add_gaussian_noise(df, noise_level=None):
     if noise_level:
@@ -96,6 +98,7 @@ def add_gaussian_noise(df, noise_level=None):
         return df_noisy
     else:
         return df
+
 
 #######################
 
@@ -112,7 +115,7 @@ def read_audio_from_dataframe(pandas_file_url, channels=None):
 
     df_gt = read_ground_truth(pandas_file_url)
 
-    if noise_level:         # TODO only for experiments
+    if noise_level:  # TODO only for experiments
         print("Adding noise to the data", noise_level)
         df = add_gaussian_noise(df, noise_level)
 
@@ -395,9 +398,10 @@ def compute_distance_matrix_sparse(
         exclude_trivial_match=True,
         n_jobs=4,
         slack=0.5,
+        use_dim=3,
         distance=znormed_euclidean_distance,
         distance_preprocessing=sliding_mean_std
-    ):
+):
     """ Compute the full Distance Matrix between all pairs of subsequences of a
         multivariate time series.
 
@@ -446,7 +450,6 @@ def compute_distance_matrix_sparse(
     knns = np.zeros((dims, n, k), dtype=np.int32)
 
     # TODO: no sparse matrix support in numba. Thus we use this hack
-    # TODO set???
     D_bool = [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
               range(n)]
 
@@ -457,13 +460,19 @@ def compute_distance_matrix_sparse(
         for i in range(n):
             _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
+    # D_sparse = []
+    # for d in range(dims):
+    #    _list2 = []
+    #    D_sparse.append(_list2)
+    #    for i in range(n):
+    #        _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
+
     lowest_distance = np.zeros(k, dtype=np.float32)
     lowest_distance[:] = np.inf
 
     # first pass, computing the k-nns
     for d in range(dims):
         ts = time_series[d, :]
-        # means, stds = _sliding_mean_std(ts, m)
         preprocessing = distance_preprocessing(ts, m)
 
         dot_first = _sliding_dot_product(ts[:m], ts)
@@ -488,18 +497,10 @@ def compute_distance_matrix_sparse(
                 dot_prev = dot_rolled
 
                 knn = _argknn(dist, k, m, slack=slack)
-                D_knn[d, order] = dist[knn]
-                knns[d, order] = knn
-
-    # compute a lower bound for the distance
-    # for d in range(dims):
-    #    for dist_knn in D_knn[d]:
-    #        # np.minimum does not work with numba
-    #        for i in range(len(dist_knn)):
-    #            lowest_distance[i] = min(lowest_distance[i], dist_knn[i])
-
-    # 2*r is the maximal distance between two subsequences
-    # lowest_distance = 4 * lowest_distance * dims  # FIXME: depends on worst dimension
+                D_knn[d, order, :len(knn)] = dist[knn]
+                D_knn[d, order, len(knn):] = -1  # in case there are not enough knn
+                knns[d, order, :len(knn)] = knn
+                knns[d, order, len(knn):] = -1
 
     # Parallelizm does not work, as Dict is not thread safe :(
     # FIXME : given a large number of dimensions, the memory usage explodes
@@ -508,18 +509,28 @@ def compute_distance_matrix_sparse(
             for ks in knns[d, order]:  # needed to compute the k-nn distances
                 D_bool[order][ks] = True
 
+    # Determine best dimensions
+    for test_k in np.arange(k, 1, -1):
+        # Choose best dims
+        knn_idx = knns[:, :, test_k - 1]
+        D_knn_subset = take_along_axis(D_knn, dims, knn_idx, n)
+
+        with objmode(dim_index="int64[:,:]"):
+            dim_index = np.argsort(D_knn_subset, axis=0)[:use_dim]
+            dim_index = np.transpose(dim_index, (1, 0))
+
         for order in np.arange(0, n):
-            # all pairs only needed when lower bound is given
-            # if np.any(D_knn[d, order][1:] <= lowest_distance[1:]):
+            # Choose k-NNs to use
+            knn_idx = knns[dim_index[order, 0], order][:test_k]
+
             # memorize which pairs are needed
-            for ks in knns[d, order]:
-                for ks2 in knns[d, order]:
+            for ks in knn_idx:
+                for ks2 in knn_idx:
                     D_bool[ks][ks2] = True
 
     # second pass, filling only the pairs needed
-    for d in range(dims):
+    for d in np.arange(dims):
         ts = time_series[d, :]
-        # means, stds = _sliding_mean_std(ts, m)
         preprocessing = distance_preprocessing(ts, m)
 
         dot_first = _sliding_dot_product(ts[:m], ts)
@@ -616,7 +627,12 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
             extent = np.float64(0.0)
             for kk in range(len(idx)):
+                #try:
                 extent += D_full[idx[kk]][i][j]
+                # except KeyError as e:
+                #    print(f"KeyError: The key {e} does not exist")
+                #except IndexError as e:
+                #    print(f"IndexError: The key {e} does not exist")
 
             motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
@@ -726,9 +742,6 @@ def run_LAMA(
     leitmotif_candidate = None
 
     for order in np.arange(n, dtype=np.int32):
-        # for dim in np.arange(ts.shape[0], dtype=np.int32):
-        # knn_idx = knns[dim_index[order, dim], order]
-
         # Use the first (best) dimension for ordering of k-NNs
         knn_idx = knns[dim_index[order, 0], order]
         if np.any(knn_idx[:k] == -1):
@@ -985,7 +998,7 @@ def find_au_ef_motif_length(
         subsample=2,
         distance=znormed_euclidean_distance,
         distance_preprocessing=sliding_mean_std
-    ):
+):
     """Computes the Area under the Elbow-Function within an of motif lengths.
 
     Parameters
@@ -1183,6 +1196,9 @@ def search_leitmotifs_elbow(
     sparse_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
     sparse = sparse_gb > 8.0
 
+    # order dimensions by increasing distance
+    use_dim = min(n_dims, d)  # dimensions indexed by 0
+
     # compute the distance matrix
     if D_full is None:
         if minimize_pairwise_dist:  # FIXME: find better name
@@ -1212,7 +1228,8 @@ def search_leitmotifs_elbow(
                 n_jobs=n_jobs,
                 slack=slack,
                 distance=distance,
-                distance_preprocessing=distance_preprocessing
+                distance_preprocessing=distance_preprocessing,
+                use_dim=use_dim
             )
         else:
             # print("Using Default Backend", flush=True)
@@ -1230,9 +1247,6 @@ def search_leitmotifs_elbow(
     k_leitmotif_candidates = np.empty(k_max_ + 1, dtype=object)
     k_leitmotif_dims = np.empty(k_max_ + 1, dtype=object)
 
-    # order dimensions by increasing distance
-    use_dim = min(n_dims, len(D_full))  # dimensions indexed by 0
-
     upper_bound = np.inf
     for test_k in tqdm(range(k_max_, 1, -1),
                        desc='Compute ks (' + str(k_max_) + ")",
@@ -1244,8 +1258,8 @@ def search_leitmotifs_elbow(
         elif not sum_dims:
             # k-th NN and it's distance along all dimensions
             knn_idx = knns[:, :, test_k - 1]
-            if isinstance(D_full, List) or isinstance(D_full, list):
-                D_knn = take_along_axis(D_full, d, knn_idx, n)
+            if sparse or isinstance(D_full, List) or isinstance(D_full, list):
+                D_knn = take_along_axis(D_knns, d, knn_idx, n)
             else:
                 D_knn = np.take_along_axis(
                     D_full,

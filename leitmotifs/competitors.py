@@ -248,8 +248,8 @@ def run_tests(
         test_mstamp,  # function
         test_emd_pca, # function
         test_kmotifs, # function
-        test_smm,     # function
         file_prefix,
+        test_smm=None,     # function
         plot=False,
       ):
 
