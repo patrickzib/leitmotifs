@@ -504,16 +504,15 @@ def compute_distance_matrix_sparse(
                 knns[d, order, :len(knn)] = knn
                 knns[d, order, len(knn):] = -1
 
-    # Parallelizm does not work, as Dict is not thread safe :(
-    # FIXME : given a large number of dimensions, the memory usage explodes
-    for d in np.arange(dims):
+    # Store just the knns in a sparse matrix
+    for d in prange(dims):
         for order in np.arange(0, n):
             for ks in knns[d, order]:  # needed to compute the k-nn distances
                 D_bool[d][order][ks] = True
 
     # Determine best dimensions
     for test_k in np.arange(k, 1, -1):
-        # Choose best dims
+        # Choose best dims based on the k-th NN
         knn_idx = knns[:, :, test_k - 1]
         D_knn_subset = take_along_axis(D_knn, dims, knn_idx, n)
 
@@ -522,18 +521,18 @@ def compute_distance_matrix_sparse(
             dim_index = np.transpose(dim_index, (1, 0))
 
         for order in np.arange(0, n):
-            # Choose k-NNs to use
-            knn_idx = knns[dim_index[order, 0], order][:test_k]
+            # Choose k-NNs to use based on the best dimension
+            knns_idx = knns[dim_index[order, 0], order][:test_k]
 
             # memorize which pairs are needed
             for d in dim_index[order]:
                 # For lower bounding
-                D_bool[d][order][knn_idx[-1]] = True
+                D_bool[d][order][knns_idx[-1]] = True
 
             # For pairwise extent computations
-            for d in dim_index[knn_idx[-1]]:
-                for ks in knn_idx:
-                    for ks2 in knn_idx:
+            for d in dim_index[knns_idx[-1]]:
+                for ks in knns_idx:
+                    for ks2 in knns_idx:
                         D_bool[d][ks][ks2] = True
 
     # second pass, filling only the pairs needed

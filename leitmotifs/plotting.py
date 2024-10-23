@@ -490,11 +490,15 @@ def plot_motifsets(
                                 ", l=" + str(motif_length_disp),
                                 fontsize=18)
 
+
                             df = pd.DataFrame()
-                            df["time"] = range(0, motif_length_disp)
+                            df["time"] = range(0, motif_length_disp, 4)
 
                             for aa, pos in enumerate(motifsets[i]):
-                                values = dim_raw[pos:pos + motif_length_disp]
+                                values = np.zeros(len(df["time"]), dtype=np.float32)
+                                value = dim_raw[pos:pos + motif_length_disp:4]
+                                values[:len(value)] = value
+
                                 df[str(aa)] = (values - values.mean()) / (
                                         values.std() + 1e-4) + offset
 
@@ -503,7 +507,9 @@ def plot_motifsets(
                                 ax=axes[0, 1 + i],
                                 data=df_melt,
                                 errorbar=("ci", 99),
-                                n_boot=10,
+                                # err_style="band",
+                                # estimator="median",
+                                n_boot=1,
                                 lw=1,
                                 color=sns.color_palette("tab10")[
                                     (color_offset + i) % len(
@@ -591,10 +597,12 @@ def plot_motifsets(
     if isinstance(data, pd.DataFrame):
         axes[0, 0].set_yticks(tick_offsets)
         axes[0, 0].set_yticklabels(data.index, fontsize=18)
+        axes[0, 0].set_xlabel("Time", fontsize=18)
 
         if motifsets is not None:
             axes[0, 1].set_yticks(tick_offsets)
             axes[0, 1].set_yticklabels(data.index, fontsize=18)
+            axes[0, 1].set_xlabel("Length", fontsize=18)
 
     sns.despine()
     fig.tight_layout()
@@ -1012,7 +1020,7 @@ def _plot_window_lengths(
                              hue="variable",
                              style="variable",
                              errorbar=("ci", 99),
-                             n_boot=10,
+                             n_boot=1,
                              lw=1,
                              color=sns.color_palette("tab10")[(i + 1) % 10])
             axins.set_xlabel("")
