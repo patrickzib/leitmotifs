@@ -925,20 +925,24 @@ def select_subdimensions(
         The length of the motif
     dim_range : list
         the range of dimensions to use for subdimensional motif discovery
-    n_jobs : int
+    minimize_pairwise_dist: bool (default=False)
+        If True, the pairwise distance is minimized. This is the mStamp-approach.
+        It has the potential drawback, that each pair of subsequences may have
+        different smallest dimensions.
+    n_jobs : int (default=4)
         Number of jobs to be used.
-    elbow_deviation : float, default=1.00
+    elbow_deviation : float (default=1.00)
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
-    slack : float
+    slack : float (default=0.5)
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-    distance: callable
+    distance: callable (default=znormed_euclidean_distance)
         The distance function to be computed.
-    distance_preprocessing: callable
+    distance_preprocessing: callable (default=sliding_mean_std)
         The distance preprocessing function to be computed.
-    backend : String, default="default"
+    backend : String (default="default")
         The backend to use. As of now 'scalable' and 'default' are supported.
         Use default for the original exact implementation, and scalable for a
         scalable but slower implementation.

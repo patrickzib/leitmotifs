@@ -45,8 +45,9 @@ class LAMA:
             The minimal absolute deviation needed to detect an elbow.
             It measures the absolute change in deviation from k to k+1.
             1.05 corresponds to 5% increase in deviation.
-        n_dims : int, optional (default=2)
+        n_dims : int, optional (default=None)
             The number of dimensions to be used in the subdimensional motif discovery.
+            If none: all dimensions are used.
         distance: str (default="znormed_ed")
             The name of the distance function to be computed.
             Available options are:
@@ -664,24 +665,25 @@ def _plot_elbow_points(
     plt.show()
 
 
-def plot_elbow(k_max,
-               data,
-               ds_name,
-               motif_length,
-               n_dims=2,
-               plot_elbows=False,
-               plot_motif=True,
-               ground_truth=None,
-               dimension_labels=None,
-               minimize_pairwise_dist=False,
-               filter=True,
-               n_jobs=4,
-               elbow_deviation=1.00,
-               slack=0.5,
-               distance=znormed_euclidean_distance,
-               distance_preprocessing=sliding_mean_std,
-               backend="default"
-               ):
+def plot_elbow(
+        k_max,
+        data,
+        ds_name,
+        motif_length,
+        n_dims=2,
+        plot_elbows=False,
+        plot_motif=True,
+        ground_truth=None,
+        dimension_labels=None,
+        minimize_pairwise_dist=False,
+        filter=True,
+        n_jobs=4,
+        elbow_deviation=1.00,
+        slack=0.5,
+        distance=znormed_euclidean_distance,
+        distance_preprocessing=sliding_mean_std,
+        backend="default"
+       ):
     """Plots the elbow-plot for leitmotifs.
 
     This is the method to find and plot the characteristic leitmotifs within range
@@ -699,21 +701,25 @@ def plot_elbow(k_max,
         the name of the dataset
     motif_length: int
         the length of the motif (user parameter)
-    n_dims : int
+    n_dims : int (default=2)
         the number of dimensions to use for subdimensional motif discovery
-    plot_elbows: bool, default=False
+    plot_elbows: bool (default=False)
         plots the elbow ploints into the plot
-    plot_motif: bool, default=True
+    plot_motif: bool (default=True)
         The motifs along the time series
-    ground_truth: pd.Series
+    ground_truth: pd.Series (default=None)
         Ground-truth information as pd.Series.
-    dimension_labels:
+    dimension_labels: array-like (default=None)
         Labels for the dimensions
-    filter: bool, default=True
+    minimize_pairwise_dist: bool, default=False
+        If True, the pairwise distance is minimized. This is the mStamp-approach.
+        It has the potential drawback, that each pair of subsequences may have
+        different smallest dimensions.
+    filter: bool (default=True)
         filters overlapping leitmotifs from the result,
-    n_jobs : int
+    n_jobs : int (default=4)
         Number of jobs to be used.
-    elbow_deviation : float, default=1.00
+    elbow_deviation : float (default=1.00)
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
@@ -795,12 +801,15 @@ def plot_elbow(k_max,
 
 
 def plot_motif_length_selection(
-        k_max, data, motif_length_range, ds_name,
+        k_max,
+        data,
+        motif_length_range,
+        ds_name,
         n_jobs=4,
         elbow_deviation=1.00,
         slack=0.5,
         subsample=2,
-        n_dims=2,
+        n_dims=None,
         minimize_pairwise_dist=False,
         ground_truth=None,
         plot=True,
@@ -828,15 +837,32 @@ def plot_motif_length_selection(
         the interval of lengths
     ds_name: String
         Name of the time series for displaying
-    n_jobs : int
+    n_jobs : int (default=4)
         Number of jobs to be used.
     elbow_deviation: float, default=1.00
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
-    slack : float
+    slack : float (default=0.5)
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+    subsample: int, default=2
+        The subsampling factor for the time series.
+    n_dims : int, optional (default=None)
+        The number of dimensions to be used in the subdimensional motif discovery.
+        If none: all dimensions are used.
+    minimize_pairwise_dist: bool (default=False)
+        If True, the pairwise distance is minimized. This is the mStamp-approach.
+        It has the potential drawback, that each pair of subsequences may have
+        different smallest dimensions.
+    plot: bool, default=True
+        Enables or disables plotting
+    plot_best_only: bool, default=True
+        If True, only the leitmotif for the best motif length is plotted.
+    plot_elbows: bool, default=True
+        If True, the elbow points are plotted.
+    plot_motif: bool, default=True
+        If True, the motif sets are plotted.
     distance: callable
         The distance function to be computed.
     distance_preprocessing: callable
@@ -845,6 +871,7 @@ def plot_motif_length_selection(
         The backend to use. As of now 'scalable' and 'default' are supported.
         Use default for the original exact implementation, and scalable for a
         scalable but slower implementation.
+
 
     Returns
     -------
