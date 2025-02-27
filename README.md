@@ -71,6 +71,7 @@ The three hyper-parameters of **LAMA** are:
 LAMA has a simple OO-API.
 
 ```python
+    from leitmotifs.plotting import *
     ml = LAMA(
         ds_name,     # Name of the dataset
         series,      # Multidimensional time series
