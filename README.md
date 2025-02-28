@@ -280,7 +280,7 @@ to learn its parameters from the data and find interesting motif sets.
 ## Citation
 If you use this work, please cite as:
 ```
-@article{motiflets2022,
+@article{leitmotifs2025,
   title={Discovering Leitmotifs in Multidimensional Time Series},
   author={Schäfer, Patrick and Leser, Ulf},
   journal={Proceedings of the VLDB Endowment},
@@ -292,4 +292,4 @@ If you use this work, please cite as:
 }
 ```
 
-Link to the <a href="https://www.vldb.org/pvldb/vol16/p725-schafer.pdf">paper</a>.
+Link to the <a href="https://www.vldb.org/pvldb/vol18/p377-schafer.pdf">paper</a>.
