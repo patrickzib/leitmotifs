@@ -6,20 +6,17 @@ mpl.rcParams['figure.dpi'] = 150
 from leitmotifs.competitors import *
 from leitmotifs.lama import *
 
-# Experiment with different noise levels to show robustness of the method
-noise_level = None
 
 def znormalize(ts):
     for i in range(3):
-        ts[:, 3*i : 3*(i+1)] \
-            = ((ts[:, 3*i : 3*(i+1)] - np.mean(ts[:, 3*i : 3*(i+1)], axis=None)) /
-               np.std(ts[:, 3*i : 3*(i+1)], axis=None))
+        ts[:, 3 * i: 3 * (i + 1)] \
+            = ((ts[:, 3 * i: 3 * (i + 1)] - np.mean(ts[:, 3 * i: 3 * (i + 1)],
+                                                    axis=None)) /
+               np.std(ts[:, 3 * i: 3 * (i + 1)], axis=None))
     return ts
 
 
 def load_physiodata():
-    global noise_level
-
     # subjects = range(1, 6)
     # exercises = range(1, 9)
     # relevant_imus = np.array([2, 4, 2, 2, 2, 2, 2, 2])
@@ -46,13 +43,8 @@ def load_physiodata():
     # df2 = pd.DataFrame(ts.T)
     # # df2.to_csv("../datasets/physiodata/physio.csv", index=False)
 
-
     df_gt = read_ground_truth("../datasets/physiodata/physio")
     df = pd.read_csv("../datasets/physiodata/physio.csv")
-
-    if noise_level:
-        print ("Adding noise to the data", noise_level)
-        df = add_gaussian_noise(df, noise_level)
 
     return df, df_gt
 
@@ -200,11 +192,7 @@ def test_publication(plot=False, method_names=None):
             "LAMA (cosine)"
         ]
 
-    if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_physio_"+str(noise_level)
-    else:
-        file_prefix = "results_physio"
+    file_prefix = "results_physio"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -256,13 +244,9 @@ def test_plot_results(plot=True, method_names=None, all_plot_names=None):
                 "LAMA (cosine)"
             ]
         }
-    if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_physio_"+str(noise_level)
-        output_file = "physio_precision_"+str(noise_level)
-    else:
-        file_prefix = "results_physio"
-        output_file = "physio_precision"
+
+    file_prefix = "results_physio"
+    output_file = "physio_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -284,4 +268,4 @@ def test_plot_results(plot=True, method_names=None, all_plot_names=None):
     pd.DataFrame(
         data=np.array(results),
         columns=["Dataset", "Method", "Precision", "Recall"]).to_csv(
-        "results/"+output_file+".csv")
+        "results/" + output_file + ".csv")

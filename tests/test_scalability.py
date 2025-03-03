@@ -79,7 +79,7 @@ def test_penguins_multivariate():
         ml = LAMA(ds_name,
                   series,
                   n_dims=3,
-                  # backend="scalable",
+                  backend="scalable",
                   )
 
         k_max = 5

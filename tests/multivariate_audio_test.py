@@ -1,5 +1,5 @@
 import matplotlib as mpl
-import os
+# import os
 
 from audio.lyrics import *
 from leitmotifs.competitors import *
@@ -316,11 +316,11 @@ def test_publication(plot=False, noise_level=None, method_names=None):
 def test_plot_results(plot=True, noise_level=None, method_names=None,
                       all_plot_names=None):
     dataset_names = [
-        #"The Rolling Stones - Paint It, Black",
-        "What I've Done - Linkin Park",
-        "Numb - Linkin Park",
-        "Vanilla Ice - Ice Ice Baby",
-        "Queen David Bowie - Under Pressure"
+        "The Rolling Stones - Paint It, Black",
+        #"What I've Done - Linkin Park",
+        #"Numb - Linkin Park",
+        #"Vanilla Ice - Ice Ice Baby",
+        #"Queen David Bowie - Under Pressure"
     ]
     if method_names is None:
         method_names = [
@@ -331,9 +331,9 @@ def test_plot_results(plot=True, noise_level=None, method_names=None,
             "EMD*",
             "K-Motifs (TOP-f)",
             "K-Motifs (all)",
-            "LAMA (cid)",
-            "LAMA (ed)",
-            "LAMA (cosine)"
+            #"LAMA (cid)",
+            #"LAMA (ed)",
+            #"LAMA (cosine)"
         ]
 
     results = []

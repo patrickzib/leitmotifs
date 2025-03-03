@@ -36,7 +36,7 @@ class LAMA:
             If True, the pairwise distance is minimized. This is the mStamp-approach.
             It has the potential drawback, that each pair of subsequences may have
             different smallest dimensions.
-        ground_truth : pd.Series
+        ground_truth : pd.Series (default=None)
             Ground-truth information as pd.Series.
         dimension_labels : array-like (default=None)
             Labels used for the dimensions' axis for plotting.
@@ -58,7 +58,7 @@ class LAMA:
         slack: float, optional (default=0.5)
             Defines an exclusion zone around each subsequence to avoid trivial matches.
             Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-        backend : String, default="default"
+        backend : String (default="default")
             The backend to use. As of now 'scalable' and 'default' are supported.
             Use default for the original exact implementation, and scalable for a
             scalable but slower implementation.
@@ -332,9 +332,9 @@ def plot_dataset(
         The name of the time series
     data: array-like
         The time series
-    ground_truth: pd.Series
+    ground_truth: pd.Series (default=None)
         Ground-truth information as pd.Series.
-    show: boolean
+    show: boolean (default=True)
         Outputs the plot
 
     """
@@ -358,15 +358,19 @@ def plot_motifsets(
         The name of the time series
     data: array-like
         The time series data
-    motifsets: array like
+    motifsets: array like (default=None)
         Found motif sets
-    dist: array like
+    dist: array like (default=None)
         The distances (extents) for each motif set
-    motif_length: int
+    motifset_names: array-like (default=None)
+        The names of the motif sets
+    leitmotif_dims: array-like (default=None)
+        The dimensions of the leitmotifs
+    motif_length: int (default=None)
         The length of the motif
-    ground_truth: pd.Series
+    ground_truth: pd.Series (default=None)
         Ground-truth information as pd.Series.
-    show: boolean
+    show: boolean (default=True)
         Outputs the plot
 
     """
@@ -412,9 +416,9 @@ def plot_motifsets(
     data_index, data_raw = ml.pd_series_to_numpy(data)
     # data_raw_sampled, factor = ml._resample(data_raw, sampling_factor=500)
     # data_index_sampled, _ = ml._resample(data_index, sampling_factor=500)
-
     data_raw_sampled, data_index_sampled = data_raw, data_index
 
+    factor = 1
     if data_raw.shape[-1] > 500:
         data_raw_sampled = np.zeros((data_raw.shape[0], 500))
         for i in range(data_raw.shape[0]):
@@ -636,11 +640,10 @@ def _plot_elbow_points(
         The distances (extents) for each motif set
     """
 
-    data_index, data_raw = ml.pd_series_to_numpy(data)
-
+    # data_index, data_raw = ml.pd_series_to_numpy(data)
     # turn into 2d array
-    if data_raw.ndim == 1:
-        data_raw = data_raw.reshape((1, -1))
+    # if data_raw.ndim == 1:
+    #    data_raw = data_raw.reshape((1, -1))
 
     fig, ax = plt.subplots(figsize=(10, 4),
                            constrained_layout=True)
@@ -702,16 +705,16 @@ def plot_elbow(
     motif_length: int
         the length of the motif (user parameter)
     n_dims : int (default=2)
-        the number of dimensions to use for subdimensional motif discovery
+        the number of dimensions to use for sub-dimensional motif discovery
     plot_elbows: bool (default=False)
-        plots the elbow ploints into the plot
+        plots the elbow points into the plot
     plot_motif: bool (default=True)
         The motifs along the time series
     ground_truth: pd.Series (default=None)
         Ground-truth information as pd.Series.
     dimension_labels: array-like (default=None)
         Labels for the dimensions
-    minimize_pairwise_dist: bool, default=False
+    minimize_pairwise_dist: bool (default=False)
         If True, the pairwise distance is minimized. This is the mStamp-approach.
         It has the potential drawback, that each pair of subsequences may have
         different smallest dimensions.
@@ -723,14 +726,14 @@ def plot_elbow(
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
-    slack : float
+    slack : float (default=0.5)
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-    distance: callable
+    distance: callable (default=znormed_euclidean_distance)
         The distance function to be computed.
-    distance_preprocessing: callable
+    distance_preprocessing: callable (default=sliding_mean_std)
         The distance preprocessing function to be computed.
-    backend : String, default="default"
+    backend : String (default="default")
         The backend to use. As of now 'scalable' and 'default' are supported.
         Use default for the original exact implementation, and scalable for a
         scalable but slower implementation.
@@ -839,14 +842,14 @@ def plot_motif_length_selection(
         Name of the time series for displaying
     n_jobs : int (default=4)
         Number of jobs to be used.
-    elbow_deviation: float, default=1.00
+    elbow_deviation: float (default=1.00)
         The minimal absolute deviation needed to detect an elbow.
         It measures the absolute change in deviation from k to k+1.
         1.05 corresponds to 5% increase in deviation.
     slack : float (default=0.5)
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-    subsample: int, default=2
+    subsample: int (default=2)
         The subsampling factor for the time series.
     n_dims : int, optional (default=None)
         The number of dimensions to be used in the subdimensional motif discovery.
@@ -855,19 +858,19 @@ def plot_motif_length_selection(
         If True, the pairwise distance is minimized. This is the mStamp-approach.
         It has the potential drawback, that each pair of subsequences may have
         different smallest dimensions.
-    plot: bool, default=True
+    plot: bool (default=True)
         Enables or disables plotting
-    plot_best_only: bool, default=True
+    plot_best_only: bool (default=True)
         If True, only the leitmotif for the best motif length is plotted.
-    plot_elbows: bool, default=True
+    plot_elbows: bool (default=True)
         If True, the elbow points are plotted.
-    plot_motif: bool, default=True
+    plot_motif: bool (default=True)
         If True, the motif sets are plotted.
-    distance: callable
+    distance: callable (default=znormed_euclidean_distance)
         The distance function to be computed.
-    distance_preprocessing: callable
+    distance_preprocessing: callable (default=sliding_mean_std)
         The distance preprocessing function to be computed.
-    backend : String, default="default"
+    backend : String (default="default")
         The backend to use. As of now 'scalable' and 'default' are supported.
         Use default for the original exact implementation, and scalable for a
         scalable but slower implementation.

@@ -10,7 +10,7 @@ mpl.rcParams['figure.dpi'] = 150
 # path outside the git
 path_to_wav = "../../motiflets_use_cases/audio/"
 path = "../datasets/audio/"
-write_audio = False
+write_audio = True
 
 datasets = {
     "Lord of the Rings Symphony - The Shire": {
@@ -147,7 +147,7 @@ channels = [
 
 
 def test_lama(
-        dataset_name="Lord of the Rings Symphony - The Shire",
+        dataset_name="Star Wars - The Imperial March",
         minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
@@ -331,7 +331,7 @@ def plot_spectrogram(audio_file_urls):
 
 def test_publication(plot=False, noise_level=None, method_names=None):
     dataset_names = [
-        # "Star Wars - The Imperial March",
+        "Star Wars - The Imperial March",
         "Lord of the Rings Symphony - The Shire"
     ]
     if method_names is None:
@@ -397,12 +397,12 @@ def test_plot_results(plot=True, noise_level=None, method_names=None, all_plot_n
     if all_plot_names is None:
         all_plot_names = {
             "_new": [
-                "mSTAMP+MDL",
+                #"mSTAMP+MDL",
                 # "mSTAMP",
-                "EMD*",
-                "K-Motifs (all)",
-                # "K-Motifs (TOP-f)",
-                # "SMM",
+                #"EMD*",
+                # "K-Motifs (all)",
+                #"K-Motifs (TOP-f)",
+                #"SMM",
                 "LAMA",
             ], "_distances": [
                 "LAMA",

@@ -1,14 +1,11 @@
+import matplotlib as mpl
 from matplotlib.animation import FuncAnimation
 
 import amc.amc_parser as amc_parser
-import matplotlib as mpl
 from leitmotifs.competitors import *
 from leitmotifs.lama import *
 
 mpl.rcParams['figure.dpi'] = 150
-
-# Experiment with different noise levels to show robustness of the method
-noise_level = None
 
 
 def get_joint_pos_dict(c_joints, c_motion):
@@ -43,8 +40,6 @@ def include_joints(df, include, add_xyz=True):
 
 
 def read_motion_dataset(add_xyz=True):
-    global noise_level
-
     joints = amc_parser.parse_asf(asf_path)
     motions = amc_parser.parse_amc(amc_path)
     df_gt = read_ground_truth(amc_path)
@@ -56,10 +51,6 @@ def read_motion_dataset(add_xyz=True):
     time = np.arange(0, df.shape[1] / 120, 1 / 120)
     df.columns = time[:len(df.columns)]
     df.name = ds_name
-
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        df = add_gaussian_noise(df, noise_level)
 
     return df, df_gt, joints, motions
 
@@ -288,7 +279,7 @@ def test_ground_truth():
 # "Charleston - Side By Side Female"
 
 def test_lama(
-        dataset_name="Charleston - Side By Side Female",
+        dataset_name="Boxing",
         minimize_pairwise_dist=False,
         use_PCA=False,
         motifset_name="LAMA",
@@ -441,9 +432,9 @@ def generate_gif(motif, m, motions, joints):
 def test_publication(plot=False, method_names=None):
     dataset_names = [
         "Boxing",
-        "Swordplay",
-        "Basketball",
-        "Charleston - Side By Side Female"
+        # "Swordplay",
+        # "Basketball",
+        # "Charleston - Side By Side Female"
     ]
     if method_names is None:
         method_names = [
@@ -459,11 +450,7 @@ def test_publication(plot=False, method_names=None):
             "LAMA (cosine)"
         ]
 
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        file_prefix = "results_motion_" + str(noise_level)
-    else:
-        file_prefix = "results_motion"
+    file_prefix = "results_motion"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -519,13 +506,9 @@ def test_plot_results(plot=True, method_names=None, all_plot_names=None):
                 "LAMA (cosine)"
             ]
         }
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        file_prefix = "results_motion_" + str(noise_level)
-        output_file = "motion_precision_" + str(noise_level)
-    else:
-        file_prefix = "results_motion"
-        output_file = "motion_precision"
+
+    file_prefix = "results_motion"
+    output_file = "motion_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)

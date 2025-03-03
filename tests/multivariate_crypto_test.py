@@ -5,9 +5,6 @@ mpl.rcParams['figure.dpi'] = 150
 from leitmotifs.competitors import *
 from leitmotifs.lama import *
 
-# Experiment with different noise levels to show robustness of the method
-noise_level = None
-
 
 def normalize(x):
     std = np.std(x)
@@ -18,8 +15,6 @@ def normalize(x):
 
 
 def load_crypto():
-    global noise_level
-
     # ada_eur = pd.read_csv("../datasets/crypto/ADA-EUR.csv").set_index("Date")[
     #     ["Close", "Volume"]]
     # bitcoin_usd = pd.read_csv("../datasets/crypto/BTC-USD.csv").set_index("Date")[
@@ -74,10 +69,6 @@ def load_crypto():
     df = pd.read_csv("../datasets/crypto/crypto.csv")
     df.columns = pd.to_datetime(df.columns)
     df_gt = read_ground_truth("../datasets/crypto/crypto")
-
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        df = add_gaussian_noise(df, noise_level)
 
     return df, df_gt
 
@@ -225,11 +216,7 @@ def test_publication(plot=False, method_names=None):
             "LAMA (cosine)"
         ]
 
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        file_prefix = "results_stocks_" + str(noise_level)
-    else:
-        file_prefix = "results_stocks"
+    file_prefix = "results_stocks"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -282,13 +269,8 @@ def test_plot_results(plot=True, method_names=None, all_plot_names=None):
             ]
         }
 
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        file_prefix = "results_stocks_" + str(noise_level)
-        output_file = "stocks_precision_" + str(noise_level)
-    else:
-        file_prefix = "results_stocks"
-        output_file = "stocks_precision"
+    file_prefix = "results_stocks"
+    output_file = "stocks_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)

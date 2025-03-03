@@ -11,7 +11,7 @@ import os
 import psutil
 import numpy.fft as fft
 import pandas as pd
-from numba import njit, prange, objmode, types
+from numba import prange, objmode, types
 from numba.typed import Dict, List
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
@@ -20,7 +20,10 @@ from tqdm.auto import tqdm
 from leitmotifs.distances import *
 
 
-def _resample(data, sampling_factor=10000):
+def _resample(
+        data,
+        sampling_factor=10000
+):
     """Resamples a time series to roughly `sampling_factor` points.
 
     The method searches a factor to skip every i-th point.
@@ -29,7 +32,7 @@ def _resample(data, sampling_factor=10000):
     ----------
     data : array-like
         The time series data
-    sampling_factor :
+    sampling_factor : int (default=10000)
         The rough size of the time series after sampling
 
     Returns
@@ -83,30 +86,8 @@ def read_ground_truth(dataset):
     return None
 
 
-#######################
-# TODO remove - only for noise experiments
-noise_level = None
-
-
-def add_gaussian_noise(df, noise_level=None):
-    if noise_level:
-        df_noisy = df.copy()
-        for col in df_noisy.columns:
-            std_dev = df_noisy[col].std()
-            noise = np.random.normal(0, std_dev * noise_level, df_noisy[col].shape)
-            df_noisy[col] += noise
-        return df_noisy
-    else:
-        return df
-
-
-#######################
-
-
 def read_audio_from_dataframe(pandas_file_url, channels=None):
     """Reads a time series with an index (e.g. time) from a CSV with MFCC features."""
-    global noise_level
-
     df = pd.read_csv(pandas_file_url, index_col=0, compression='gzip')
     audio_length_seconds = 2 * float(df.columns[-1]) - float(df.columns[-2])
 
@@ -114,10 +95,6 @@ def read_audio_from_dataframe(pandas_file_url, channels=None):
         df = df.loc[channels]
 
     df_gt = read_ground_truth(pandas_file_url)
-
-    if noise_level:  # TODO only for experiments
-        print("Adding noise to the data", noise_level)
-        df = add_gaussian_noise(df, noise_level)
 
     return audio_length_seconds, df, np.float64(df.columns), df_gt
 
@@ -265,17 +242,18 @@ def _sliding_dot_product(query, time_series):
 
 
 @njit(fastmath=True, cache=True, parallel=True)
-def compute_distance_matrix(time_series,
-                            m,
-                            k,
-                            exclude_trivial_match=True,
-                            compute_knns=True,
-                            n_jobs=4,
-                            slack=0.5,
-                            sum_dims=True,
-                            distance=znormed_euclidean_distance,
-                            distance_preprocessing=sliding_mean_std
-                            ):
+def compute_distance_matrix(
+        time_series,
+        m,
+        k,
+        exclude_trivial_match=True,
+        compute_knns=True,
+        n_jobs=4,
+        slack=0.5,
+        sum_dims=True,
+        distance=znormed_euclidean_distance,
+        distance_preprocessing=sliding_mean_std
+):
     """ Compute the full Distance Matrix between all pairs of subsequences of a
         multivariate time series.
 
@@ -347,7 +325,6 @@ def compute_distance_matrix(time_series,
 
         for d in np.arange(dims):
             ts = time_series[d, :]
-            # means, stds = _sliding_mean_std(ts, m)
             preprocessing = distance_preprocessing(ts, m)
             dot_first = _sliding_dot_product(ts[:m], ts)
 
@@ -370,9 +347,6 @@ def compute_distance_matrix(time_series,
                     D_all[d, order] = dist
                 dot_prev = dot_rolled
 
-        if sum_dims:
-            D_all = D_all / dims
-
         if compute_knns:
             # do not merge with previous loop, as we are adding distances
             # over dimensions, first
@@ -386,6 +360,9 @@ def compute_distance_matrix(time_series,
                     # if len(knn) == k:
                     #    lower_bounds[idx] = min(lower_bounds[idx],
                     #                            4 * D_all[d, order, knn[-1]])
+
+    if sum_dims:
+        D_all = D_all / dims
 
     return D_all, knns
 
