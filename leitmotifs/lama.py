@@ -638,9 +638,9 @@ def _argknn(
         The k in k-NN
     m : int
         The window-length
-    lowest_dist : float
+    lowest_dist : float (default=np.inf)
         Used for admissible pruning
-    slack: float
+    slack: float (default=0.5)
         Defines an exclusion zone around each subsequence to avoid trivial matches.
         Defined as percentage of m. E.g. 0.5 is equal to half the window length.
 
@@ -709,7 +709,11 @@ def run_LAMA(
         The size k of the leitmotif
     D : 2d array-like
         The distance matrix
-    upper_bound : float
+    knns : 2d array-like
+        The k-nns for each subsequence
+    dim_index : 2d array-like
+        The best dimensions
+    upper_bound : float (default=np.inf)
         Used for admissible pruning
 
     Returns
