@@ -270,7 +270,7 @@ def test_kmotifs(dataset_name="The Rolling Stones - Paint It, Black",
     return motif_sets, used_dims
 
 
-def test_publication(plot=False, noise_level=None, method_names=None):
+def test_publication(plot=False, method_names=None):
     dataset_names = [
         "The Rolling Stones - Paint It, Black",
         #"What I've Done - Linkin Park",
@@ -292,11 +292,7 @@ def test_publication(plot=False, noise_level=None, method_names=None):
             "LAMA (cosine)"
         ]
 
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        file_prefix = "results_audio_" + str(noise_level)
-    else:
-        file_prefix = "results_audio"
+    file_prefix = "results_audio"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -313,7 +309,7 @@ def test_publication(plot=False, noise_level=None, method_names=None):
         )
 
 
-def test_plot_results(plot=True, noise_level=None, method_names=None,
+def test_plot_results(plot=True, method_names=None,
                       all_plot_names=None):
     dataset_names = [
         "The Rolling Stones - Paint It, Black",
@@ -354,13 +350,8 @@ def test_plot_results(plot=True, noise_level=None, method_names=None,
             ]
         }
 
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        file_prefix = "results_audio_" + str(noise_level)
-        output_file = "audio_precision_" + str(noise_level)
-    else:
-        file_prefix = "results_audio"
-        output_file = "audio_precision"
+    file_prefix = "results_audio"
+    output_file = "audio_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)

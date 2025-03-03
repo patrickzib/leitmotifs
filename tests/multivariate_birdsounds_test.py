@@ -251,7 +251,7 @@ def test_kmotifs(dataset_name="Common-Starling", first_dims=True, plot=True):
     return motif_sets, used_dims
 
 
-def test_publication(plot=False, noise_level=None, method_names=None):
+def test_publication(plot=False, method_names=None):
     dataset_names = [
         "Common-Starling"
     ]
@@ -268,11 +268,8 @@ def test_publication(plot=False, noise_level=None, method_names=None):
             "LAMA (ed)",
             "LAMA (cosine)"
         ]
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        file_prefix = "results_birdsounds_" + str(noise_level)
-    else:
-        file_prefix = "results_birdsounds"
+
+    file_prefix = "results_birdsounds"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -290,7 +287,7 @@ def test_publication(plot=False, noise_level=None, method_names=None):
 
 
 def test_plot_results(
-        plot=True, noise_level=None, method_names=None, all_plot_names=None):
+        plot=True, method_names=None, all_plot_names=None):
     dataset_names = [
         "Common-Starling"
     ]
@@ -325,13 +322,8 @@ def test_plot_results(
             ]
         }
 
-    if noise_level:
-        print("Adding noise to the data", noise_level)
-        file_prefix = "results_birdsounds_" + str(noise_level)
-        output_file = "birdsounds_precision_" + str(noise_level)
-    else:
-        file_prefix = "results_birdsounds"
-        output_file = "birdsounds_precision"
+    file_prefix = "results_birdsounds"
+    output_file = "birdsounds_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)

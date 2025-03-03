@@ -329,7 +329,7 @@ def plot_spectrogram(audio_file_urls):
     plt.savefig("images_paper/audio/lotr-spectrogram.pdf")
 
 
-def test_publication(plot=False, noise_level=None, method_names=None):
+def test_publication(plot=False, method_names=None):
     dataset_names = [
         "Star Wars - The Imperial March",
         "Lord of the Rings Symphony - The Shire"
@@ -349,11 +349,7 @@ def test_publication(plot=False, noise_level=None, method_names=None):
             "LAMA (cosine)"
         ]
 
-    if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_soundtracks_"+str(noise_level)
-    else:
-        file_prefix = "results_soundtracks"
+    file_prefix = "results_soundtracks"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
@@ -371,7 +367,7 @@ def test_publication(plot=False, noise_level=None, method_names=None):
         )
 
 
-def test_plot_results(plot=True, noise_level=None, method_names=None, all_plot_names=None):
+def test_plot_results(plot=True, method_names=None, all_plot_names=None):
     dataset_names = [
         "Star Wars - The Imperial March",
         "Lord of the Rings Symphony - The Shire"
@@ -412,13 +408,8 @@ def test_plot_results(plot=True, noise_level=None, method_names=None, all_plot_n
             ]
         }
 
-    if noise_level:
-        print ("Adding noise to the data", noise_level)
-        file_prefix = "results_soundtracks_"+str(noise_level)
-        output_file = "soundtracks_precision_"+str(noise_level)
-    else:
-        file_prefix = "results_soundtracks"
-        output_file = "soundtracks_precision"
+    file_prefix = "results_soundtracks"
+    output_file = "soundtracks_precision"
 
     for dataset_name in dataset_names:
         get_ds_parameters(dataset_name)
