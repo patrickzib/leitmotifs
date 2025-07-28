@@ -4,6 +4,7 @@
 
 __author__ = ["patrickzib"]
 
+import os
 import time
 
 import matplotlib
@@ -58,10 +59,11 @@ class LAMA:
         slack: float, optional (default=0.5)
             Defines an exclusion zone around each subsequence to avoid trivial matches.
             Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-        backend : String (default="default")
-            The backend to use. As of now 'scalable' and 'default' are supported.
-            Use default for the original exact implementation, and scalable for a
-            scalable but slower implementation.
+        backend : String, default="scalable"
+            The backend to use. As of now 'scalable', 'sparse' and 'default' are supported.
+            Use 'default' for the original exact implementation with excessive memory,
+            Use 'scalable' for a scalable, exact implementation with less memory,
+            Use 'sparse' for a scalable, exact implementation with more memory.
 
         Methods
         -------
@@ -81,7 +83,7 @@ class LAMA:
             elbow_deviation=1.00,
             n_dims=None,
             distance="znormed_ed",
-            n_jobs=4,
+            n_jobs=-1,
             slack=0.5,
             backend="default"
     ) -> None:
@@ -95,7 +97,8 @@ class LAMA:
         self.minimize_pairwise_dist = minimize_pairwise_dist
 
         # distance function used
-        self.distance_preprocessing, self.distance = map_distances(distance)
+        self.distance_preprocessing, self.distance, self.distance_single \
+            = map_distances(distance)
         self.backend = backend
 
         self.motif_length_range = None
@@ -106,6 +109,8 @@ class LAMA:
         self.all_dists = []
 
         self.n_dims = n_dims
+
+        n_jobs = os.cpu_count() if n_jobs < 1 else n_jobs
         self.n_jobs = n_jobs
 
         self.motif_length = 0
@@ -156,6 +161,7 @@ class LAMA:
             plot=plot,
             plot_best_only=plot_best_only,
             distance=self.distance,
+            distance_single=self.distance_single,
             distance_preprocessing=self.distance_preprocessing,
             backend=self.backend
         )
@@ -194,6 +200,7 @@ class LAMA:
             elbow_deviation=self.elbow_deviation,
             slack=self.slack,
             distance=self.distance,
+            distance_single=self.distance_single,
             distance_preprocessing=self.distance_preprocessing,
             backend=self.backend
         )
@@ -218,6 +225,7 @@ class LAMA:
             elbow_deviation=self.elbow_deviation,
             slack=self.slack,
             distance=self.distance,
+            distance_single=self.distance_single,
             distance_preprocessing=self.distance_preprocessing
         )
 
@@ -495,7 +503,6 @@ def plot_motifsets(
                                 ", l=" + str(motif_length_disp),
                                 fontsize=18)
 
-
                             df = pd.DataFrame()
                             df["time"] = range(0, motif_length_disp, 4)
 
@@ -684,9 +691,10 @@ def plot_elbow(
         elbow_deviation=1.00,
         slack=0.5,
         distance=znormed_euclidean_distance,
+        distance_single=znormed_euclidean_distance,
         distance_preprocessing=sliding_mean_std,
         backend="default"
-       ):
+):
     """Plots the elbow-plot for leitmotifs.
 
     This is the method to find and plot the characteristic leitmotifs within range
@@ -733,10 +741,11 @@ def plot_elbow(
         The distance function to be computed.
     distance_preprocessing: callable (default=sliding_mean_std)
         The distance preprocessing function to be computed.
-    backend : String (default="default")
-        The backend to use. As of now 'scalable' and 'default' are supported.
-        Use default for the original exact implementation, and scalable for a
-        scalable but slower implementation.
+    backend : String, default="scalable"
+        The backend to use. As of now 'scalable', 'sparse' and 'default' are supported.
+        Use 'default' for the original exact implementation with excessive memory,
+        Use 'scalable' for a scalable, exact implementation with less memory,
+        Use 'sparse' for a scalable, exact implementation with more memory.
     Returns
     -------
     Tuple
@@ -753,7 +762,7 @@ def plot_elbow(
             data = np.arange(data.shape[-1])
 
     _, raw_data = ml.pd_series_to_numpy(data)
-    print("Data", raw_data.shape)
+    # print("Data", raw_data.shape)
 
     startTime = time.perf_counter()
     dists, candidates, candidate_dims, elbow_points, m, memory_usage = (
@@ -768,14 +777,15 @@ def plot_elbow(
             minimize_pairwise_dist=minimize_pairwise_dist,
             slack=slack,
             distance=distance,
+            distance_single=distance_single,
             distance_preprocessing=distance_preprocessing,
             backend=backend
         )
     )
     endTime = (time.perf_counter() - startTime)
 
-    print("Window-size:", m)
-    print("Elbow Points", elbow_points, " found in", np.round(endTime, 1), "s")
+    # print("Window-size:", m)
+    # print("Elbow Points", elbow_points, " found in", np.round(endTime, 1), "s")
 
     if plot_elbows:
         _plot_elbow_points(
@@ -820,6 +830,7 @@ def plot_motif_length_selection(
         plot_elbows=True,
         plot_motif=True,
         distance=znormed_euclidean_distance,
+        distance_single=znormed_euclidean_distance,
         distance_preprocessing=sliding_mean_std,
         backend="default"
 ):
@@ -870,10 +881,11 @@ def plot_motif_length_selection(
         The distance function to be computed.
     distance_preprocessing: callable (default=sliding_mean_std)
         The distance preprocessing function to be computed.
-    backend : String (default="default")
-        The backend to use. As of now 'scalable' and 'default' are supported.
-        Use default for the original exact implementation, and scalable for a
-        scalable but slower implementation.
+    backend : String, default="scalable"
+        The backend to use. As of now 'scalable', 'sparse' and 'default' are supported.
+        Use 'default' for the original exact implementation with excessive memory,
+        Use 'scalable' for a scalable, exact implementation with less memory,
+        Use 'sparse' for a scalable, exact implementation with more memory.
 
 
     Returns
@@ -910,11 +922,12 @@ def plot_motif_length_selection(
             slack=slack,
             subsample=subsample,
             distance=distance,
+            distance_single=distance_single,
             distance_preprocessing=distance_preprocessing,
             backend=backend
         )
     endTime = (time.perf_counter() - startTime)
-    print("\tTime", np.round(endTime, 1), "s")
+    # print("\tTime", np.round(endTime, 1), "s")
 
     all_minima = _filter_duplicate_window_sizes(au_ef, all_minima)
 
