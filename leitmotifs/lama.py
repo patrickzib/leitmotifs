@@ -478,8 +478,8 @@ def compute_distances_with_knns_sparse(
     # Determine best dimensions
     for test_k in np.arange(k, 1, -1):
         # Choose best dims based on the k-th NN
-        knn_idx = knns[:, :, test_k - 1]
-        D_knn_subset = take_along_axis(D_knn, dims, knn_idx, n)
+        # knn_idx = knns[:, :, test_k - 1]
+        D_knn_subset = take_along_axis(D_knn, dims, test_k-1, n)
 
         with objmode(dim_index="int64[:,:]"):
             dim_index = np.argsort(D_knn_subset, axis=0)[:use_dim]
@@ -619,6 +619,8 @@ def compute_distances_with_knns(
                 knn = _argknn(dist, k, m, slack=slack)
                 knns[d, order, :len(knn)] = knn
                 D_knn[d, order] = dist[knn]
+
+                # FIXME: there are some NN missing, if we order by best dimension :/
 
                 dot_prev = dot_rolled
 
@@ -821,7 +823,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-@njit(fastmath=True, cache=True)
+# @njit(fastmath=True, cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index,
         distance_single=None,
@@ -876,7 +878,15 @@ def run_LAMA(
         # sum over the knns from the best dimensions
         knn_distance = np.float64(0.0)
         for d in dim_index[order]:
-            knn_distance += D[d][order][knn_idx[k - 1]]
+            if use_D_full:
+                knn_distance += D[d][order][knn_idx[k - 1]]
+            else:
+                # FIXME this is not correct ???!!!
+                knn_distance += D[d][order][k - 1]
+
+        if order == 0:   # TODO remove?
+            print(knn_distance, knn_idx[k - 1],
+                  knn_idx[:k], dim_index[order, :k])
 
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distance <= leitmotif_dist:
@@ -1450,15 +1460,20 @@ def search_leitmotifs_elbow(
             knn_idx = knns[:, :, test_k - 1]
             if ((backend in ["sparse", "scalable"]) or
                     isinstance(D_full, List) or isinstance(D_full, list)):
-                D_knn = take_along_axis(D_knns, d, knn_idx, n)
+                D_knn = take_along_axis(D_knns, d, test_k - 1, n)
+
+                # print(f"{D_knns[0][0]} for k={test_k}", flush=True)
             else:
                 D_knn = np.take_along_axis(
                     D_full,
                     knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
                     axis=2)[:, :, 0]
 
+            # print(f"Using {D_knn.shape} {D_knn[:, 0]} for k={test_k}", flush=True)
+
             dim_index = np.argsort(D_knn, axis=0)[:use_dim]
             dim_index = np.transpose(dim_index, (1, 0))
+
         else:
             raise ValueError(
                 "No valid backend (combination) chosen. "
@@ -1521,11 +1536,11 @@ def _argknns(D_full, k_max_, m, n, slack):
 
 
 @njit(fastmath=True, cache=True, parallel=True)
-def take_along_axis(D_full, d, knn_idx, n):
+def take_along_axis(D_knns, d, knn, n):
     D_knn = np.zeros((d, n), dtype=np.float32)
-    for i in prange(d):
+    for dim in prange(d):
         for j in prange(n):
-            D_knn[i, j] = D_full[i][j][knn_idx[i, j]]
+            D_knn[dim, j] = D_knns[dim][j][knn]
     return D_knn
 
 
