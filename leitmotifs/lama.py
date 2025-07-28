@@ -4,16 +4,17 @@
 
 __author__ = ["patrickzib"]
 
+import os
+import warnings
 from ast import literal_eval
 from os.path import exists
-import os
 
-import psutil
 import numpy.fft as fft
 import pandas as pd
-from numba import prange, objmode, types
-from numba.typed import Dict, List
+import psutil
 from numba import set_num_threads, objmode, prange, get_num_threads
+from numba import types
+from numba.typed import Dict, List
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
 from tqdm.auto import tqdm
@@ -421,9 +422,8 @@ def compute_distances_with_knns_sparse(
         halve_m = int(m * slack)
 
     D_knn = np.full((dims, n, k), -1, dtype=np.float32)
-    knns = np.zeros((dims, n, k), -1, dtype=np.int32)
+    knns = np.full((dims, n, k), -1, dtype=np.int32)
 
-    # TODO: no sparse matrix support in numba. Thus we use this hack
     D_bool = [
         [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
          range(n)] for _ in range(dims)
@@ -1465,7 +1465,7 @@ def search_leitmotifs_elbow(
                 "Please choose 'scalable', 'sparse' or 'default'.")
 
         preprocessing = []
-        for dim in dim_index:
+        for dim in range(len(data_raw)):
             preprocessing.append(distance_preprocessing(data_raw[dim], m))
         preprocessing = np.array(preprocessing, dtype=np.float64)
 
