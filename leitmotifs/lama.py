@@ -344,11 +344,12 @@ def compute_distances_with_knns_full(
                     dot_rolled[0] = dot_first[order]
 
                 dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
+                dot_prev = dot_rolled
+
                 if sum_dims:
                     D_all[0, order] += dist
                 else:
                     D_all[d, order] = dist
-                dot_prev = dot_rolled
 
         if compute_knns:
             # do not merge with previous loop, as we are adding distances
@@ -439,16 +440,18 @@ def compute_distances_with_knns_sparse(
     lowest_distance = np.zeros(k, dtype=np.float32)
     lowest_distance[:] = np.inf
 
+    bin_size = np.int32(np.ceil(time_series.shape[-1] / n_jobs))
+
     # first pass, computing the k-nns
     for d in range(dims):
         ts = time_series[d, :]
         preprocessing = distance_preprocessing(ts, m)
 
         dot_first = _sliding_dot_product(ts[:m], ts)
-        bin_size = ts.shape[0] // n_jobs
+
         for idx in prange(n_jobs):
             start = idx * bin_size
-            end = min((idx + 1) * bin_size, n)
+            end = min(start + bin_size, n)
 
             dot_prev = None
             for order in np.arange(start, end):
@@ -533,7 +536,7 @@ def compute_distances_with_knns_sparse(
     return D_knn, D_sparse, knns
 
 
-# @njit(nogil=True, fastmath=True, cache=True, parallel=True)
+@njit(nogil=True, fastmath=True, cache=True, parallel=True)
 def compute_distances_with_knns(
         time_series,
         m,
@@ -823,7 +826,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-# @njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index,
         distance_single=None,
@@ -898,11 +901,12 @@ def run_LAMA(
                 #        ts, knn_idx[:k], dim_index,
                 #        m, distance_single, preprocessing, leitmotif_dist)
 
-                if order in [612]:
-                    print("order", order, "knn_idx", knn_idx[:k], "(k-1):", k - 1,
+                if order in [612, 123]:
+                    print("order", order,
+                          "knn_idx", knn_idx[:k], "(k-1):", k - 1,
                           "knn_distance", knn_distance,
                           "candidate_extent", candidate_extent,
-                          "dim_index", dim_index[order])
+                          "dim_index", dim_index[order, 0])
 
                 if candidate_extent <= leitmotif_dist:
                     leitmotif_dist = candidate_extent
