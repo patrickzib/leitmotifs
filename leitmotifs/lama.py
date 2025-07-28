@@ -697,8 +697,8 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
                 extent += D_full[idx[kk]][i][j]
 
             motifset_extent = max(motifset_extent, extent)
-            if motifset_extent > upperbound:
-                return np.inf
+            #if motifset_extent > upperbound:  # TODO re-enable
+            #    return np.inf
 
     return motifset_extent
 
@@ -862,7 +862,7 @@ def run_LAMA(
         leitmotif_candidate : np.array
             The (approximate) best leitmotif found
         leitmotif_dist:
-            The motiflet_extent of the leitmotif found
+            The candidate_extent of the leitmotif found
     """
     n = ts.shape[-1] - m + 1
     leitmotif_dist = upper_bound
@@ -884,26 +884,35 @@ def run_LAMA(
                 # FIXME this is not correct ???!!!
                 knn_distance += D[d][order][k - 1]
 
-        if order == 0:   # TODO remove?
-            print(knn_distance, knn_idx[k - 1],
-                  knn_idx[:k], dim_index[order, :k])
+        # if order == 0:   # TODO remove?
+        #     print(knn_distance, knn_idx[k - 1],
+        #           knn_idx[:k], dim_index[order, :k])
 
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distance <= leitmotif_dist:
                 if use_D_full:
-                    motiflet_extent = get_pairwise_extent(
-                        D, knn_idx[:k], dim_index, leitmotif_dist
-                    )
-                else:
-                    # get_pairwise_extent_raw does pairwise comparisons
-                    motiflet_extent = get_pairwise_extent_raw(
-                        ts, knn_idx[:k], dim_index,
-                        m, distance_single, preprocessing, leitmotif_dist)
+                    candidate_extent = get_pairwise_extent(
+                        D, knn_idx[:k], dim_index, leitmotif_dist)
+                #else:  # TODO
+                #    candidate_extent = get_pairwise_extent_raw(
+                #        ts, knn_idx[:k], dim_index,
+                #        m, distance_single, preprocessing, leitmotif_dist)
 
-                if motiflet_extent <= leitmotif_dist:
-                    leitmotif_dist = motiflet_extent
+                if order in [612]:
+                    print("order", order, "knn_idx", knn_idx[:k], "(k-1):", k - 1,
+                          "knn_distance", knn_distance,
+                          "candidate_extent", candidate_extent,
+                          "dim_index", dim_index[order])
+
+                if candidate_extent <= leitmotif_dist:
+                    leitmotif_dist = candidate_extent
                     leitmotif_candidate = knn_idx[:k]
                     leitmotif_dims = dim_index[order]
+
+                    #if len(leitmotif_candidate) == 6:
+                    #    print("Found leitmotif with extent", leitmotif_dist,
+                    #          "at order", order, "with dimensions", leitmotif_dims,
+                    #          leitmotif_candidate)
 
     # print("best dims", m, k, leitmotif_dims)
     return leitmotif_candidate, leitmotif_dist, leitmotif_dims
