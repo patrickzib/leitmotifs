@@ -482,7 +482,7 @@ def compute_distances_with_knns_sparse(
     for test_k in np.arange(k, 1, -1):
         # Choose best dims based on the k-th NN
         # knn_idx = knns[:, :, test_k - 1]
-        D_knn_subset = take_along_axis(D_knn, dims, test_k-1, n)
+        D_knn_subset = take_along_axis(D_knn, dims, test_k - 1, n)
 
         with objmode(dim_index="int64[:,:]"):
             dim_index = np.argsort(D_knn_subset, axis=0)[:use_dim]
@@ -619,13 +619,14 @@ def compute_distances_with_knns(
                     dot_rolled[0] = dot_first[order]
 
                 dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
+                dot_prev = dot_rolled
+
                 knn = _argknn(dist, k, m, slack=slack)
                 knns[d, order, :len(knn)] = knn
                 D_knn[d, order] = dist[knn]
 
                 # FIXME: there are some NN missing, if we order by best dimension :/
 
-                dot_prev = dot_rolled
 
     return D_knn, knns
 
@@ -700,8 +701,8 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
                 extent += D_full[idx[kk]][i][j]
 
             motifset_extent = max(motifset_extent, extent)
-            #if motifset_extent > upperbound:  # TODO re-enable
-            #    return np.inf
+            if motifset_extent > upperbound:
+                return np.inf
 
     return motifset_extent
 
@@ -826,7 +827,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-@njit(fastmath=True, cache=True)
+# @njit(fastmath=True, cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index,
         distance_single=None,
@@ -884,36 +885,34 @@ def run_LAMA(
             if use_D_full:
                 knn_distance += D[d][order][knn_idx[k - 1]]
             else:
-                # FIXME this is not correct ???!!!
-                knn_distance += D[d][order][k - 1]
-
-        # if order == 0:   # TODO remove?
-        #     print(knn_distance, knn_idx[k - 1],
-        #           knn_idx[:k], dim_index[order, :k])
+                a = ts[d, order:order + m]
+                id = knn_idx[k - 1]
+                b = ts[d, id:id + m]
+                knn_distance += distance_single(a, b, order, id, preprocessing[d])
 
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distance <= leitmotif_dist:
                 if use_D_full:
                     candidate_extent = get_pairwise_extent(
                         D, knn_idx[:k], dim_index, leitmotif_dist)
-                #else:  # TODO
-                #    candidate_extent = get_pairwise_extent_raw(
-                #        ts, knn_idx[:k], dim_index,
-                #        m, distance_single, preprocessing, leitmotif_dist)
+                else:
+                    candidate_extent = get_pairwise_extent_raw(
+                        ts, knn_idx[:k], dim_index,
+                        m, distance_single, preprocessing, leitmotif_dist)
 
-                if order in [612, 123]:
-                    print("order", order,
-                          "knn_idx", knn_idx[:k], "(k-1):", k - 1,
-                          "knn_distance", knn_distance,
-                          "candidate_extent", candidate_extent,
-                          "dim_index", dim_index[order, 0])
+                # if order in [612, 123]:
+                #     print("order", order,
+                #           "knn_idx", knn_idx[:k],
+                #           "knn_distance", knn_distance,
+                #           "candidate_extent", candidate_extent,
+                #           "dim_index", dim_index[order, 0])
 
                 if candidate_extent <= leitmotif_dist:
                     leitmotif_dist = candidate_extent
                     leitmotif_candidate = knn_idx[:k]
                     leitmotif_dims = dim_index[order]
 
-                    #if len(leitmotif_candidate) == 6:
+                    # if len(leitmotif_candidate) == 6:
                     #    print("Found leitmotif with extent", leitmotif_dist,
                     #          "at order", order, "with dimensions", leitmotif_dims,
                     #          leitmotif_candidate)
@@ -1226,7 +1225,6 @@ def find_au_ef_motif_length(
     top_leitmotifs_dims = np.zeros(len(motif_length_range), dtype=object)
     dists = np.zeros(len(motif_length_range), dtype=object)
 
-    # TODO parallelize?
     for i, m in enumerate(motif_length_range[::-1]):
         if m // subsample < data.shape[-1]:
             dist, candidates, candidate_dims, elbow_points, _, _ \
