@@ -421,55 +421,20 @@ def compute_distances_with_knns_sparse(
     if exclude_trivial_match:
         halve_m = int(m * slack)
 
-    D_knn = np.full((dims, n, k), -1, dtype=np.float32)
-    knns = np.full((dims, n, k), -1, dtype=np.int32)
+    D_knn, knns = compute_distances_with_knns(
+        time_series, m, k,
+        exclude_trivial_match=exclude_trivial_match,
+        n_jobs=n_jobs,
+        slack=slack,
+        distance=distance,
+        distance_single=distance_single,
+        distance_preprocessing=distance_preprocessing
+    )
 
     D_bool = [
         [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
          range(n)] for _ in range(dims)
     ]
-
-    D_sparse = List()
-    for d in range(dims):
-        _list2 = List()
-        D_sparse.append(_list2)
-        for i in range(n):
-            _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
-
-    lowest_distance = np.full(k, np.inf, dtype=np.float32)
-    # lowest_distance[:] = np.inf
-
-    bin_size = np.int32(np.ceil(time_series.shape[-1] / n_jobs))
-
-    # first pass, computing the k-nns
-    for d in range(dims):
-        ts = time_series[d, :]
-        preprocessing = distance_preprocessing(ts, m)
-
-        dot_first = _sliding_dot_product(ts[:m], ts)
-
-        for idx in prange(n_jobs):
-            start = idx * bin_size
-            end = min(start + bin_size, n)
-
-            dot_prev = None
-            for order in np.arange(start, end):
-                if order == start:
-                    # O(n log n) operation
-                    dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
-                else:
-                    # constant time O(1) operations
-                    dot_rolled = np.roll(dot_prev, 1) \
-                                 + ts[order + m - 1] * ts[m - 1:n + m] \
-                                 - ts[order - 1] * np.roll(ts[:n], 1)
-                    dot_rolled[0] = dot_first[order]
-
-                dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
-                dot_prev = dot_rolled
-
-                knn = _argknn(dist, k, m, slack=slack)
-                D_knn[d, order, :len(knn)] = dist[knn]
-                knns[d, order, :len(knn)] = knn
 
     # Store just the knns in a sparse matrix
     for d in prange(dims):
@@ -501,6 +466,13 @@ def compute_distances_with_knns_sparse(
                 for ks in knns_idx:
                     for ks2 in knns_idx:
                         D_bool[d][ks][ks2] = True
+
+    D_sparse = List()
+    for d in range(dims):
+        _list2 = List()
+        D_sparse.append(_list2)
+        for i in range(n):
+            _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
     # second pass, filling only the pairs needed
     for d in np.arange(dims):
@@ -623,9 +595,6 @@ def compute_distances_with_knns(
                 knn = _argknn(dist, k, m, slack=slack)
                 knns[d, order, :len(knn)] = knn
                 D_knn[d, order] = dist[knn]
-
-                # FIXME: there are some NN missing, if we order by best dimension :/
-
 
     return D_knn, knns
 
@@ -1378,7 +1347,7 @@ def search_leitmotifs_elbow(
 
     # switch to sparse matrix representation when length is above 30_000
     # sparse matrix is up to 2x slower but needs less memory
-    scalable_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
+    scalable_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8.0
     recommend_scalable = (scalable_gb > 8.0)
 
     if recommend_scalable and backend == "default":

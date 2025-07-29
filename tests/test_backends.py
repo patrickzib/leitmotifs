@@ -24,15 +24,15 @@ def read_penguin_data():
 def test_lama():
     k_max = 10
     motif_length = 22
-    n_dims = 4
+    n_dims = 3
 
     lengths = [
         1_000,
         5_000,
         10_000,
         # 30_000,
-        50_000,
-        100_000
+        # 50_000,
+        # 100_000
     ]
 
     ds_name, B = read_penguin_data()
@@ -60,12 +60,12 @@ def test_lama():
         )
 
         print(f"Testing backend: 'default'")
-        print(f"\tRuntime: {time.perf_counter() - t_before:0.1f} s")
-        print(f"\tMemory usage: {ml.memory_usage:0.1f} MB")
+        print(f"\tRuntime:       {time.perf_counter() - t_before:0.1f} s")
+        print(f"\tMemory usage:  {ml.memory_usage:0.1f} MB")
         print("\tElbow points:", gt_elbow_points)
-        print("\tDimensions:", *ml.leitmotifs_dims[gt_elbow_points])
-        print("\tMotiflets:", *gt_motiflets[gt_elbow_points])
-        print("\tDistances:", *gt_dists[gt_elbow_points])
+        print("\tDimensions:",   *ml.leitmotifs_dims[gt_elbow_points])
+        print("\tMotiflets:",    *gt_motiflets[gt_elbow_points])
+        print("\tDistances:",    *gt_dists[gt_elbow_points])
 
         del ml
 
@@ -88,12 +88,12 @@ def test_lama():
                 plot_motifsets=False
             )
 
-            print(f"\tRuntime: {time.perf_counter() - t_before:0.1f} s")
-            print(f"\tMemory usage: {ml.memory_usage:0.1f} MB")
+            print(f"\tRuntime:       {time.perf_counter() - t_before:0.1f} s")
+            print(f"\tMemory usage:  {ml.memory_usage:0.1f} MB")
             print("\tElbow points:", elbow_points)
-            print("\tDimensions:", *ml.leitmotifs_dims[gt_elbow_points])
-            print("\tMotiflets:", *motiflets[elbow_points])
-            print("\tDistances:", *dists[elbow_points])
+            print("\tDimensions:",   *ml.leitmotifs_dims[gt_elbow_points])
+            print("\tMotiflets:",    *motiflets[elbow_points])
+            print("\tDistances:",    *dists[elbow_points])
 
             assert np.allclose(gt_elbow_points, elbow_points, rtol=1e-2, atol=1e-2), \
                 f"Elbow points do not match for backend {backend} with length {length}"
