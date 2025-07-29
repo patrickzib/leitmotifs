@@ -27,9 +27,9 @@ def test_lama():
     n_dims = 4
 
     lengths = [
-        #1_000,
-        #5_000,
-        #10_000,
+        1_000,
+        5_000,
+        10_000,
         # 30_000,
         50_000,
         100_000
@@ -41,7 +41,7 @@ def test_lama():
         series = B.iloc[:length].T
 
         print("-------------------------------\n")
-        print(f"Current length: {series.shape}")
+        print(f"Current series shape (dimensions, length): {series.shape}")
 
         t_before = time.perf_counter()
         ml = LAMA(
@@ -70,7 +70,7 @@ def test_lama():
         del ml
 
         for backend in ["sparse", "scalable"]:
-            print(f"Testing backend: {backend}")
+            print(f"Testing backend: '{backend}'")
 
             ml = LAMA(
                 ds_name,

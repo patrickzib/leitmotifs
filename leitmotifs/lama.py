@@ -17,7 +17,6 @@ from numba import types
 from numba.typed import Dict, List
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
-from tqdm.auto import tqdm
 
 from leitmotifs.distances import *
 
@@ -1382,10 +1381,11 @@ def search_leitmotifs_elbow(
     scalable_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8
     recommend_scalable = (scalable_gb > 8.0)
 
-    if recommend_scalable:
+    if recommend_scalable and backend == "default":
         print(f"Setting 'scalable' backend for distance computations due to "
               f"excessive memory requirements. Old Backend: '{backend}'")
         backend = "scalable"
+        recommend_scalable = False
 
     # order dimensions by increasing distance
     use_dim = min(n_dims, d)  # dimensions indexed by 0
@@ -1429,7 +1429,7 @@ def search_leitmotifs_elbow(
                 distance_preprocessing=distance_preprocessing,
                 use_dim=use_dim
             )
-        elif recommend_scalable or backend == "scalable":
+        elif backend == "scalable":
             D_knns, knns = compute_distances_with_knns(
                 data_raw, m, k_max_,
                 n_jobs=n_jobs,
@@ -1439,7 +1439,7 @@ def search_leitmotifs_elbow(
                 distance_preprocessing=distance_preprocessing
             )
             D_full = D_knns
-        else:
+        elif backend == 'default':
             D_full, knns = compute_distances_with_knns_full(
                 data_raw, m, k_max_,
                 n_jobs=n_jobs,
@@ -1449,8 +1449,12 @@ def search_leitmotifs_elbow(
                 distance_single=distance_single,
                 distance_preprocessing=distance_preprocessing
             )
+        else:
+            raise ValueError(
+                "No valid backend (combination) chosen. "
+                "Please choose 'scalable', 'sparse' or 'default'.")
 
-    print(f"Using {backend} Backend", flush=True)
+    print(f"Using '{backend}' Backend", flush=True)
     memory_usage = process.memory_info().rss / (1024 * 1024)  # MB
 
     # non-overlapping motifs only
@@ -1459,10 +1463,7 @@ def search_leitmotifs_elbow(
     k_leitmotif_dims = np.empty(k_max_ + 1, dtype=object)
 
     upper_bound = np.inf
-    for test_k in tqdm(range(k_max_, 1, -1),
-                       desc='Compute ks (' + str(k_max_) + ")",
-                       position=0, leave=False):
-
+    for test_k in range(k_max_, 1, -1):
         if minimize_pairwise_dist or sum_dims:
             # Do nothing
             dim_index = np.zeros((n, 1), dtype=np.int32)
