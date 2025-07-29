@@ -437,8 +437,8 @@ def compute_distances_with_knns_sparse(
         for i in range(n):
             _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
 
-    lowest_distance = np.zeros(k, dtype=np.float32)
-    lowest_distance[:] = np.inf
+    lowest_distance = np.full(k, np.inf, dtype=np.float32)
+    # lowest_distance[:] = np.inf
 
     bin_size = np.int32(np.ceil(time_series.shape[-1] / n_jobs))
 
@@ -827,7 +827,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-# @njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index,
         distance_single=None,
@@ -1526,6 +1526,12 @@ def search_leitmotifs_elbow(
 
     set_num_threads(previous_jobs)
 
+    # Cleanup
+    if 'D_knns' in locals():
+        del D_knns
+    if 'D_knn' in locals():
+        del D_knn
+
     if return_distances:
         return (k_leitmotif_distances, k_leitmotif_candidates, k_leitmotif_dims,
                 elbow_points, D_full, knns, memory_usage)
@@ -1537,11 +1543,10 @@ def search_leitmotifs_elbow(
 @njit(fastmath=True, cache=True)
 def _argknns(D_full, k_max_, m, n, slack):
     # compute knns from new distance matrix
-    knns = np.zeros((n, k_max_), dtype=np.int32)
+    knns = np.full((n, k_max_), -1, dtype=np.int32)
     for order in range(0, D_full.shape[0]):
         knn = _argknn(D_full[order], k_max_, m, slack=slack)
         knns[order, :len(knn)] = knn
-        knns[order, len(knn):] = -1
 
     return knns
 
