@@ -183,7 +183,7 @@ def test_sparse():
 
     m = 100
     k = 10
-    D_knn, D_sparse, knns = ml.compute_distance_matrix_sparse(series, m=m, k=k)
+    D_knn, D_sparse, knns = ml.compute_distances_with_knns_sparse(series, m=m, k=k)
 
     elements = 0
     for A in D_sparse:
@@ -203,7 +203,7 @@ def test_full():
     m = 100
     k = 10
 
-    _, _ = ml.compute_distance_matrix(series, m=m, k=k)
+    _, _ = ml.compute_distances_with_knns_full(series, m=m, k=k)
 
 
 def test_lama(use_PCA=False):
