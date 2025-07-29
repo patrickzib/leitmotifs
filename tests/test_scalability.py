@@ -1,15 +1,8 @@
-from leitmotifs.plotting import *
-
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
-
 import warnings
 
+from leitmotifs.plotting import *
+
 warnings.simplefilter("ignore")
-
-import matplotlib as mpl
-
-mpl.rcParams['figure.dpi'] = 150
 
 path = "../datasets/experiments/"
 
@@ -26,11 +19,10 @@ def read_penguin_data():
 
 
 def test_penguins_univ():
-    lengths = [#1_000, 5_000,
-               #10_000, 30_000,
-               50_000 # , 100_000,
-               # 150_000, 200_000,
-               # 250_000
+    lengths = [1_000,
+               5_000,
+               10_000
+               # , 30_000,
                ]
 
     ds_name, B = read_penguin_data()
@@ -38,11 +30,11 @@ def test_penguins_univ():
 
     for i, length in enumerate(lengths):
         print("Current", length)
-        series = B.iloc[:length,0].T
+        series = B.iloc[:length, 0].T
 
         ml = LAMA(ds_name,
                   series,
-                  n_jobs=8,
+                  n_jobs=-1,
                   )
 
         k_max = 5
@@ -62,8 +54,8 @@ def test_penguins_multivariate():
     lengths = [1_000,
                5_000,
                10_000,
-               30_000,
-               #50_000,
+               # 30_000,
+               # 50_000,
                # 100_000,
                # 150_000, 200_000,
                # 250_000
@@ -76,11 +68,13 @@ def test_penguins_multivariate():
         print("Current", length, flush=True)
         series = B.iloc[:length].T
 
-        ml = LAMA(ds_name,
-                  series,
-                  n_dims=3,
-                  backend="scalable",
-                  )
+        ml = LAMA(
+            ds_name,
+            series,
+            n_dims=3,
+            backend="scalable",
+            n_jobs=-1,
+        )
 
         k_max = 5
 
