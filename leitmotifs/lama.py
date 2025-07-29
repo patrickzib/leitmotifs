@@ -1383,8 +1383,8 @@ def search_leitmotifs_elbow(
     recommend_scalable = (scalable_gb > 8.0)
 
     if recommend_scalable:
-        print(f"Setting 'scalable' backend for distance computations. "
-              f"Old Backend: '{backend}'")
+        print(f"Setting 'scalable' backend for distance computations due to "
+              f"excessive memory requirements. Old Backend: '{backend}'")
         backend = "scalable"
 
     # order dimensions by increasing distance

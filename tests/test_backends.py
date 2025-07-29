@@ -22,16 +22,17 @@ def read_penguin_data():
 
 
 def test_lama():
-    k_max = 9
-    motif_length = 27
-    n_dims = 3
+    k_max = 10
+    motif_length = 22
+    n_dims = 4
 
     lengths = [
-        1_000,
-        5_000,
-        10_000,
+        #1_000,
+        #5_000,
+        #10_000,
         # 30_000,
-        # 50_000
+        50_000,
+        100_000
     ]
 
     ds_name, B = read_penguin_data()
@@ -63,9 +64,7 @@ def test_lama():
         print(f"\tMemory usage: {ml.memory_usage:0.1f} MB")
         print("\tElbow points:", gt_elbow_points)
         print("\tDimensions:", *ml.leitmotifs_dims[gt_elbow_points])
-        print("\tMotiflets:",
-                  *gt_motiflets[gt_elbow_points],
-                  np.diff(np.sort(*gt_motiflets[gt_elbow_points])))
+        print("\tMotiflets:", *gt_motiflets[gt_elbow_points])
         print("\tDistances:", *gt_dists[gt_elbow_points])
 
         del ml
@@ -93,21 +92,19 @@ def test_lama():
             print(f"\tMemory usage: {ml.memory_usage:0.1f} MB")
             print("\tElbow points:", elbow_points)
             print("\tDimensions:", *ml.leitmotifs_dims[gt_elbow_points])
-            print("\tMotiflets:",
-                  *motiflets[elbow_points],
-                  np.diff(np.sort(*motiflets[elbow_points])))
+            print("\tMotiflets:", *motiflets[elbow_points])
             print("\tDistances:", *dists[elbow_points])
 
-            #assert np.allclose(gt_elbow_points, elbow_points, rtol=1e-2, atol=1e-2), \
-            #    f"Elbow points do not match for backend {backend} with length {length}"
+            assert np.allclose(gt_elbow_points, elbow_points, rtol=1e-2, atol=1e-2), \
+                f"Elbow points do not match for backend {backend} with length {length}"
 
-            #for elbow in elbow_points:
-            #    assert np.allclose(np.sort(gt_motiflets[elbow]),
-            #                       np.sort(motiflets[elbow])), \
-            #        f"Motiflets do not match for {backend} with length {length}"
-            #    assert np.allclose(gt_dists[elbow],
-            #                       dists[elbow], rtol=1e-2, atol=1e-2), \
-            #        f"Distances do not match for {backend} with length {length}"
+            for elbow in elbow_points:
+                assert np.allclose(np.sort(gt_motiflets[elbow]),
+                                   np.sort(motiflets[elbow])), \
+                    f"Motiflets do not match for {backend} with length {length}"
+                assert np.allclose(gt_dists[elbow],
+                                   dists[elbow], rtol=1e-2, atol=1e-2), \
+                    f"Distances do not match for {backend} with length {length}"
 
             print(f"Backend {backend} passed for series length {length}.\n")
 
