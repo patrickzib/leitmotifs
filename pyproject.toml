@@ -1,7 +1,7 @@
 [project]
 name = "leitmotif"
 
-version = "0.3.0"
+version = "0.3.1"
 
 description = "Discovering Leitmotifs in Multidimensional Time Series"
 readme = "README.md"
@@ -61,7 +61,7 @@ repository = "https://github.com/patrickzib/leitmotifs"
 file = "LICENSE"
 
 [build-system]
-requires = ["setuptools", "wheel", "toml", "build"]
+requires = ["setuptools>=61.0", "wheel", "toml", "build"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
