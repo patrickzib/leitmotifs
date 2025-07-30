@@ -216,23 +216,30 @@ def _sliding_dot_product(query, time_series):
     dot_product : array-like
         The result of the sliding dot-product
     """
+
     m = len(query)
     n = len(time_series)
 
-    pad_len = n + m - 1
-    fft_len = pad_len
+    time_series_add = 0
+    if n % 2 == 1:
+        time_series = np.concatenate((np.array([0]), time_series))
+        time_series_add = 1
 
-    ts_padded = np.zeros(fft_len)
-    ts_padded[:n] = time_series
+    q_add = 0
+    if m % 2 == 1:
+        query = np.concatenate((np.array([0]), query))
+        q_add = 1
 
-    q_padded = np.zeros(fft_len)
-    q_padded[:m] = query[::-1]  # Reverse once here
+    query = query[::-1]
+
+    query = np.concatenate((query, np.zeros(n - m + time_series_add - q_add)))
+
+    trim = m - 1 + time_series_add
 
     with objmode(dot_product="float64[:]"):
-        dot_product = fft.irfft(fft.rfft(ts_padded) * fft.rfft(q_padded))
+        dot_product = fft.irfft(fft.rfft(time_series) * fft.rfft(query))
 
-    trim = m - 1
-    return dot_product[trim:trim + n - m + 1]
+    return dot_product[trim:]
 
 
 @njit(fastmath=True, cache=True, parallel=True)
