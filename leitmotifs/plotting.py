@@ -293,7 +293,7 @@ def convert_to_2d(
         if isinstance(series, pd.Series):
             series = series.to_frame().T
         elif isinstance(series, (np.ndarray, np.generic)):
-            series = np.arange(series.shape[-1])
+            series = series.reshape(1, -1)
     if series.shape[0] > series.shape[1]:
         raise ('Warning: The input shape is wrong. Dimensions should be on rows. '
                'Try transposing the input.')
