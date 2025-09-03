@@ -759,7 +759,7 @@ def plot_elbow(
         if isinstance(data, pd.Series):
             data = data.to_frame().T
         elif isinstance(data, (np.ndarray, np.generic)):
-            data = np.arange(data.shape[-1])
+            data = data.reshape(1,-1)
 
     _, raw_data = ml.pd_series_to_numpy(data)
     # print("Data", raw_data.shape)
