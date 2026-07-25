@@ -4,21 +4,45 @@
 
 __author__ = ["patrickzib"]
 
-import math
 import os
 import warnings
 from ast import literal_eval
-from os.path import exists
+from pathlib import Path
 
 import pandas as pd
 import psutil
 from numba import set_num_threads, objmode, prange, get_num_threads
 from numba import types
 from numba.typed import Dict, List
+from scipy.fft import irfft, next_fast_len, rfft
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
 
 from leitmotifs.distances import *
+
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _strip_dataset_prefix(path):
+    parts = Path(path).parts
+    if len(parts) >= 2 and parts[0] == ".." and parts[1] == "datasets":
+        return Path(*parts[2:])
+    if len(parts) >= 1 and parts[0] == "datasets":
+        return Path(*parts[1:])
+    return Path(path)
+
+
+def _resolve_dataset_path(*parts):
+    path = Path(*parts)
+    if path.is_absolute() or path.exists():
+        return path
+
+    dataset_path = _strip_dataset_prefix(path)
+    legacy_path = Path("..", "datasets", dataset_path)
+    if legacy_path.exists():
+        return legacy_path
+    return _PROJECT_ROOT / "datasets" / dataset_path
 
 
 def _resample(
@@ -55,7 +79,7 @@ def _resample(
     return data, factor
 
 
-def read_ground_truth(dataset):
+def read_ground_truth(dataset, path=None):
     """Reads the ground-truth data for the time series.
 
     Parameters
@@ -69,13 +93,14 @@ def read_ground_truth(dataset):
         A series of ground-truth data
 
     """
-    if "_gt.csv" not in dataset:
-        file = os.path.splitext(dataset)[0] + "_gt.csv"
+    dataset = Path(path or "") / Path(dataset)
+    if "_gt.csv" not in str(dataset):
+        file = Path(os.path.splitext(str(dataset))[0] + "_gt.csv")
     else:
-        file = os.path.splitext(dataset)[0]
+        file = dataset
 
-    if exists(file):
-        # print(file)
+    file = _resolve_dataset_path(file)
+    if file.exists():
         series = pd.read_csv(file, index_col=0)
 
         for i in range(0, series.shape[0]):
@@ -89,6 +114,7 @@ def read_ground_truth(dataset):
 
 def read_audio_from_dataframe(pandas_file_url, channels=None):
     """Reads a time series with an index (e.g. time) from a CSV with MFCC features."""
+    pandas_file_url = _resolve_dataset_path(pandas_file_url)
     df = pd.read_csv(pandas_file_url, index_col=0, compression='gzip')
     audio_length_seconds = 2 * float(df.columns[-1]) - float(df.columns[-2])
 
@@ -120,7 +146,7 @@ def read_dataset_with_index(dataset, sampling_factor=10000):
             Ground-truth, if available as `dataset`_gt file
 
     """
-    full_path = '../datasets/ground_truth/' + dataset
+    full_path = _resolve_dataset_path("ground_truth", dataset)
     data = pd.read_csv(full_path, index_col=0).squeeze('columns')
     print("Dataset Original Length n: ", len(data))
 
@@ -129,7 +155,7 @@ def read_dataset_with_index(dataset, sampling_factor=10000):
 
     data[:] = zscore(data)
 
-    gt = read_ground_truth(dataset)
+    gt = read_ground_truth(full_path)
     if gt is not None:
         if factor > 1:
             for column in gt:
@@ -137,6 +163,395 @@ def read_dataset_with_index(dataset, sampling_factor=10000):
         return data, gt
     else:
         return data
+
+
+def convert_to_2d(
+        series
+):
+    if series.ndim == 1:
+        print('Warning: The input dimension must be 2d.')
+        if isinstance(series, pd.Series):
+            series = series.to_frame().T
+        elif isinstance(series, (np.ndarray, np.generic)):
+            series = series.reshape(1, -1)
+    if series.shape[0] > series.shape[1]:
+        raise ValueError(
+            'Warning: The input shape is wrong. Dimensions should be on rows. '
+            'Try transposing the input.')
+
+    return series
+
+
+def as_series(
+        data,
+        index_range,
+        index_name):
+    """Coverts a time series to a series with an index.
+
+    Parameters
+    ----------
+    data : array-like
+        The time series raw data as numpy array
+    index_range :
+        The index to use
+    index_name :
+        The name of the index to use (e.g. time)
+
+    Returns
+    -------
+    series : PD.Series
+
+    """
+    series = pd.Series(data=data, index=index_range)
+    series.index.name = index_name
+    return series
+
+
+def _filter_duplicate_window_sizes(au_ef, minima):
+    """Filter neighboring window sizes with equal minima."""
+    filtered = []
+    pos = minima[0][0]
+    last = au_ef[pos]
+    for m in range(1, len(minima[0])):
+        current = au_ef[minima[0][m]]
+        if current != last:
+            filtered.append(pos)
+        last = current
+        pos = minima[0][m]
+    filtered.append(pos)
+    return [np.array(filtered)]
+
+
+def _plotting():
+    import leitmotifs.plotting as plotting
+    return plotting
+
+
+class LAMA:
+    """
+        Class implementing the LAMA.
+
+        Parameters
+        ----------
+        ds_name : str
+            Name of the dataset.
+        series : array-like
+            The time series data.
+        minimize_pairwise_dist: bool (default=False)
+            If True, the pairwise distance is minimized. This is the mStamp-approach.
+            It has the potential drawback, that each pair of subsequences may have
+            different smallest dimensions.
+        ground_truth : pd.Series (default=None)
+            Ground-truth information as pd.Series.
+        dimension_labels : array-like (default=None)
+            Labels used for the dimensions' axis for plotting.
+            If None, numeric indices are used.
+        elbow_deviation : float, optional (default=1.00)
+            The minimal absolute deviation needed to detect an elbow.
+            It measures the absolute change in deviation from k to k+1.
+            1.05 corresponds to 5% increase in deviation.
+        n_dims : int, optional (default=None)
+            The number of dimensions to be used in the subdimensional motif discovery.
+            If none: all dimensions are used.
+        distance: str (default="znormed_ed")
+            The name of the distance function to be computed.
+            Available options are:
+                - 'znormed_ed' or 'znormed_euclidean' for z-normalized ED
+                - 'ed' or 'euclidean' for the "normal" ED.
+        n_jobs : int, optional (default=1)
+            Amount of threads used in the k-nearest neighbour calculation.
+        slack: float, optional (default=0.5)
+            Defines an exclusion zone around each subsequence to avoid trivial matches.
+            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
+        backend : String, default="scalable"
+            The backend to use. As of now 'scalable', 'sparse' and 'default' are supported.
+            Use 'default' for the original exact implementation with excessive memory,
+            Use 'scalable' for a scalable, exact implementation with less memory,
+            Use 'sparse' for a scalable, exact implementation with more memory.
+
+        Methods
+        -------
+        fit(time_series)
+            Fit the KSN model to the input time series data.
+        constrain(self, lbound, ubound)
+            Return a constrained KSN model for the given temporal constraint.
+        """
+
+    def __init__(
+            self,
+            ds_name,
+            series,
+            minimize_pairwise_dist=False,
+            ground_truth=None,
+            dimension_labels=None,
+            elbow_deviation=1.00,
+            n_dims=None,
+            distance="znormed_ed",
+            n_jobs=-1,
+            slack=0.5,
+            backend="default"
+    ) -> None:
+        self.ds_name = ds_name
+        self.series = convert_to_2d(series)
+
+        self.elbow_deviation = elbow_deviation
+        self.slack = slack
+        self.dimension_labels = dimension_labels
+        self.ground_truth = ground_truth
+        self.minimize_pairwise_dist = minimize_pairwise_dist
+
+        # distance function used
+        self.distance_preprocessing, self.distance, self.distance_single \
+            = map_distances(distance)
+        self.backend = backend
+
+        self.motif_length_range = None
+        self.motif_length = 0
+        self.all_extrema = []
+        self.all_elbows = []
+        self.all_top_leitmotifs = []
+        self.all_dists = []
+
+        self.n_dims = n_dims
+
+        n_jobs = os.cpu_count() if n_jobs < 1 else n_jobs
+        self.n_jobs = n_jobs
+
+        self.motif_length = 0
+        self.memory_usage = 0
+        self.k_max = 0
+        self.dists = []
+        self.leitmotifs = []
+        self.elbow_points = []
+        self.leitmotifs_dims = []
+        self.all_dimensions = []
+
+    def fit_motif_length(
+            self,
+            k_max,
+            motif_length_range,
+            subsample=1,
+            plot=True,
+            plot_elbows=False,
+            plot_motifsets=True,
+            plot_best_only=True
+    ):
+        self.motif_length_range = motif_length_range
+        self.k_max = k_max
+
+        data = convert_to_2d(self.series)
+        index, data_raw = pd_series_to_numpy(data)
+        header = " in " + data.index.name if isinstance(
+            data, pd.Series) and data.index.name is not None else ""
+        motif_length_range = np.int32(motif_length_range)
+
+        (self.motif_length,
+         all_minima, au_ef,
+         self.all_elbows,
+         self.all_top_leitmotifs,
+         self.all_dimensions,
+         self.all_dists) = find_au_ef_motif_length(
+            data_raw, k_max,
+            n_dims=self.n_dims,
+            motif_length_range=motif_length_range,
+            minimize_pairwise_dist=self.minimize_pairwise_dist,
+            n_jobs=self.n_jobs,
+            elbow_deviation=self.elbow_deviation,
+            slack=self.slack,
+            subsample=subsample,
+            distance=self.distance,
+            distance_single=self.distance_single,
+            distance_preprocessing=self.distance_preprocessing,
+            backend=self.backend
+        )
+
+        all_minima = _filter_duplicate_window_sizes(au_ef, all_minima)
+
+        if plot:
+            plotting = _plotting()
+            plotting._plot_window_lengths(
+                all_minima, au_ef, data_raw, self.ds_name, self.all_elbows,
+                header, index, motif_length_range, self.all_top_leitmotifs,
+                top_leitmotifs_dims=self.all_dimensions)
+
+            if plot_elbows or plot_motifsets:
+                to_plot = all_minima[0]
+                if plot_best_only:
+                    to_plot = [np.argmin(au_ef)]
+
+                for a in to_plot:
+                    motif_length = motif_length_range[a]
+                    candidates = np.zeros(len(self.all_dists[a]), dtype=object)
+                    candidates[self.all_elbows[a]] = self.all_top_leitmotifs[a]
+
+                    candidate_dims = np.zeros(len(self.all_dists[a]), dtype=object)
+                    candidate_dims[self.all_elbows[a]] = self.all_dimensions[a]
+
+                    elbow_points = self.all_elbows[a]
+
+                    if plot_elbows:
+                        plotting._plot_elbow_points(
+                            self.ds_name, data,
+                            elbow_points, candidates, self.all_dists[a])
+
+                    if plot_motifsets:
+                        plotting.plot_motifsets(
+                            self.ds_name,
+                            data,
+                            motifsets=self.all_top_leitmotifs[a],
+                            leitmotif_dims=self.all_dimensions[a],
+                            motif_length=motif_length,
+                            ground_truth=self.ground_truth,
+                            show=True)
+
+        best_pos = np.argmin(au_ef)
+        self.elbow_points = self.all_elbows[best_pos]
+        self.dists = self.all_dists[best_pos]
+        self.leitmotifs = np.zeros(len(self.all_dists[best_pos]), dtype=object)
+        self.leitmotifs[self.all_elbows[best_pos]] = self.all_top_leitmotifs[best_pos]
+        self.leitmotifs_dims = np.zeros(len(self.all_dists[best_pos]), dtype=object)
+        self.leitmotifs_dims[self.all_elbows[best_pos]] = self.all_dimensions[best_pos]
+        self.all_extrema = all_minima[0]
+
+        return self.motif_length, self.all_extrema
+
+    def fit_k_elbow(
+            self,
+            k_max,
+            motif_length=None,  # if None, use best_motif_length
+            filter_duplicates=True,
+            plot_elbows=True,
+            plot_motifsets=True,
+    ):
+        self.k_max = k_max
+
+        if motif_length is None:
+            motif_length = self.motif_length
+            if motif_length <= 0:
+                raise ValueError(
+                    "motif_length must be provided, or fit_motif_length() "
+                    "must be called first.")
+        else:
+            self.motif_length = motif_length
+
+        data = convert_to_2d(self.series)
+        _, raw_data = pd_series_to_numpy(data)
+
+        (self.dists, self.leitmotifs, self.leitmotifs_dims,
+         self.elbow_points, _, self.memory_usage) = search_leitmotifs_elbow(
+            k_max,
+            raw_data,
+            motif_length,
+            n_dims=self.n_dims,
+            filter=filter_duplicates,
+            minimize_pairwise_dist=self.minimize_pairwise_dist,
+            n_jobs=self.n_jobs,
+            elbow_deviation=self.elbow_deviation,
+            slack=self.slack,
+            distance=self.distance,
+            distance_single=self.distance_single,
+            distance_preprocessing=self.distance_preprocessing,
+            backend=self.backend
+        )
+
+        if plot_elbows or plot_motifsets:
+            plotting = _plotting()
+            if plot_elbows:
+                plotting._plot_elbow_points(
+                    self.ds_name, data, self.elbow_points,
+                    self.leitmotifs, self.dists)
+
+            if plot_motifsets:
+                plotting.plot_motifsets(
+                    self.ds_name,
+                    data,
+                    motifsets=self.leitmotifs[self.elbow_points],
+                    leitmotif_dims=self.leitmotifs_dims[self.elbow_points],
+                    motif_length=motif_length,
+                    ground_truth=self.ground_truth,
+                    show=True)
+
+        return self.dists, self.leitmotifs, self.elbow_points
+
+    def fit_dimensions(
+            self,
+            k_max,
+            motif_length,
+            dim_range
+    ):
+
+        all_dist, all_candidates, all_candidate_dims, all_elbow_points \
+            = select_subdimensions(
+            self.series,
+            k_max=k_max,
+            motif_length=motif_length,
+            dim_range=dim_range,
+            minimize_pairwise_dist=self.minimize_pairwise_dist,
+            n_jobs=self.n_jobs,
+            elbow_deviation=self.elbow_deviation,
+            slack=self.slack,
+            distance=self.distance,
+            distance_single=self.distance_single,
+            distance_preprocessing=self.distance_preprocessing,
+            backend=self.backend
+        )
+
+        plotting = _plotting()
+
+        fig, ax = plotting.plt.subplots(figsize=(10, 4))
+        ax.set_title("Dimension Plot")
+        plotting.sns.lineplot(x=dim_range, y=all_dist, ax=ax)
+        plotting.plt.tight_layout()
+        plotting.plt.show()
+
+    def plot_dataset(self, path=None):
+        fig, ax = _plotting().plot_dataset(
+            self.ds_name,
+            self.series,
+            show=path is None,
+            ground_truth=self.ground_truth)
+
+        if path is not None:
+            _plotting().plt.savefig(path)
+            _plotting().plt.show()
+
+        return fig, ax
+
+    def plot_motifset(
+            self,
+            elbow_points=None,
+            path=None,
+            motifset_name=None):
+
+        if self.dists is None or self.leitmotifs is None or self.elbow_points is None:
+            raise Exception("Please call fit_k_elbow first.")
+
+        if elbow_points is None:
+            elbow_points = self.elbow_points
+
+        # TODO
+        # if elbow_point is None:
+        #    elbow_point = self.elbow_points[-1]
+        motifset_names = None
+        if motifset_name is not None:
+            motifset_names = [motifset_name for _ in range(len(self.elbow_points))]
+
+        fig, ax = _plotting().plot_motifsets(
+            self.ds_name,
+            self.series,
+            motifsets=self.leitmotifs[elbow_points],
+            leitmotif_dims=self.leitmotifs_dims[elbow_points],
+            motifset_names=motifset_names,
+            # dist=self.dists[elbow_points],
+            ground_truth=self.ground_truth,
+            motif_length=self.motif_length,
+            show=path is None)
+
+        if path is not None:
+            _plotting().plt.savefig(path)
+            _plotting().plt.show()
+
+        return fig, ax
 
 
 def pd_series_to_numpy(data):
@@ -189,7 +604,7 @@ def read_dataset(dataset, sampling_factor=10000):
         The time series with z-score applied.
 
     """
-    full_path = '../datasets/' + dataset
+    full_path = _resolve_dataset_path(dataset)
     data = pd.read_csv(full_path).T
     data = np.array(data)[0]
     print("Dataset Original Length n: ", len(data))
@@ -200,7 +615,7 @@ def read_dataset(dataset, sampling_factor=10000):
     return zscore(data)
 
 
-@njit(fastmath=True, cache=True)
+@njit(cache=True)
 def _sliding_dot_product(query, time_series):
     """Compute a sliding dot-product using the Fourier-Transform
 
@@ -221,23 +636,29 @@ def _sliding_dot_product(query, time_series):
     if m > n:
         raise ValueError("query longer than time_series")
 
-    # Reverse query for cross-correlation and cast to float64
+    # Reverse query for cross-correlation.
     q_rev = query[::-1]
-    t = time_series
-
-    # Next power-of-two ≥ n + m  (good for FFT speed)
-    total = n + m
-    exponent = math.ceil(math.log2(total))
-
-    L = 1 << exponent
-    q_pad = np.concatenate((q_rev, np.zeros(L - m, dtype=q_rev.dtype)))
-    t_pad = np.concatenate((t, np.zeros(L - n, dtype=t.dtype)))
 
     with objmode(conv='float64[:]'):
-        conv = np.fft.irfft(np.fft.rfft(q_pad) * np.fft.rfft(t_pad))
+        fft_length = next_fast_len(n + m - 1, real=True)
+        conv = irfft(rfft(q_rev, fft_length) * rfft(time_series, fft_length),
+                     fft_length)
 
     # Trim to the valid sliding-dot range
     return conv[m - 1: n]
+
+
+@njit(fastmath=True, cache=True, inline='always')
+def _update_sliding_dot_product(dot_rolled, dot_first_order, ts, order, m, n):
+    add = ts[order + m - 1]
+    remove = ts[order - 1]
+
+    dot_rolled[1:] = (
+            dot_rolled[:-1]
+            + add * ts[m:n + m - 1]
+            - remove * ts[:n - 1]
+    )
+    dot_rolled[0] = dot_first_order
 
 
 @njit(fastmath=True, cache=True, parallel=True)
@@ -317,7 +738,7 @@ def compute_distances_with_knns_full(
         else:
             knns = np.full((dims, 1, 1), -1, dtype=np.int32)
 
-    bin_size = np.int32(np.ceil(time_series.shape[-1] / n_jobs))
+    bin_size = np.int32(np.ceil(n / n_jobs))
 
     for idx in prange(n_jobs):
         start = idx * bin_size
@@ -327,30 +748,25 @@ def compute_distances_with_knns_full(
             ts = time_series[d, :]
             preprocessing = distance_preprocessing(ts, m)
             dot_first = _sliding_dot_product(ts[:m], ts)
-
-            dot_prev = None
+            dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
             for order in np.arange(start, end):
-                if order == start:
-                    # O(n log n) operation
-                    dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
-                else:
-                    # constant time O(1) operations
-                    dot_rolled = np.roll(dot_prev, 1) \
-                                 + ts[order + m - 1] * ts[m - 1:n + m] \
-                                 - ts[order - 1] * np.roll(ts[:n], 1)
-                    dot_rolled[0] = dot_first[order]
+                if order != start:
+                    _update_sliding_dot_product(
+                        dot_rolled, dot_first[order], ts, order, m, n)
 
                 dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
-                dot_prev = dot_rolled
 
                 if sum_dims:
                     D_all[0, order] += dist
                 else:
                     D_all[d, order] = dist
 
-        if compute_knns:
-            # do not merge with previous loop, as we are adding distances
-            # over dimensions, first
+    if compute_knns:
+        # do not merge with previous loop, as we are adding distances
+        # over dimensions, first
+        for idx in prange(n_jobs):
+            start = idx * bin_size
+            end = min(start + bin_size, n)
             for d in np.arange(D_all.shape[0]):
                 for order in np.arange(start, end):
                     knn = _argknn(D_all[d, order], k, m, slack=slack)
@@ -443,7 +859,6 @@ def compute_distances_with_knns_sparse(
     # Determine best dimensions
     for test_k in np.arange(k, 1, -1):
         # Choose best dims based on the k-th NN
-        # knn_idx = knns[:, :, test_k - 1]
         D_knn_subset = take_along_axis(D_knn, dims, test_k - 1, n)
 
         with objmode(dim_index="int64[:,:]"):
@@ -478,25 +893,18 @@ def compute_distances_with_knns_sparse(
         preprocessing = distance_preprocessing(ts, m)
 
         dot_first = _sliding_dot_product(ts[:m], ts)
-        bin_size = ts.shape[0] // n_jobs
+        bin_size = np.int32(np.ceil(n / n_jobs))
         for idx in prange(n_jobs):
             start = idx * bin_size
-            end = min((idx + 1) * bin_size, n)
+            end = min(start + bin_size, n)
 
-            dot_prev = None
+            dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
             for order in np.arange(start, end):
-                if order == start:
-                    # O(n log n) operation
-                    dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
-                else:
-                    # constant time O(1) operations
-                    dot_rolled = np.roll(dot_prev, 1) \
-                                 + ts[order + m - 1] * ts[m - 1:n + m] \
-                                 - ts[order - 1] * np.roll(ts[:n], 1)
-                    dot_rolled[0] = dot_first[order]
+                if order != start:
+                    _update_sliding_dot_product(
+                        dot_rolled, dot_first[order], ts, order, m, n)
 
                 dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
-                dot_prev = dot_rolled
 
                 # fill the knns now with the distances computed
                 for key in D_bool[d][order]:
@@ -564,7 +972,7 @@ def compute_distances_with_knns(
     D_knn = np.zeros((dims, n, k), dtype=np.float64)
     knns = np.full((dims, n, k), -1, dtype=np.int32)
 
-    bin_size = np.int32(np.ceil(time_series.shape[-1] / n_jobs))
+    bin_size = np.int32(np.ceil(n / n_jobs))
 
     for idx in prange(n_jobs):
         start = idx * bin_size
@@ -574,21 +982,13 @@ def compute_distances_with_knns(
             ts = time_series[d, :]
             preprocessing = distance_preprocessing(ts, m)
             dot_first = _sliding_dot_product(ts[:m], ts)
-
-            dot_prev = None
+            dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
             for order in np.arange(start, end):
-                if order == start:
-                    # O(n log n) operation
-                    dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
-                else:
-                    # constant time O(1) operations
-                    dot_rolled = np.roll(dot_prev, 1) \
-                                 + ts[order + m - 1] * ts[m - 1:n + m] \
-                                 - ts[order - 1] * np.roll(ts[:n], 1)
-                    dot_rolled[0] = dot_first[order]
+                if order != start:
+                    _update_sliding_dot_product(
+                        dot_rolled, dot_first[order], ts, order, m, n)
 
                 dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
-                dot_prev = dot_rolled
 
                 knn = _argknn(dist, k, m, slack=slack)
                 knns[d, order, :len(knn)] = knn
@@ -618,7 +1018,7 @@ def get_radius(D_full, motifset_pos):
     for ii in range(len(motifset_pos) - 1):
         i = motifset_pos[ii]
         current = np.float32(0.0)
-        for jj in range(1, len(motifset_pos)):
+        for jj in range(0, len(motifset_pos)):
             if (i != jj):
                 j = motifset_pos[jj]
                 current = max(current, D_full[i, j])
@@ -628,7 +1028,7 @@ def get_radius(D_full, motifset_pos):
 
 
 @njit(fastmath=True, cache=True)
-def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
+def get_pairwise_extent(D_full, motifset_pos, dims, upperbound=np.inf):
     """Computes the extent of the motifset.
 
     Parameters
@@ -637,6 +1037,8 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
         The distance matrix
     motifset_pos : array-like
         The motif set start-offsets
+    dims : array-like
+        The sub-dimension to use
     upperbound : float, default: np.inf
         Upper bound on the distances. If passed, will apply admissible pruning
         on distance computations, and only return the actual extent, if it is lower
@@ -653,9 +1055,6 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
     motifset_extent = np.float64(0.0)
 
-    # dimension chosen based on "first to k-th entry" order
-    idx = dim_index[motifset_pos[-1]]
-
     for ii in np.arange(len(motifset_pos) - 1):
         i = motifset_pos[ii]
 
@@ -663,8 +1062,8 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
             j = motifset_pos[jj]
 
             extent = np.float64(0.0)
-            for kk in range(len(idx)):
-                extent += D_full[idx[kk]][i][j]
+            for kk in range(len(dims)):
+                extent += D_full[dims[kk]][i][j]
 
             motifset_extent = max(motifset_extent, extent)
             if motifset_extent > upperbound:
@@ -675,7 +1074,7 @@ def get_pairwise_extent(D_full, motifset_pos, dim_index, upperbound=np.inf):
 
 @njit(fastmath=True, cache=True, nogil=True)
 def get_pairwise_extent_raw(
-        series, motifset_pos, dim_index, motif_length,
+        series, motifset_pos, dims, motif_length,
         distance_single, preprocessing, upperbound=np.inf):
     """Computes the extent of the motifset via pairwise comparisons.
 
@@ -685,8 +1084,8 @@ def get_pairwise_extent_raw(
         The time series
     motifset_pos : array-like
         The motif set start-offsets
-    dim_index : array-like
-        The sub-dimension indices of the motif set
+    dims : array-like
+        The sub-dimension to use
     motif_length : int
         The motif length
     upperbound : float, default: np.inf
@@ -705,9 +1104,6 @@ def get_pairwise_extent_raw(
 
     motifset_extent = np.float64(0.0)
 
-    # dimension chosen based on "first to k-th entry" order
-    idx = dim_index[motifset_pos[-1]]
-
     for ii in np.arange(len(motifset_pos) - 1):
         i = motifset_pos[ii]
         a = series[:, i:i + motif_length]
@@ -717,7 +1113,7 @@ def get_pairwise_extent_raw(
             b = series[:, j:j + motif_length]
 
             extent = np.float64(0.0)
-            for dim in idx:
+            for dim in dims:
                 extent += distance_single(a[dim], b[dim], i, j, preprocessing[dim])
 
             motifset_extent = max(motifset_extent, extent)
@@ -859,31 +1255,24 @@ def run_LAMA(
         if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
             if knn_distance <= leitmotif_dist:
                 if use_D_full:
+                    # dimension chosen based on "first to k-th entry" order
+                    candidate = knn_idx[:k]
+                    candidate_dims = dim_index[candidate[-1]]
                     candidate_extent = get_pairwise_extent(
-                        D, knn_idx[:k], dim_index, leitmotif_dist)
+                        D, candidate, candidate_dims, leitmotif_dist)
                 else:
+                    # dimension chosen based on "first to k-th entry" order
+                    candidate = knn_idx[:k]
+                    candidate_dims = dim_index[candidate[-1]]
                     candidate_extent = get_pairwise_extent_raw(
-                        ts, knn_idx[:k], dim_index,
+                        ts, candidate, candidate_dims,
                         m, distance_single, preprocessing, leitmotif_dist)
-
-                # if order in [612, 123]:
-                #     print("order", order,
-                #           "knn_idx", knn_idx[:k],
-                #           "knn_distance", knn_distance,
-                #           "candidate_extent", candidate_extent,
-                #           "dim_index", dim_index[order, 0])
 
                 if candidate_extent <= leitmotif_dist:
                     leitmotif_dist = candidate_extent
                     leitmotif_candidate = knn_idx[:k]
-                    leitmotif_dims = dim_index[order]
+                    leitmotif_dims = candidate_dims
 
-                    # if len(leitmotif_candidate) == 6:
-                    #    print("Found leitmotif with extent", leitmotif_dist,
-                    #          "at order", order, "with dimensions", leitmotif_dims,
-                    #          leitmotif_candidate)
-
-    # print("best dims", m, k, leitmotif_dims)
     return leitmotif_candidate, leitmotif_dist, leitmotif_dims
 
 
@@ -1176,6 +1565,19 @@ def find_au_ef_motif_length(
             The leitmotif for the largest k for each length.
 
     """
+    motif_length_range = np.asarray(motif_length_range, dtype=np.int32)
+    if motif_length_range.size == 0:
+        raise ValueError("motif_length_range must contain at least one length.")
+
+    invalid_lengths = motif_length_range[
+        (motif_length_range <= 0) | (motif_length_range >= data.shape[-1])
+    ]
+    if invalid_lengths.size > 0:
+        raise ValueError(
+            "motif_length_range values must be positive and smaller than "
+            f"the time series length ({data.shape[-1]}). Invalid lengths: "
+            f"{invalid_lengths.tolist()}")
+
     # apply sampling for speedup only
     if subsample > 1:
         if data.ndim >= 2:
@@ -1255,6 +1657,55 @@ def find_au_ef_motif_length(
 
 
 def search_leitmotifs_elbow(
+        k_max,
+        data,
+        motif_length,
+        n_dims=None,
+        elbow_deviation=1.00,
+        filter=True,
+        slack=0.5,
+        return_distances=False,
+        D_full=None,
+        knns=None,
+        minimize_pairwise_dist=False,
+        n_jobs=4,
+        distance=znormed_euclidean_distance,
+        distance_single=znormed_euclidean_distance_single,
+        distance_preprocessing=sliding_mean_std,
+        backend='default'
+):
+    _, data_raw = pd_series_to_numpy(data)
+    if motif_length <= 0 or motif_length >= data_raw.shape[-1]:
+        raise ValueError(
+            "motif_length must be positive and smaller than the time "
+            f"series length ({data_raw.shape[-1]}). Got {motif_length}.")
+
+    n_jobs = os.cpu_count() if n_jobs < 1 else n_jobs
+    previous_jobs = get_num_threads()
+    set_num_threads(n_jobs)
+    try:
+        return _search_leitmotifs_elbow_impl(
+            k_max,
+            data_raw,
+            motif_length,
+            n_dims=n_dims,
+            elbow_deviation=elbow_deviation,
+            filter=filter,
+            slack=slack,
+            return_distances=return_distances,
+            D_full=D_full,
+            knns=knns,
+            minimize_pairwise_dist=minimize_pairwise_dist,
+            n_jobs=n_jobs,
+            distance=distance,
+            distance_single=distance_single,
+            distance_preprocessing=distance_preprocessing,
+            backend=backend)
+    finally:
+        set_num_threads(previous_jobs)
+
+
+def _search_leitmotifs_elbow_impl(
         k_max,
         data,
         motif_length,
@@ -1430,6 +1881,11 @@ def search_leitmotifs_elbow(
     k_leitmotif_dims = np.empty(k_max_ + 1, dtype=object)
 
     upper_bound = np.inf
+    preprocessing = []
+    for dim in range(len(data_raw)):
+        preprocessing.append(distance_preprocessing(data_raw[dim], m))
+    preprocessing = np.array(preprocessing, dtype=np.float64)
+
     for test_k in range(k_max_, 1, -1):
         if minimize_pairwise_dist or sum_dims:
             # Do nothing
@@ -1440,15 +1896,11 @@ def search_leitmotifs_elbow(
             if ((backend in ["sparse", "scalable"]) or
                     isinstance(D_full, List) or isinstance(D_full, list)):
                 D_knn = take_along_axis(D_knns, d, test_k - 1, n)
-
-                # print(f"{D_knns[0][0]} for k={test_k}", flush=True)
             else:
                 D_knn = np.take_along_axis(
                     D_full,
                     knn_idx.reshape((knn_idx.shape[0], knn_idx.shape[1], 1)),
                     axis=2)[:, :, 0]
-
-            # print(f"Using {D_knn.shape} {D_knn[:, 0]} for k={test_k}", flush=True)
 
             dim_index = np.argsort(D_knn, axis=0)[:use_dim]
             dim_index = np.transpose(dim_index, (1, 0))
@@ -1457,11 +1909,6 @@ def search_leitmotifs_elbow(
             raise ValueError(
                 "No valid backend (combination) chosen. "
                 "Please choose 'scalable', 'sparse' or 'default'.")
-
-        preprocessing = []
-        for dim in range(len(data_raw)):
-            preprocessing.append(distance_preprocessing(data_raw[dim], m))
-        preprocessing = np.array(preprocessing, dtype=np.float64)
 
         candidate, candidate_dist, candidate_dims = run_LAMA(
             data_raw, m, test_k, D_full, knns, dim_index,
@@ -1481,7 +1928,7 @@ def search_leitmotifs_elbow(
 
     # smoothen the line to make it monotonically increasing
     k_leitmotif_distances[0:2] = k_leitmotif_distances[2]
-    for i in range(len(k_leitmotif_distances), 2):
+    for i in range(len(k_leitmotif_distances) - 1, 2, -1):
         k_leitmotif_distances[i - 1] = min(k_leitmotif_distances[i],
                                            k_leitmotif_distances[i - 1])
 
