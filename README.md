@@ -13,6 +13,13 @@ Supporting Material
 - `leitmotifs`: Code implementing multidimensonal leitmotif discovery using LAMA
 - `datasets`: Use cases in the paper
 
+<div style="border:1px solid #ddd; background:#f6f8fa; padding:12px; border-radius:6px;">
+  <strong>Latest Changes / Features</strong>
+  <ul>
+    <li>TOP-N retrieval is supported to find the top-n leitmotifs.</li>
+  </ul>
+</div>
+
 # Mining Leitmotifs - Use Case
 
 A **leitmotif** (*leading motif*) is a recurring theme or motif that carries 
@@ -125,6 +132,36 @@ To do an elbow plot, and learn the number of repeats of the motif, we may simply
 The generated plots looks like this, with good number of repeats at local minima:
 
 <img src="https://raw.githubusercontent.com/patrickzib/leitmotifs/main/images/elbow_points.png" width="600">
+
+## Top-N Leitmotif Retrieval
+
+To recover the top-N leitmotifs, set `top_N` to the desired value when calling
+`fit_k_elbow`. The parameter `k_max` specifies the maximum number of repeats per
+leitmotif, while the actual number of repeats is determined automatically using elbow
+plots.
+
+```python
+    [...]
+
+    dists, candidates, elbow_points = ml.fit_k_elbow(
+        k_max,          # Maximum number of repeats within each leitmotif
+        motif_length,
+        top_N=2         # Desired number of leitmotifs to return, e.g. 2
+    )
+```
+
+When `top_N > 1`, multiple returned leitmotifs can have the same motif size. In that
+case `elbow_points` can contain duplicate `k` values, and each duplicate refers to a
+different leitmotif at the same row position:
+
+```python
+for k, motif_set, dims, dist in zip(
+        elbow_points, candidates, ml.leitmotifs_dims, dists):
+    print(k, motif_set, dims, dist)
+```
+
+Each returned leitmotif contains its occurrence positions and the dimensions used to
+compute its extent.
     
 # Use Cases
 

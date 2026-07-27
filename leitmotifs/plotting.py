@@ -25,6 +25,35 @@ convert_to_2d = ml.convert_to_2d
 as_series = ml.as_series
 
 
+def _scale_motifset_positions(motifsets, factor):
+    return np.array([
+        None if motifset is None
+        else (np.asarray(motifset, dtype=np.float64) // factor).astype(np.int32)
+        for motifset in motifsets
+    ], dtype=object)
+
+
+def _is_interval(value):
+    if not isinstance(value, (list, tuple, np.ndarray)) or len(value) != 2:
+        return False
+    return np.isscalar(value[0]) and np.isscalar(value[1])
+
+
+def _iter_ground_truth_intervals(value):
+    if value is None:
+        return
+    if _is_interval(value):
+        yield value
+        return
+    if isinstance(value, pd.Series):
+        value = value.values
+    if isinstance(value, np.ndarray) and value.ndim == 0:
+        value = value.item()
+    if isinstance(value, (list, tuple, np.ndarray)):
+        for item in value:
+            yield from _iter_ground_truth_intervals(item)
+
+
 def plot_dataset(
         ds_name,
         data,
@@ -354,7 +383,9 @@ def _plot_elbow_points(
     fig, ax = plt.subplots(figsize=(10, 4),
                            constrained_layout=True)
     ax.set_title(ds_name + "\nElbow Points")
-    ax.plot(range(2, len(np.sqrt(dists))), dists[2:], "b", label="Extent")
+    dists_to_plot = dists[:, 0] if np.ndim(dists) == 2 else dists
+    ax.plot(range(2, len(np.sqrt(dists_to_plot))), dists_to_plot[2:],
+            "b", label="Extent")
 
     lim1 = plt.ylim()[0]
     lim2 = plt.ylim()[1]
@@ -365,12 +396,206 @@ def _plot_elbow_points(
         )
     ax.set(xlabel='Size (k)', ylabel='Extent')
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.scatter(elbow_points, dists[elbow_points], color="red", label="Minima")
+    plt.scatter(elbow_points, dists_to_plot[elbow_points],
+                color="red", label="Minima")
 
     # leitmotifs = motifset_candidates[elbow_points]
 
     # plt.savefig("lord_of_the_rings_elbow_points.pdf")
     plt.show()
+    return fig, ax
+
+
+def plot_elbow_result(
+        data,
+        ds_name,
+        motif_length,
+        dists,
+        candidates,
+        candidate_dims,
+        elbow_points,
+        show_elbows=False,
+        show_grid=True,
+        ground_truth=None,
+        method_name=None,
+        top_N=None,
+):
+    """Render already-computed LAMA elbow results."""
+    data = ml.convert_to_2d(data)
+    figures = []
+
+    if show_elbows:
+        figures.append(_plot_elbow_points(
+            ds_name, data, elbow_points, candidates, dists))
+
+    if show_grid:
+        max_items = top_N if top_N is not None and top_N > 1 else None
+        figures.append(plot_grid_leitmotifs(
+            ds_name,
+            data,
+            candidates,
+            candidate_dims,
+            elbow_points,
+            dists,
+            motif_length,
+            max_items=max_items,
+            ground_truth=ground_truth,
+            method_name=method_name))
+
+    return figures
+
+
+def plot_grid_leitmotifs(
+        ds_name,
+        data,
+        motifsets_,
+        leitmotif_dims_,
+        elbow_points_,
+        dist_,
+        motif_length,
+        max_items=None,
+        ground_truth=None,
+        method_name=None,
+        max_points=2_000,
+        color_palette=sns.color_palette("tab10"),
+        grid_dim=None):
+    """Plot top leitmotifs as timeline bars plus shape miniatures."""
+    sns.set(font_scale=2)
+    sns.set_style("white")
+    sns.set_context("paper")
+
+    data = ml.convert_to_2d(data)
+    data_index, data_raw = ml.pd_series_to_numpy(data)
+    dist, motifsets, leitmotif_dims, elbow_points = ml.flatten_elbows(
+        elbow_points_, motifsets_, leitmotif_dims_, dist_, max_items=max_items)
+
+    if len(motifsets) == 0:
+        return plot_motifsets(
+            ds_name, data, motif_length=motif_length,
+            ground_truth=ground_truth, show=True)[0]
+
+    if grid_dim is None:
+        grid_dim = int(max(2, np.ceil(len(motifsets) / 2)))
+    shape_rows = int(np.ceil(len(motifsets) / grid_dim))
+    rows = shape_rows + 3
+
+    fig = plt.figure(constrained_layout=True, figsize=(10, rows * 2))
+    gs = fig.add_gridspec(rows, grid_dim, hspace=0.8, wspace=0.4)
+    ax_ts = fig.add_subplot(gs[0, :])
+    ax_ts.set_title("(a) Dataset: " + ds_name)
+
+    data_raw_sampled, data_index_sampled = data_raw, data_index
+    factor = 1
+    if data_raw.shape[-1] > max_points:
+        data_raw_sampled = np.zeros((data_raw.shape[0], max_points))
+        for i in range(data_raw.shape[0]):
+            index = MinMaxLTTBDownsampler().downsample(
+                np.ascontiguousarray(data_raw[i]), n_out=max_points)
+            data_raw_sampled[i] = data_raw[i, index]
+
+        data_index_sampled = data_index[index]
+        factor = max(1, data_raw.shape[-1] / data_raw_sampled.shape[-1])
+        motifsets_sampled = _scale_motifset_positions(motifsets, factor)
+    else:
+        motifsets_sampled = motifsets
+
+    _ = sns.lineplot(
+        x=data_index_sampled,
+        y=zscore(data_raw_sampled[0]),
+        ax=ax_ts,
+        linewidth=1,
+        color="gray",
+        errorbar=None,
+        estimator=None)
+
+    if ground_truth is None:
+        ground_truth = []
+    for aaa, column in enumerate(ground_truth):
+        for pos, offset in enumerate(_iter_ground_truth_intervals(ground_truth[column])):
+            start = max(0, np.int32(offset[0] // factor))
+            end = min(np.int32(offset[1] // factor), data_raw_sampled.shape[-1])
+            if start >= end:
+                continue
+            sns.lineplot(
+                x=data_index_sampled[start:end],
+                y=zscore(data_raw_sampled[0])[start:end],
+                ax=ax_ts,
+                label=str(column) if pos == 0 else None,
+                color=color_palette[(aaa + 1) % len(color_palette)],
+                errorbar=None,
+                estimator=None)
+
+    ax_bars = fig.add_subplot(gs[1, :], sharex=ax_ts)
+    ax_bars.set_title("(b) Position of Top Leitmotifs")
+
+    ax_title = fig.add_subplot(gs[2, :])
+    ax_title.set_title("(c) Shape of Top Leitmotifs", pad=30)
+    ax_title.axis("off")
+
+    y_labels = []
+    motif_length_sampled = np.int32(max(2, motif_length // factor))
+    for i, motiflet in enumerate(motifsets_sampled):
+        if motiflet is None:
+            continue
+        color = color_palette[(i + 1) % len(color_palette)]
+        for pos in motiflet:
+            pos = np.int32(pos)
+            if pos + motif_length_sampled - 1 >= data_raw_sampled.shape[-1]:
+                continue
+            rect = Rectangle(
+                (data_index_sampled[pos], -i),
+                data_index_sampled[pos + motif_length_sampled - 1] -
+                data_index_sampled[pos],
+                0.8,
+                facecolor=color,
+                alpha=0.7)
+            ax_bars.add_patch(rect)
+
+        row = 3 + i // grid_dim
+        col = i % grid_dim
+        ax_motiflet = fig.add_subplot(gs[row, col])
+        df = pd.DataFrame()
+        df["time"] = data_index[range(0, motif_length)]
+        dims = leitmotif_dims[i]
+        if dims is None:
+            dims = np.arange(data_raw.shape[0])
+        for dim in dims:
+            for aa, pos in enumerate(motifsets[i]):
+                df[f"dim_{dim}_{aa}"] = zscore(
+                    data_raw[dim, pos:pos + motif_length])
+
+        df_melt = pd.melt(df, id_vars="time")
+        _ = sns.lineplot(
+            ax=ax_motiflet,
+            data=df_melt,
+            x="time",
+            y="value",
+            errorbar=("ci", 99),
+            n_boot=1,
+            lw=1,
+            color=color)
+        label = method_name if method_name is not None else "LAMA"
+        rank = i + 1
+        title = f"{label} Top-{rank}, k={len(motifsets[i])}"
+        if dist is not None and i < len(dist):
+            title += f", extent={np.round(dist[i], 2)}"
+        ax_motiflet.set_title(title)
+        ax_motiflet.set_ylabel("")
+        ax_motiflet.set_yticks([])
+        y_labels.append(f"Top-{rank}, k={elbow_points[i]}")
+
+    ax_bars.set_yticks(-np.arange(len(y_labels)) + 0.4)
+    ax_bars.set_yticklabels(y_labels, fontsize=12)
+    ax_bars.set_ylim([-len(y_labels) + 1, 1])
+    ax_bars.set_xlim(ax_ts.get_xlim())
+
+    if len(ground_truth) > 0:
+        ax_ts.legend(loc="upper left")
+
+    sns.despine()
+    plt.tight_layout()
+    plt.show()
+    return fig
 
 
 def _plot_window_lengths(

@@ -1,5 +1,21 @@
 # -*- coding: utf-8 -*-
-"""Compute leitmotifs using LAMA.
+"""Discover subdimensional motif sets with LAMA.
+
+This module contains the public :class:`LAMA` estimator plus the numerical
+k-nearest-neighbor, extent, elbow, dimension-selection, and plotting-support
+helpers used by the package. LAMA searches multidimensional time series for
+repeated subsequences that are compact in a selected subset of dimensions.
+
+The main workflow is:
+
+* create ``LAMA(ds_name, series, n_dims=...)`` with dimensions on rows,
+* optionally call ``fit_motif_length`` to choose a motif length,
+* call ``fit_k_elbow`` to compute leitmotifs for ``k`` in ``[2, k_max]``.
+
+By default, each ``k`` stores the single best leitmotif. Passing ``top_N > 1``
+returns multiple non-overlapping leitmotifs per ``k``. The low-level search
+keeps a rank axis for plotting, while ``LAMA.fit_k_elbow`` returns flattened,
+row-aligned results in the same style as the Motiflets API.
 """
 
 __author__ = ["patrickzib"]
@@ -12,6 +28,8 @@ from pathlib import Path
 import pandas as pd
 import psutil
 from numba import set_num_threads, objmode, prange, get_num_threads
+from numba import int32, float64
+from numba.experimental import jitclass
 from scipy.fft import irfft, next_fast_len, rfft
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
@@ -20,6 +38,91 @@ from leitmotifs.distances import *
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+_leitmotif_heap_spec = [
+    ("heap_dist", float64[:]),
+    ("heap_candidates", int32[:, :]),
+    ("heap_dims", int32[:, :]),
+    ("size", int32),
+    ("capacity", int32),
+]
+
+
+@jitclass(_leitmotif_heap_spec)
+class LeitmotifMaxHeap:
+    """Fixed-size max-heap for leitmotif candidates and dimensions."""
+
+    def __init__(self, capacity, k, n_dims):
+        self.heap_dist = np.full(capacity, np.inf, dtype=np.float64)
+        self.heap_candidates = np.full((capacity, k), -1, dtype=np.int32)
+        self.heap_dims = np.full((capacity, n_dims), -1, dtype=np.int32)
+        self.size = 0
+        self.capacity = capacity
+
+    def push(self, dist, candidate, dims):
+        i = self.size
+        self.heap_dist[i] = dist
+        self.heap_candidates[i] = candidate
+        self.heap_dims[i] = dims
+        self.size += 1
+        self._sift_up(i)
+
+    def _sift_up(self, i):
+        while i > 0:
+            parent = (i - 1) // 2
+            if self.heap_dist[parent] >= self.heap_dist[i]:
+                break
+            self._swap(parent, i)
+            i = parent
+
+    def _sift_down(self, i):
+        while True:
+            left = 2 * i + 1
+            right = 2 * i + 2
+            largest = i
+
+            if left < self.size and self.heap_dist[left] > self.heap_dist[largest]:
+                largest = left
+            if right < self.size and self.heap_dist[right] > self.heap_dist[largest]:
+                largest = right
+
+            if largest == i:
+                break
+
+            self._swap(i, largest)
+            i = largest
+
+    def _swap(self, a, b):
+        self.heap_dist[a], self.heap_dist[b] = self.heap_dist[b], self.heap_dist[a]
+
+        tmp_candidate = self.heap_candidates[a].copy()
+        self.heap_candidates[a] = self.heap_candidates[b]
+        self.heap_candidates[b] = tmp_candidate
+
+        tmp_dims = self.heap_dims[a].copy()
+        self.heap_dims[a] = self.heap_dims[b]
+        self.heap_dims[b] = tmp_dims
+
+    def sorted_entries(self):
+        sorted_dists = np.full(self.capacity, np.inf, dtype=np.float64)
+        sorted_candidates = np.full(self.heap_candidates.shape, -1, dtype=np.int32)
+        sorted_dims = np.full(self.heap_dims.shape, -1, dtype=np.int32)
+        if self.size == 0:
+            return sorted_candidates, sorted_dists, sorted_dims
+
+        order = np.argsort(self.heap_dist[:self.size])
+        for i in range(self.size):
+            sorted_candidates[i] = self.heap_candidates[order[i]]
+            sorted_dists[i] = self.heap_dist[order[i]]
+            sorted_dims[i] = self.heap_dims[order[i]]
+        return sorted_candidates, sorted_dists, sorted_dims
+
+    def replace_at(self, position, dist, candidate, dims):
+        self.heap_dist[position] = dist
+        self.heap_candidates[position] = candidate
+        self.heap_dims[position] = dims
+        self._sift_down(position)
 
 
 def _strip_dataset_prefix(path):
@@ -226,53 +329,39 @@ def _plotting():
 
 
 class LAMA:
+    """User-facing API for LAMA leitmotif discovery.
+
+    Parameters
+    ----------
+    ds_name : str
+        Name of the dataset, used in plot titles.
+    series : array-like
+        Time series data with dimensions on rows and time on columns.
+    minimize_pairwise_dist : bool, default=False
+        If True, each pairwise distance is minimized over dimensions before
+        leitmotif search. This is similar to the mStamp approach and can select
+        different dimensions for different subsequence pairs.
+    ground_truth : pd.Series, optional
+        Ground-truth intervals used only for plotting/evaluation helpers.
+    dimension_labels : array-like, optional
+        Labels for dimensions in plots. Numeric indices are used when omitted.
+    elbow_deviation : float, default=1.00
+        Minimum relative increase in the extent function for elbow detection.
+    n_dims : int, optional
+        Number of dimensions to select for subdimensional discovery. If omitted
+        or greater than the data dimensionality, all dimensions are used.
+    distance : str, default="znormed_ed"
+        Distance family. Common values are ``"znormed_ed"`` and ``"ed"``.
+    n_jobs : int, default=-1
+        Number of Numba threads for distance computation. Values below 1 use
+        all available CPU cores.
+    slack : float, default=0.5
+        Exclusion-zone width as a fraction of the motif length.
+    backend : {"default", "scalable"}, default="default"
+        Distance backend. ``"default"`` materializes full distance matrices;
+        ``"scalable"`` keeps only nearest-neighbor distances and recomputes
+        extents from raw data.
     """
-        Class implementing the LAMA.
-
-        Parameters
-        ----------
-        ds_name : str
-            Name of the dataset.
-        series : array-like
-            The time series data.
-        minimize_pairwise_dist: bool (default=False)
-            If True, the pairwise distance is minimized. This is the mStamp-approach.
-            It has the potential drawback, that each pair of subsequences may have
-            different smallest dimensions.
-        ground_truth : pd.Series (default=None)
-            Ground-truth information as pd.Series.
-        dimension_labels : array-like (default=None)
-            Labels used for the dimensions' axis for plotting.
-            If None, numeric indices are used.
-        elbow_deviation : float, optional (default=1.00)
-            The minimal absolute deviation needed to detect an elbow.
-            It measures the absolute change in deviation from k to k+1.
-            1.05 corresponds to 5% increase in deviation.
-        n_dims : int, optional (default=None)
-            The number of dimensions to be used in the subdimensional motif discovery.
-            If none: all dimensions are used.
-        distance: str (default="znormed_ed")
-            The name of the distance function to be computed.
-            Available options are:
-                - 'znormed_ed' or 'znormed_euclidean' for z-normalized ED
-                - 'ed' or 'euclidean' for the "normal" ED.
-        n_jobs : int, optional (default=1)
-            Amount of threads used in the k-nearest neighbour calculation.
-        slack: float, optional (default=0.5)
-            Defines an exclusion zone around each subsequence to avoid trivial matches.
-            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-        backend : String, default="scalable"
-            The backend to use. As of now 'scalable' and 'default' are supported.
-            Use 'default' for the original exact implementation with excessive memory,
-            Use 'scalable' for a scalable, exact implementation with less memory.
-
-        Methods
-        -------
-        fit(time_series)
-            Fit the KSN model to the input time series data.
-        constrain(self, lbound, ubound)
-            Return a constrained KSN model for the given temporal constraint.
-        """
 
     def __init__(
             self,
@@ -322,6 +411,7 @@ class LAMA:
         self.elbow_points = []
         self.leitmotifs_dims = []
         self.all_dimensions = []
+        self.top_n_flattened = False
 
     def fit_motif_length(
             self,
@@ -419,7 +509,39 @@ class LAMA:
             filter_duplicates=True,
             plot_elbows=True,
             plot_motifsets=True,
+            top_N=None,
     ):
+        """Compute leitmotifs across candidate set sizes and detect elbows.
+
+        Parameters
+        ----------
+        k_max : int
+            Largest motif-set size to test. The effective value can be lower
+            when the time series and exclusion zone cannot support that many
+            non-overlapping occurrences.
+        motif_length : int, optional
+            Subsequence length. If omitted, the value learned by
+            ``fit_motif_length`` is used.
+        filter_duplicates : bool, default=True
+            Remove elbow points whose leitmotifs overlap larger elbow motifs.
+        plot_elbows : bool, default=True
+            Plot the extent curve and detected elbow points.
+        plot_motifsets : bool, default=True
+            Plot discovered motif sets.
+        top_N : int, optional
+            Number of ranked, non-overlapping leitmotifs to retain per tested
+            ``k``. ``None`` is equivalent to ``1`` and preserves the historical
+            one-result return shape.
+
+        Returns
+        -------
+        tuple
+            ``(dists, leitmotifs, elbow_points)``. For ``top_N`` omitted or
+            ``1``, ``dists[k]`` and ``leitmotifs[k]`` describe the best
+            leitmotif for each ``k``. For ``top_N > 1``, the returned arrays
+            are flattened and aligned by row; duplicate values in
+            ``elbow_points`` indicate multiple ranks for the same ``k``.
+        """
         self.k_max = k_max
 
         if motif_length is None:
@@ -434,8 +556,8 @@ class LAMA:
         data = convert_to_2d(self.series)
         _, raw_data = pd_series_to_numpy(data)
 
-        (self.dists, self.leitmotifs, self.leitmotifs_dims,
-         self.elbow_points, _, self.memory_usage) = search_leitmotifs_elbow(
+        (dists, leitmotifs, leitmotifs_dims,
+         elbow_points, _, self.memory_usage) = search_leitmotifs_elbow(
             k_max,
             raw_data,
             motif_length,
@@ -448,25 +570,73 @@ class LAMA:
             distance=self.distance,
             distance_single=self.distance_single,
             distance_preprocessing=self.distance_preprocessing,
-            backend=self.backend
+            backend=self.backend,
+            top_N=top_N,
         )
+        self.dists = dists
+        self.leitmotifs = leitmotifs
+        self.leitmotifs_dims = leitmotifs_dims
+        self.elbow_points = elbow_points
+
+        return_flattened = top_N is not None and top_N > 1
+        self.top_n_flattened = False
+        if return_flattened:
+            flat_dists, flat_leitmotifs, flat_dims, flat_elbow_points = (
+                flatten_elbows(
+                    elbow_points, leitmotifs, leitmotifs_dims, dists,
+                    max_items=None)
+            )
 
         if plot_elbows or plot_motifsets:
             plotting = _plotting()
+            if return_flattened:
+                plotting.plot_elbow_result(
+                    data=data,
+                    ds_name=self.ds_name,
+                    motif_length=motif_length,
+                    dists=self.dists,
+                    candidates=self.leitmotifs,
+                    candidate_dims=self.leitmotifs_dims,
+                    elbow_points=self.elbow_points,
+                    show_elbows=plot_elbows,
+                    show_grid=plot_motifsets,
+                    ground_truth=self.ground_truth,
+                    top_N=top_N)
+                self.dists = flat_dists
+                self.leitmotifs = flat_leitmotifs
+                self.leitmotifs_dims = flat_dims
+                self.elbow_points = flat_elbow_points
+                self.top_n_flattened = True
+                return self.dists, self.leitmotifs, self.elbow_points
+
             if plot_elbows:
                 plotting._plot_elbow_points(
                     self.ds_name, data, self.elbow_points,
                     self.leitmotifs, self.dists)
 
             if plot_motifsets:
+                motifsets = self.leitmotifs[self.elbow_points]
+                motif_dims = self.leitmotifs_dims[self.elbow_points]
+                if top_N is not None and top_N > 1:
+                    motifsets = np.array(
+                        [ranked[0] for ranked in motifsets], dtype=object)
+                    motif_dims = np.array(
+                        [ranked[0] for ranked in motif_dims], dtype=object)
                 plotting.plot_motifsets(
                     self.ds_name,
                     data,
-                    motifsets=self.leitmotifs[self.elbow_points],
-                    leitmotif_dims=self.leitmotifs_dims[self.elbow_points],
+                    motifsets=motifsets,
+                    leitmotif_dims=motif_dims,
                     motif_length=motif_length,
                     ground_truth=self.ground_truth,
                     show=True)
+
+        if return_flattened:
+            self.dists = flat_dists
+            self.leitmotifs = flat_leitmotifs
+            self.leitmotifs_dims = flat_dims
+            self.elbow_points = flat_elbow_points
+            self.top_n_flattened = True
 
         return self.dists, self.leitmotifs, self.elbow_points
 
@@ -533,11 +703,21 @@ class LAMA:
         if motifset_name is not None:
             motifset_names = [motifset_name for _ in range(len(self.elbow_points))]
 
+        if self.top_n_flattened and len(self.leitmotifs) == len(elbow_points):
+            motifsets = self.leitmotifs
+            motif_dims = self.leitmotifs_dims
+        else:
+            motifsets = self.leitmotifs[elbow_points]
+            motif_dims = self.leitmotifs_dims[elbow_points]
+        if np.ndim(self.dists) == 2:
+            motifsets = np.array([ranked[0] for ranked in motifsets], dtype=object)
+            motif_dims = np.array([ranked[0] for ranked in motif_dims], dtype=object)
+
         fig, ax = _plotting().plot_motifsets(
             self.ds_name,
             self.series,
-            motifsets=self.leitmotifs[elbow_points],
-            leitmotif_dims=self.leitmotifs_dims[elbow_points],
+            motifsets=motifsets,
+            leitmotif_dims=motif_dims,
             motifset_names=motifset_names,
             # dist=self.dists[elbow_points],
             ground_truth=self.ground_truth,
@@ -1052,6 +1232,123 @@ def _argknn(
 
 
 @njit(cache=True)
+def run_LAMA_top_n(
+        ts, m, k, D, knns, dim_index,
+        distance_single=None,
+        preprocessing=None,
+        use_D_full=True,
+        upper_bound=np.inf,
+        top_N=1
+):
+    """Return ranked approximate leitmotifs for a fixed motif size ``k``.
+
+    The first rank is always the same best candidate returned by ``run_LAMA``.
+    Additional ranks are selected from non-overlapping candidates using a
+    fixed-size max-heap. Distinctness is based on temporal overlap of candidate
+    positions; dimensions are stored as payload for each retained rank.
+    """
+    n = ts.shape[-1] - m + 1
+    heap = LeitmotifMaxHeap(top_N, k, dim_index.shape[1])
+    best_dist = upper_bound
+    best_candidate = np.full(k, -1, dtype=np.int32)
+    best_dims = np.full(dim_index.shape[1], -1, dtype=np.int32)
+
+    for order in range(n):
+        # Use the first (best) dimension for ordering of k-NNs
+        order_dims = dim_index[order]
+        knn_idx = knns[order_dims[0], order]
+        if np.any(knn_idx[:k] == -1):
+            continue
+
+        kth = knn_idx[k - 1]
+
+        # sum over the knns from the best dimensions
+        knn_distance = np.float64(0.0)
+        bound_check = upper_bound
+        if heap.size == top_N:
+            bound_check = heap.heap_dist[0]
+
+        for d in order_dims:
+            if use_D_full:
+                knn_distance += D[d][order][kth]
+            else:
+                a = ts[d, order:order + m]
+                b = ts[d, kth:kth + m]
+                knn_distance += distance_single(a, b, order, kth, preprocessing[d])
+
+            if knn_distance > bound_check:
+                break
+
+        if knn_distance <= bound_check:
+            # dimension chosen based on "first to k-th entry" order
+            candidate = knn_idx[:k]
+            candidate_dims = dim_index[candidate[-1]]
+            if use_D_full:
+                candidate_extent = get_pairwise_extent(
+                    D, candidate, candidate_dims, bound_check)
+            else:
+                candidate_extent = get_pairwise_extent_raw(
+                    ts, candidate, candidate_dims,
+                    m, distance_single, preprocessing, bound_check)
+
+            if candidate_extent <= bound_check:
+                if candidate_extent <= best_dist:
+                    best_dist = candidate_extent
+                    best_candidate = candidate.copy()
+                    best_dims = candidate_dims.copy()
+
+                overlap_count = 0
+                overlap_pos = -1
+                for j in range(heap.size):
+                    if not _check_unique(candidate, heap.heap_candidates[j], m):
+                        overlap_count += 1
+                        overlap_pos = j
+
+                if overlap_count == 0 and heap.size < top_N:
+                    heap.push(candidate_extent, candidate, candidate_dims)
+                elif overlap_count <= 1:
+                    replace_pos = overlap_pos
+                    if replace_pos == -1:
+                        replace_pos = 0
+                    if candidate_extent < heap.heap_dist[replace_pos]:
+                        heap.replace_at(
+                            replace_pos, candidate_extent, candidate, candidate_dims)
+
+    sorted_candidates, sorted_dists, sorted_dims = heap.sorted_entries()
+    if best_candidate[0] < 0:
+        return sorted_candidates, sorted_dists, sorted_dims
+
+    output_candidates = np.full(sorted_candidates.shape, -1, dtype=np.int32)
+    output_dists = np.full(sorted_dists.shape, np.inf, dtype=np.float64)
+    output_dims = np.full(sorted_dims.shape, -1, dtype=np.int32)
+
+    output_candidates[0] = best_candidate
+    output_dists[0] = best_dist
+    output_dims[0] = best_dims
+    output_size = 1
+
+    for i in range(top_N):
+        if output_size == top_N:
+            break
+        if sorted_candidates[i, 0] < 0:
+            continue
+
+        unique = True
+        for j in range(output_size):
+            if not _check_unique(sorted_candidates[i], output_candidates[j], m):
+                unique = False
+                break
+
+        if unique:
+            output_candidates[output_size] = sorted_candidates[i]
+            output_dists[output_size] = sorted_dists[i]
+            output_dims[output_size] = sorted_dims[i]
+            output_size += 1
+
+    return output_candidates, output_dists, output_dims
+
+
+@njit(cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index,
         distance_single=None,
@@ -1092,51 +1389,15 @@ def run_LAMA(
         leitmotif_dist:
             The candidate_extent of the leitmotif found
     """
-    n = ts.shape[-1] - m + 1
-    leitmotif_dist = upper_bound
-    leitmotif_dims = None
-    leitmotif_candidate = None
+    candidates, dists, dims = run_LAMA_top_n(
+        ts, m, k, D, knns, dim_index,
+        distance_single=distance_single,
+        preprocessing=preprocessing,
+        use_D_full=use_D_full,
+        upper_bound=upper_bound,
+        top_N=1)
 
-    for order in range(n):
-        # Use the first (best) dimension for ordering of k-NNs
-        order_dims = dim_index[order]
-        knn_idx = knns[order_dims[0], order]
-        if np.any(knn_idx[:k] == -1):
-            continue
-
-        kth = knn_idx[k - 1]
-
-        # sum over the knns from the best dimensions
-        knn_distance = np.float64(0.0)
-        for d in order_dims:
-            if use_D_full:
-                knn_distance += D[d][order][kth]
-            else:
-                a = ts[d, order:order + m]
-                b = ts[d, kth:kth + m]
-                knn_distance += distance_single(a, b, order, kth, preprocessing[d])
-
-            if knn_distance > leitmotif_dist:
-                break
-
-        if knn_distance <= leitmotif_dist:
-            # dimension chosen based on "first to k-th entry" order
-            candidate = knn_idx[:k]
-            candidate_dims = dim_index[candidate[-1]]
-            if use_D_full:
-                candidate_extent = get_pairwise_extent(
-                    D, candidate, candidate_dims, leitmotif_dist)
-            else:
-                candidate_extent = get_pairwise_extent_raw(
-                    ts, candidate, candidate_dims,
-                    m, distance_single, preprocessing, leitmotif_dist)
-
-            if candidate_extent <= leitmotif_dist:
-                leitmotif_dist = candidate_extent
-                leitmotif_candidate = candidate
-                leitmotif_dims = candidate_dims
-
-    return leitmotif_candidate, leitmotif_dist, leitmotif_dims
+    return candidates[0], dists[0], dims[0]
 
 
 @njit(cache=True)
@@ -1205,6 +1466,49 @@ def _filter_unique(elbow_points, candidates, motif_length):
             filtered_ebp.append(elbow_points[i])
 
     return np.array(filtered_ebp)
+
+
+def flatten_elbows(elbow_points, candidates, candidate_dims, dists, max_items=None):
+    """Flatten elbow/rank-aware leitmotif results for plotting or tabular use."""
+    if dists is None or np.ndim(dists) != 2:
+        return (
+            np.array(dists, dtype=np.float64),
+            np.array(candidates, dtype=object),
+            np.array(candidate_dims, dtype=object),
+            np.array(elbow_points, dtype=np.int32),
+        )
+
+    items = []
+    for k in elbow_points:
+        if candidates[k] is None:
+            continue
+        for rank in range(dists.shape[1]):
+            if np.isinf(dists[k, rank]) or np.isnan(dists[k, rank]):
+                continue
+            if candidates[k][rank, 0] < 0:
+                continue
+            items.append((k, rank, dists[k, rank]))
+
+    if max_items is not None:
+        items.sort(key=lambda item: (-item[0], item[1], item[2]))
+        items = items[:max_items]
+
+    flat_candidates = []
+    flat_dims = []
+    flat_dists = []
+    flat_elbows = []
+    for k, rank, dist in items:
+        flat_candidates.append(candidates[k][rank])
+        flat_dims.append(candidate_dims[k][rank])
+        flat_dists.append(dist)
+        flat_elbows.append(k)
+
+    return (
+        np.array(flat_dists, dtype=np.float64),
+        np.array(flat_candidates, dtype=object),
+        np.array(flat_dims, dtype=object),
+        np.array(flat_elbows, dtype=np.int32),
+    )
 
 
 @njit(cache=True)
@@ -1533,13 +1837,48 @@ def search_leitmotifs_elbow(
         distance=znormed_euclidean_distance,
         distance_single=znormed_euclidean_distance_single,
         distance_preprocessing=sliding_mean_std,
-        backend='default'
+        backend='default',
+        top_N=None,
 ):
+    """Search leitmotifs for all ``k`` and return the elbow-function result.
+
+    This is the functional API behind ``LAMA.fit_k_elbow``. It computes
+    nearest-neighbor candidates, selects subdimensions when requested, evaluates
+    leitmotif extents for ``k`` in ``[2, k_max]``, and detects elbow points from
+    the rank-0 extent curve.
+
+    Parameters
+    ----------
+    k_max : int
+        Largest motif-set size to test.
+    data : array-like
+        Time series with dimensions on rows.
+    motif_length : int
+        Subsequence length.
+    n_dims : int, optional
+        Number of dimensions to use. If omitted, all dimensions are used.
+    top_N : int, optional
+        Number of ranked, non-overlapping leitmotifs to return per ``k``.
+        ``None`` is equivalent to ``1``.
+
+    Returns
+    -------
+    tuple
+        By default returns ``(dists, candidates, candidate_dims, elbow_points,
+        motif_length, memory_usage)``. With ``return_distances=True``, the
+        motif length item is replaced by the reusable distance and k-NN state.
+        For ``top_N > 1``, ``dists`` is two-dimensional and candidates/dims
+        store rank arrays at each ``k``.
+    """
     _, data_raw = pd_series_to_numpy(data)
     if motif_length <= 0 or motif_length >= data_raw.shape[-1]:
         raise ValueError(
             "motif_length must be positive and smaller than the time "
             f"series length ({data_raw.shape[-1]}). Got {motif_length}.")
+    if top_N is None:
+        top_N = 1
+    elif not isinstance(top_N, (int, np.integer)) or top_N < 1:
+        raise ValueError("top_N must be a positive integer or None.")
 
     n_jobs = os.cpu_count() if n_jobs < 1 else n_jobs
     previous_jobs = get_num_threads()
@@ -1561,7 +1900,8 @@ def search_leitmotifs_elbow(
             distance=distance,
             distance_single=distance_single,
             distance_preprocessing=distance_preprocessing,
-            backend=backend)
+            backend=backend,
+            top_N=top_N)
     finally:
         set_num_threads(previous_jobs)
 
@@ -1582,7 +1922,8 @@ def _search_leitmotifs_elbow_impl(
         distance=znormed_euclidean_distance,
         distance_single=znormed_euclidean_distance_single,
         distance_preprocessing=sliding_mean_std,
-        backend='default'
+        backend='default',
+        top_N=1,
 ):
     """Computes the elbow-function.
 
@@ -1620,18 +1961,26 @@ def _search_leitmotifs_elbow_impl(
         The backend to use. As of now 'scalable' and 'default' are supported.
         Use 'default' for the original exact implementation with excessive memory,
         Use 'scalable' for a scalable, exact implementation with less memory.
+    top_N : int, default=1
+        Number of ranked, non-overlapping leitmotifs to retain per ``k``.
+        Elbow detection is always based on rank 0.
 
     Returns
     -------
     Tuple
         dists :
-            distances for each k in [2...k_max]
+            Distances for each k in [2...k_max]. One-dimensional for
+            ``top_N == 1`` and shaped ``(k, rank)`` otherwise.
         candidates :
-            motifset-candidates for each k
+            Leitmotif position candidates for each k. For ``top_N > 1``, each
+            entry is shaped ``(top_N, k)``.
+        candidate_dims :
+            Selected dimensions matching each candidate. For ``top_N > 1``,
+            each entry is shaped ``(top_N, n_dims_used)``.
         elbow_points :
-            elbow-points
+            Elbow points selected from the rank-0 extent curve.
         m : int
-            best motif length
+            Motif length.
     """
     n_jobs = os.cpu_count() if n_jobs < 1 else n_jobs
     previous_jobs = get_num_threads()
@@ -1718,7 +2067,7 @@ def _search_leitmotifs_elbow_impl(
     memory_usage = process.memory_info().rss / (1024 * 1024)  # MB
 
     # non-overlapping motifs only
-    k_leitmotif_distances = np.zeros(k_max_ + 1)
+    k_leitmotif_distances = np.full((k_max_ + 1, top_N), np.inf, dtype=np.float64)
     k_leitmotif_candidates = np.empty(k_max_ + 1, dtype=object)
     k_leitmotif_dims = np.empty(k_max_ + 1, dtype=object)
 
@@ -1745,40 +2094,64 @@ def _search_leitmotifs_elbow_impl(
 
             dim_index = np.argsort(D_knn, axis=0)[:use_dim]
             dim_index = np.transpose(dim_index, (1, 0))
+            dim_index = np.asarray(dim_index, dtype=np.int32)
 
         else:
             raise ValueError(
                 "No valid backend (combination) chosen. "
                 "Please choose 'scalable' or 'default'.")
 
-        candidate, candidate_dist, candidate_dims = run_LAMA(
+        candidates, candidate_dists, candidate_dims = run_LAMA_top_n(
             data_raw, m, test_k, D_full, knns, dim_index,
             distance_single=distance_single,
             preprocessing=preprocessing,
             use_D_full=(backend != "scalable"),
             upper_bound=upper_bound,
+            top_N=top_N,
         )
 
-        k_leitmotif_distances[test_k] = candidate_dist
-        k_leitmotif_candidates[test_k] = candidate
+        k_leitmotif_distances[test_k, :len(candidate_dists)] = candidate_dists
 
         if minimize_pairwise_dist or sum_dims:
-            k_leitmotif_dims[test_k] = np.arange(d)
-        elif not sum_dims:
+            all_dims = np.empty((top_N, d), dtype=np.int32)
+            for rank in range(top_N):
+                all_dims[rank] = np.arange(d, dtype=np.int32)
+            candidate_dims = all_dims
+
+        if top_N == 1:
+            if candidates[0, 0] >= 0:
+                k_leitmotif_candidates[test_k] = candidates[0]
+                k_leitmotif_dims[test_k] = candidate_dims[0]
+            else:
+                k_leitmotif_candidates[test_k] = None
+                k_leitmotif_dims[test_k] = None
+        else:
+            k_leitmotif_candidates[test_k] = candidates
             k_leitmotif_dims[test_k] = candidate_dims
 
     # smoothen the line to make it monotonically increasing
     k_leitmotif_distances[0:2] = k_leitmotif_distances[2]
     for i in range(len(k_leitmotif_distances) - 1, 2, -1):
-        k_leitmotif_distances[i - 1] = min(k_leitmotif_distances[i],
-                                           k_leitmotif_distances[i - 1])
+        k_leitmotif_distances[i - 1] = np.minimum(
+            k_leitmotif_distances[i], k_leitmotif_distances[i - 1])
 
-    elbow_points = find_elbow_points(k_leitmotif_distances,
+    rank_zero_distances = k_leitmotif_distances[:, 0]
+    elbow_points = find_elbow_points(rank_zero_distances,
                                      elbow_deviation=elbow_deviation)
 
     if filter:
-        elbow_points = _filter_unique(
-            elbow_points, k_leitmotif_candidates, motif_length)
+        if top_N == 1:
+            elbow_points = _filter_unique(
+                elbow_points, k_leitmotif_candidates, motif_length)
+        else:
+            rank_zero_candidates = np.empty(len(k_leitmotif_candidates), dtype=object)
+            for i in range(len(k_leitmotif_candidates)):
+                if k_leitmotif_candidates[i] is not None:
+                    k_candidates = k_leitmotif_candidates[i]
+                    if k_candidates[0, 0] >= 0:
+                        rank_zero_candidates[i] = k_candidates[0]
+            elbow_points = _filter_unique(
+                elbow_points, rank_zero_candidates, motif_length)
 
     set_num_threads(previous_jobs)
 
@@ -1788,11 +2161,16 @@ def _search_leitmotifs_elbow_impl(
     if 'D_knn' in locals():
         del D_knn
 
+    if top_N == 1:
+        k_leitmotif_distances_out = k_leitmotif_distances[:, 0]
+    else:
+        k_leitmotif_distances_out = k_leitmotif_distances
+
     if return_distances:
-        return (k_leitmotif_distances, k_leitmotif_candidates, k_leitmotif_dims,
+        return (k_leitmotif_distances_out, k_leitmotif_candidates, k_leitmotif_dims,
                 elbow_points, D_full, knns, memory_usage)
     else:
-        return (k_leitmotif_distances, k_leitmotif_candidates, k_leitmotif_dims,
+        return (k_leitmotif_distances_out, k_leitmotif_candidates, k_leitmotif_dims,
                 elbow_points, m, memory_usage)
 
 
