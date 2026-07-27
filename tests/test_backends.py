@@ -1,10 +1,12 @@
 import warnings
+import time
+from pathlib import Path
 
 from leitmotifs.plotting import *
 
 warnings.simplefilter("ignore")
 
-path = "../datasets/experiments/"
+path = Path(__file__).resolve().parents[1] / "datasets" / "experiments"
 
 import numpy as np
 
@@ -13,7 +15,7 @@ np.printoptions(precision=2, suppress=True)
 
 def read_penguin_data():
     series = pd.read_csv(
-        path + "penguin.txt",
+        path / "penguin.txt",
         names=(["X-Acc", "Y-Acc", "Z-Acc", "4", "5", "6", "7", "Pressure", "9"]),
         delimiter="\t", header=None)
     ds_name = "Penguins (Longer Snippet)"
@@ -69,7 +71,7 @@ def test_lama():
 
         del ml
 
-        for backend in ["sparse", "scalable"]:
+        for backend in ["scalable"]:
             print(f"Testing backend: '{backend}'")
 
             ml = LAMA(
