@@ -13,6 +13,14 @@ from numba import njit
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
+def has_smm_motif_bag(motif_bag):
+    if motif_bag is None:
+        return False
+    if isinstance(motif_bag, np.ndarray) and motif_bag.size == 0:
+        return False
+    return hasattr(motif_bag, "startIdx")
+
+
 def load_smm_results(
         series,
         ds_name,
@@ -65,7 +73,7 @@ def load_smm_results(
     precision, recall = 0, 0
 
     for motif_bag in motif_bag:
-        if motif_bag:
+        if has_smm_motif_bag(motif_bag):
             startIdx = motif_bag.startIdx
 
             motif_set = startIdx
