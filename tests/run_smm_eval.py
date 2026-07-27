@@ -69,7 +69,7 @@ def main():
                 precision, recall = 0, 0
 
                 for motif_bag in motif_bags:
-                    if motif_bag:
+                    if has_smm_motif_bag(motif_bag):
                         startIdx = motif_bag.startIdx
 
                         motif_set = startIdx
