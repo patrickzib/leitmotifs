@@ -1,9 +1,16 @@
 import stumpy
 import os
+import numpy as np
+import pandas as pd
 import scipy
+import warnings
+from pathlib import Path
 
 from leitmotifs.plotting import *
 from numba import njit
+
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 def load_smm_results(
@@ -30,12 +37,20 @@ def load_smm_results(
         'Lord of the Rings Symphony - The Shire']
 
     i = dataset_names.index(ds_name) + 1
-    file = "../tests/results/smm_benchmark/results/1/Motif_"+str(i)+"_DepO_2_DepT_2.mat"
-    if not os.path.exists(file):
+    file = (
+        _PROJECT_ROOT
+        / "tests"
+        / "results"
+        / "smm_benchmark"
+        / "results"
+        / "1"
+        / f"Motif_{i}_DepO_2_DepT_2.mat"
+    )
+    if not file.exists():
         print(f"The file {file} does not exist.")
-        return
+        return np.array([]), np.array([])
 
-    print(dataset_names[i - 1])
+    print(f"Loading SMM results: {dataset_names[i - 1]}")
 
     mat_file = scipy.io.loadmat(file, struct_as_record=False, squeeze_me=True)
     motif_bag = mat_file["MotifBag"]
@@ -62,10 +77,10 @@ def load_smm_results(
             if length == 0:
                 length = 1
 
-            precision, recall = compute_precision_recall(
-                np.sort(motif_set), ground_truth.values[0, 0], length)
+            precision, recall = compute_best_precision_recall(
+                np.sort(motif_set), ground_truth, length)
 
-            f_score = 2 * (precision * recall) / (precision + recall + 1e-8)
+            f_score = compute_f_score(precision, recall)
             if f_score > best_f_score:
                 best_f_score = f_score
                 best_motif_set = motif_set
@@ -75,9 +90,9 @@ def load_smm_results(
     if len(best_motif_set) > 0:
         if best_length == 1:
             best_length = 5
-        print("\t", best_motif_set)
-        print("\t", best_dims)
-        print("\t", best_length)
+        print("SMM motif positions:", np.asarray(best_motif_set, dtype=np.int64).tolist())
+        print("SMM dims:", np.asarray(best_dims, dtype=np.int64).reshape(-1).tolist())
+        print("SMM motif length:", int(best_length))
 
         if plot:
             _, znormed_euclidean_distance = plot_motifsets(
@@ -99,10 +114,17 @@ def run_mstamp(df, ds_name, motif_length,
     series = df.values.astype(np.float64)
 
     # Find the Pair Motif
-    mps, indices = stumpy.mstump(series, m=motif_length)
-    motifs_idx = np.argmin(mps, axis=1)
-    nn_idx = indices[np.arange(len(motifs_idx)), motifs_idx]
-    mdls, subspaces = stumpy.mdl(series, motif_length, motifs_idx, nn_idx)
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="'where' used without 'out'.*",
+            category=UserWarning,
+            module="stumpy.core",
+        )
+        mps, indices = stumpy.mstump(series, m=motif_length)
+        motifs_idx = np.argmin(mps, axis=1)
+        nn_idx = indices[np.arange(len(motifs_idx)), motifs_idx]
+        mdls, subspaces = stumpy.mdl(series, motif_length, motifs_idx, nn_idx)
 
     if use_mdl:
         # Find the optimal dimensionality by minimizing the MDL
@@ -119,13 +141,15 @@ def run_mstamp(df, ds_name, motif_length,
         plt.tight_layout()
         plt.show()
 
-    print("Best dimensions", df.index[subspaces[k]])
+    selected_dims = np.asarray(subspaces[k]).reshape(-1)
+    print("Best dimensions:", list(df.index[selected_dims]))
 
     # found Pair Motif
     motif = [motifs_idx[subspaces[k]], nn_idx[subspaces[k]]]
-    print("Pair Motif Position:")
-    print("\tpos:\t", motif)
-    print("\tf:  \t", subspaces[k])
+    motif_positions = [int(motifs_idx[dim]) for dim in selected_dims]
+    nearest_neighbor_positions = [int(nn_idx[dim]) for dim in selected_dims]
+    print("Pair motif positions:", list(zip(motif_positions, nearest_neighbor_positions)))
+    print("Pair motif dims:", [int(dim) for dim in selected_dims])
 
     dims = np.array([subspaces[k]])
     motifs = np.array([[motifs_idx[subspaces[k]][0], nn_idx[subspaces[k]][0]]])
@@ -182,6 +206,8 @@ def run_kmotifs(
             if len(motif_set) > cardinality:
                 # filter trivial matches
                 motif_set = filter_non_trivial_matches(motif_set, motif_length, slack)
+                if len(motif_set) == 0:
+                    continue
 
                 # Break ties by variance of distances
                 dist_var = np.var(dist[motif_set])
@@ -218,19 +244,28 @@ def run_kmotifs(
 
 def compute_precision_recall(pred, gt, motif_length):
     if motif_length == 0:
-       return 0, 0
+        return 0, 0
+
+    pred = np.asarray(pred, dtype=np.int64).reshape(-1)
+    gt = np.asarray(gt, dtype=np.int64)
+    motif_length = int(motif_length)
+    if len(pred) == 0 or len(gt) == 0:
+        return 0.0, 0.0
 
     gt_found = np.zeros(len(gt))
     pred_correct = np.zeros(len(pred))
     for a, start in enumerate(pred):
         for i, g_start in enumerate(gt):
+            start = int(start)
+            gt_start = int(g_start[0])
+            gt_end = int(g_start[1])
             end = start + motif_length
             length_interval1 = end - start
-            length_interval2 = g_start[1] - g_start[0]
+            length_interval2 = gt_end - gt_start
 
             # Calculate overlapping portion
-            overlap_start = max(start, g_start[0])
-            overlap_end = min(end, g_start[1])
+            overlap_start = max(start, gt_start)
+            overlap_end = min(end, gt_end)
             overlap_length = max(0, overlap_end - overlap_start)
 
             if overlap_length >= 0.5 * min(length_interval1, length_interval2):
@@ -238,6 +273,106 @@ def compute_precision_recall(pred, gt, motif_length):
                 pred_correct[a] = 1
 
     return np.average(pred_correct), np.average(gt_found)
+
+
+def compute_f_score(precision, recall):
+    precision = float(precision)
+    recall = float(recall)
+    if not np.isfinite(precision) or not np.isfinite(recall):
+        return 0.0
+    if precision + recall == 0:
+        return 0.0
+
+    return 2 * precision * recall / (precision + recall)
+
+
+def compute_best_precision_recall(pred, ground_truth, motif_length):
+    best_precision = 0.0
+    best_recall = 0.0
+    best_f_score = 0.0
+
+    if ground_truth is None:
+        return best_precision, best_recall
+
+    for col in range(ground_truth.shape[1]):
+        precision, recall = compute_precision_recall(
+            pred, ground_truth.values[0, col], motif_length)
+        f_score = compute_f_score(precision, recall)
+        if f_score > best_f_score:
+            best_precision = precision
+            best_recall = recall
+            best_f_score = f_score
+
+    return best_precision, best_recall
+
+
+def as_int_list(values):
+    result = []
+    for value in np.asarray(values, dtype=object).reshape(-1):
+        if isinstance(value, np.ndarray):
+            result.extend(as_int_list(value))
+        else:
+            result.append(int(value))
+    return result
+
+
+def format_seconds(values):
+    return [round(float(value), 3) for value in np.asarray(values).reshape(-1)]
+
+
+def format_dims(dims):
+    dims = np.asarray(dims, dtype=object)
+    if dims.ndim <= 1:
+        if len(dims) == 1 and isinstance(dims[0], np.ndarray):
+            return [as_int_list(dims[0])]
+        return [as_int_list(dims)]
+    return [as_int_list(dim) for dim in dims]
+
+
+def format_motif_dims(dims, motif_index):
+    dims = np.asarray(dims, dtype=object)
+    if (
+            len(dims) > motif_index
+            and isinstance(dims[motif_index], (list, tuple, np.ndarray))
+    ):
+        return format_dims(dims[motif_index])
+
+    return format_dims(dims)
+
+
+def benchmark_results_dataframe(results):
+    return pd.DataFrame(
+        data=results,
+        columns=["Dataset", "Method", "Precision", "Recall", "F-Score"])
+
+
+def print_benchmark_summary(results):
+    if len(results) == 0:
+        print("No benchmark results to summarize.")
+        return
+
+    df = benchmark_results_dataframe(results)
+    for column in ["Precision", "Recall", "F-Score"]:
+        df[column] = df[column].astype(float)
+
+    summary = (
+        df.groupby("Method", sort=False)[["Precision", "Recall", "F-Score"]]
+        .mean()
+        .round(3)
+        .reset_index()
+    )
+    method_width = max(len("Method"), summary["Method"].str.len().max()) + 2
+
+    print("=" * 80)
+    print("Summary")
+    print("=" * 80)
+    print(f"{'Method':<{method_width}} {'Precision':>9} {'Recall':>7} {'F-Score':>8}")
+    for _, row in summary.iterrows():
+        print(
+            f"{row['Method']:<{method_width}} "
+            f"{row['Precision']:>9.3f} "
+            f"{row['Recall']:>7.3f} "
+            f"{row['F-Score']:>8.3f}")
 
 
 def run_tests(
@@ -251,78 +386,85 @@ def run_tests(
         file_prefix,
         test_smm=None,     # function
         plot=False,
+        **test_kwargs,
       ):
 
     motifs_list = []
     dims_list = []
+
+    def _run_method(method_name, callback, *args, **kwargs):
+        print("=" * 80)
+        print(f"Dataset: {dataset_name}")
+        print(f"Method: {method_name}")
+        print("=" * 80)
+        motif, dims = callback(*args, **kwargs)
+        motifs_list.append(motif)
+        dims_list.append(dims)
+
     if "LAMA" in method_names:
-        motifA, dimsA = test_lama(dataset_name, plot=plot)
-        motifs_list.append(motifA)
-        dims_list.append(dimsA)
+        _run_method(
+            "LAMA", test_lama, dataset_name, plot=plot, **test_kwargs)
     if "LAMA (naive)" in method_names:
-        motifB, dimsB = test_lama(dataset_name, plot=plot, minimize_pairwise_dist=True)
-        motifs_list.append(motifB)
-        dims_list.append(dimsB)
+        _run_method(
+            "LAMA (naive)", test_lama,
+            dataset_name, plot=plot, minimize_pairwise_dist=True, **test_kwargs)
     if "mSTAMP+MDL" in method_names:
-        motifC, dimsC = test_mstamp(dataset_name, plot=plot, use_mdl=True)
-        motifs_list.append(motifC)
-        dims_list.append(dimsC)
+        _run_method(
+            "mSTAMP+MDL", test_mstamp,
+            dataset_name, plot=plot, use_mdl=True, **test_kwargs)
     if "mSTAMP" in method_names:
-        motifD, dimsD = test_mstamp(dataset_name, plot=plot, use_mdl=False)
-        motifs_list.append(motifD)
-        dims_list.append(dimsD)
+        _run_method(
+            "mSTAMP", test_mstamp,
+            dataset_name, plot=plot, use_mdl=False, **test_kwargs)
     if "EMD*" in method_names:
-        motifE, dimsE = test_emd_pca(dataset_name, plot=plot)
-        motifs_list.append(motifE)
-        dims_list.append(dimsE)
+        _run_method(
+            "EMD*", test_emd_pca, dataset_name, plot=plot, **test_kwargs)
     if "K-Motifs (TOP-f)" in method_names:
-        motifF, dimsF = test_kmotifs(dataset_name, first_dims=True, plot=plot)
-        motifs_list.append(motifF)
-        dims_list.append(dimsF)
+        _run_method(
+            "K-Motifs (TOP-f)", test_kmotifs,
+            dataset_name, first_dims=True, plot=plot, **test_kwargs)
     if "K-Motifs (all)" in method_names:
-        motifG, dimsG = test_kmotifs(dataset_name, first_dims=False, plot=plot)
-        motifs_list.append(motifG)
-        dims_list.append(dimsG)
+        _run_method(
+            "K-Motifs (all)", test_kmotifs,
+            dataset_name, first_dims=False, plot=plot, **test_kwargs)
     if "SMM" in method_names:
-        motifX, dimsX = test_smm(dataset_name, plot=plot)
-        motifs_list.append(motifX)
-        dims_list.append(dimsX)
+        _run_method("SMM", test_smm, dataset_name, plot=plot)
 
     # Distances
     if "LAMA (cid)" in method_names:
-        motifH, dimsH = test_lama(dataset_name, plot=plot, distance="cid")
-        motifs_list.append(motifH)
-        dims_list.append(dimsH)
+        _run_method(
+            "LAMA (cid)", test_lama,
+            dataset_name, plot=plot, distance="cid", **test_kwargs)
     if "LAMA (ed)" in method_names:
-        motifI, dimsI = test_lama(dataset_name, plot=plot, distance="ed")
-        motifs_list.append(motifI)
-        dims_list.append(dimsI)
+        _run_method(
+            "LAMA (ed)", test_lama,
+            dataset_name, plot=plot, distance="ed", **test_kwargs)
     if "LAMA (cosine)" in method_names:
-        motifJ, dimsJ = test_lama(dataset_name, plot=plot, distance="cosine")
-        motifs_list.append(motifJ)
-        dims_list.append(dimsJ)
+        _run_method(
+            "LAMA (cosine)", test_lama,
+            dataset_name, plot=plot, distance="cosine", **test_kwargs)
 
     # Exclusion Zones
     if "LAMA (alpha=0)" in method_names:
-        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=0.0)
-        motifs_list.append(motifJ)
-        dims_list.append(dimsJ)
+        _run_method(
+            "LAMA (alpha=0)", test_lama,
+            dataset_name, plot=plot, exclusion_range=0.0, **test_kwargs)
     if "LAMA (alpha=0.25)" in method_names:
-        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=0.25)
-        motifs_list.append(motifJ)
-        dims_list.append(dimsJ)
+        _run_method(
+            "LAMA (alpha=0.25)", test_lama,
+            dataset_name, plot=plot, exclusion_range=0.25, **test_kwargs)
     if "LAMA (alpha=0.5)" in method_names:
-        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=0.50)
-        motifs_list.append(motifJ)
-        dims_list.append(dimsJ)
+        _run_method(
+            "LAMA (alpha=0.5)", test_lama,
+            dataset_name, plot=plot, exclusion_range=0.50, **test_kwargs)
     if "LAMA (alpha=0.75)" in method_names:
-        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=0.75)
-        motifs_list.append(motifJ)
-        dims_list.append(dimsJ)
+        _run_method(
+            "LAMA (alpha=0.75)", test_lama,
+            dataset_name, plot=plot, exclusion_range=0.75, **test_kwargs)
     if "LAMA (alpha=1)" in method_names:
-        motifJ, dimsJ = test_lama(dataset_name, plot=plot, exclusion_range=1.0)
-        motifs_list.append(motifJ)
-        dims_list.append(dimsJ)
+        _run_method(
+            "LAMA (alpha=1)", test_lama,
+            dataset_name, plot=plot, exclusion_range=1.0, **test_kwargs)
 
     method_names_dims = [name + "_dims" for name in method_names]
     columns = ["dataset", "k"]
@@ -349,8 +491,9 @@ def run_tests(
     print("--------------------------")
 
     # from datetime import datetime
-    df.to_parquet(
-        f'results/{file_prefix}_{dataset_name}.gzip', compression='gzip')
+    out_file = _PROJECT_ROOT / "tests" / "results" / f"{file_prefix}_{dataset_name}.gzip"
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(out_file, compression='gzip')
 
 
 def eval_tests(
@@ -364,30 +507,63 @@ def eval_tests(
         file_prefix,
         results,
         plot=True):
-    df_loc = pd.read_parquet(f"results/{file_prefix}_{dataset_name}.gzip")
+    results_dir = _PROJECT_ROOT / "tests" / "results"
+    results_file = results_dir / f"{file_prefix}_{dataset_name}.gzip"
+    df_loc = pd.read_parquet(results_file)
+
+    available_methods = [
+        column for column in df_loc.columns
+        if column not in ["dataset", "k"] and not column.endswith("_dims")
+    ]
+    selected_method_names = [
+        method for method in method_names
+        if method in df_loc.columns and f"{method}_dims" in df_loc.columns
+    ]
+    missing_methods = [
+        method for method in method_names
+        if method not in selected_method_names
+    ]
+
+    if missing_methods:
+        print(f"Skipping methods without saved results: {missing_methods}")
+        print(f"Available methods: {available_methods}")
+
+    if len(selected_method_names) == 0:
+        raise ValueError(
+            f"{results_file} does not contain any requested methods. "
+            f"Requested methods: {method_names}. "
+            f"Available methods: {available_methods}.")
 
     motifs = []
     dims = []
     for id in range(df_loc.shape[0]):
-        for motif_method in method_names:
+        for motif_method in selected_method_names:
             motifs.append(df_loc.loc[id][motif_method])
             dims.append(df_loc.loc[id][motif_method + "_dims"])
 
     # write results to file
     for id in range(df_loc.shape[0]):
         for method, motif_set in zip(
-                method_names,
-                motifs[id * len(method_names): (id + 1) * len(method_names)]
+                selected_method_names,
+                motifs[id * len(selected_method_names): (id + 1) * len(selected_method_names)]
         ):
-            precision, recall = compute_precision_recall(
-                np.sort(motif_set), ground_truth.values[0, 0], motif_length)
-            results.append([ds_name, method, precision, recall])
+            precision, recall = compute_best_precision_recall(
+                np.sort(motif_set), ground_truth, motif_length)
+            f_score = compute_f_score(precision, recall)
+            results.append([ds_name, method, precision, recall, f_score])
 
     if plot:
         for plot_name in all_plot_names:
-            plot_names = all_plot_names[plot_name]
-            positions = [method_names.index(name) for name in plot_names]
-            out_path = "results/images/" + dataset_name + plot_name + ".pdf"
+            plot_names = [
+                name for name in all_plot_names[plot_name]
+                if name in selected_method_names
+            ]
+            if len(plot_names) == 0:
+                continue
+
+            positions = [selected_method_names.index(name) for name in plot_names]
+            out_path = results_dir / "images" / f"{dataset_name}{plot_name}.pdf"
+            out_path.parent.mkdir(parents=True, exist_ok=True)
             plot_motifsets(
                 ds_name,
                 df,

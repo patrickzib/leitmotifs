@@ -658,7 +658,7 @@ def _update_sliding_dot_product(dot_rolled, dot_first_order, ts, order, m, n):
     dot_rolled[0] = dot_first_order
 
 
-@njit(cache=True, parallel=True)
+@njit(parallel=True)
 def compute_distances_with_knns_full(
         time_series,
         m,
@@ -775,7 +775,7 @@ def compute_distances_with_knns_full(
     return D_all, knns
 
 
-@njit(nogil=True, cache=True, parallel=True)
+@njit(nogil=True, parallel=True)
 def compute_distances_with_knns(
         time_series,
         m,
@@ -1833,7 +1833,6 @@ def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
     return leitmotif_candidate_dist
 
 
-@njit(cache=True, parallel=True)
 def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
     """Compute the full Distance Matrix between all pairs of subsequences.
 

@@ -369,7 +369,6 @@ def _plot_elbow_points(
 
     # leitmotifs = motifset_candidates[elbow_points]
 
-    plt.tight_layout()
     # plt.savefig("lord_of_the_rings_elbow_points.pdf")
     plt.show()
 
