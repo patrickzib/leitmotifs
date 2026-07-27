@@ -12,8 +12,6 @@ from pathlib import Path
 import pandas as pd
 import psutil
 from numba import set_num_threads, objmode, prange, get_num_threads
-from numba import types
-from numba.typed import Dict, List
 from scipy.fft import irfft, next_fast_len, rfft
 from scipy.signal import argrelextrema
 from scipy.stats import zscore
@@ -264,10 +262,9 @@ class LAMA:
             Defines an exclusion zone around each subsequence to avoid trivial matches.
             Defined as percentage of m. E.g. 0.5 is equal to half the window length.
         backend : String, default="scalable"
-            The backend to use. As of now 'scalable', 'sparse' and 'default' are supported.
+            The backend to use. As of now 'scalable' and 'default' are supported.
             Use 'default' for the original exact implementation with excessive memory,
-            Use 'scalable' for a scalable, exact implementation with less memory,
-            Use 'sparse' for a scalable, exact implementation with more memory.
+            Use 'scalable' for a scalable, exact implementation with less memory.
 
         Methods
         -------
@@ -661,7 +658,7 @@ def _update_sliding_dot_product(dot_rolled, dot_first_order, ts, order, m, n):
     dot_rolled[0] = dot_first_order
 
 
-@njit(fastmath=True, cache=True, parallel=True)
+@njit(cache=True, parallel=True)
 def compute_distances_with_knns_full(
         time_series,
         m,
@@ -778,142 +775,7 @@ def compute_distances_with_knns_full(
     return D_all, knns
 
 
-@njit(fastmath=True, cache=True, parallel=True)
-def compute_distances_with_knns_sparse(
-        time_series,
-        m,
-        k,
-        exclude_trivial_match=True,
-        n_jobs=4,
-        slack=0.5,
-        use_dim=3,
-        distance=znormed_euclidean_distance,
-        distance_single=znormed_euclidean_distance_single,
-        distance_preprocessing=sliding_mean_std
-):
-    """ Compute the full Distance Matrix between all pairs of subsequences of a
-        multivariate time series.
-
-        Computes pairwise distances between n-m+1 subsequences, of length, extracted
-        from the time series, of length n.
-
-        Z-normed ED is used for distances.
-
-        This implementation is in O(n^2) by using the sliding dot-product.
-
-        Parameters
-        ----------
-        time_series : array-like
-            The time series
-        m : int
-            The window length
-        k : int
-            Number of nearest neighbors
-        exclude_trivial_match : bool
-            Trivial matches will be excluded if this parameter is set
-        n_jobs : int
-            Number of jobs to be used.
-        slack: float
-            Defines an exclusion zone around each subsequence to avoid trivial matches.
-            Defined as percentage of m. E.g. 0.5 is equal to half the window length.
-        distance: callable
-                The distance function to be computed.
-        distance_preprocessing: callable
-                The distance preprocessing function to be computed.
-
-        Returns
-        -------
-        D : 2d array-like
-            The O(n^2) z-normed ED distances between all pairs of subsequences
-        knns : 2d array-like
-            The k-nns for each subsequence
-
-    """
-    dims = time_series.shape[0]
-    n = np.int32(time_series.shape[-1] - m + 1)
-    halve_m = 0
-    if exclude_trivial_match:
-        halve_m = int(m * slack)
-
-    D_knn, knns = compute_distances_with_knns(
-        time_series, m, k,
-        exclude_trivial_match=exclude_trivial_match,
-        n_jobs=n_jobs,
-        slack=slack,
-        distance=distance,
-        distance_single=distance_single,
-        distance_preprocessing=distance_preprocessing
-    )
-
-    D_bool = [
-        [Dict.empty(key_type=types.int32, value_type=types.bool_) for _ in
-         range(n)] for _ in range(dims)
-    ]
-
-    # Store just the knns in a sparse matrix
-    for d in prange(dims):
-        for order in np.arange(0, n):
-            for ks in knns[d, order]:  # needed to compute the k-nn distances
-                D_bool[d][order][ks] = True
-
-    # Determine best dimensions
-    for test_k in np.arange(k, 1, -1):
-        # Choose best dims based on the k-th NN
-        D_knn_subset = take_along_axis(D_knn, dims, test_k - 1, n)
-
-        with objmode(dim_index="int64[:,:]"):
-            dim_index = np.argsort(D_knn_subset, axis=0)[:use_dim]
-            dim_index = np.transpose(dim_index, (1, 0))
-
-        for order in np.arange(0, n):
-            # Choose k-NNs to use based on the best dimension
-            knns_idx = knns[dim_index[order, 0], order][:test_k]
-
-            # memorize which pairs are needed
-            for d in dim_index[order]:
-                # For lower bounding
-                D_bool[d][order][knns_idx[-1]] = True
-
-            # For pairwise extent computations
-            for d in dim_index[knns_idx[-1]]:
-                for ks in knns_idx:
-                    for ks2 in knns_idx:
-                        D_bool[d][ks][ks2] = True
-
-    D_sparse = List()
-    for d in range(dims):
-        _list2 = List()
-        D_sparse.append(_list2)
-        for i in range(n):
-            _list2.append(Dict.empty(key_type=types.int32, value_type=types.float32))
-
-    # second pass, filling only the pairs needed
-    for d in np.arange(dims):
-        ts = time_series[d, :]
-        preprocessing = distance_preprocessing(ts, m)
-
-        dot_first = _sliding_dot_product(ts[:m], ts)
-        bin_size = np.int32(np.ceil(n / n_jobs))
-        for idx in prange(n_jobs):
-            start = idx * bin_size
-            end = min(start + bin_size, n)
-
-            dot_rolled = _sliding_dot_product(ts[start:start + m], ts)
-            for order in np.arange(start, end):
-                if order != start:
-                    _update_sliding_dot_product(
-                        dot_rolled, dot_first[order], ts, order, m, n)
-
-                dist = distance(dot_rolled, n, m, preprocessing, order, halve_m)
-
-                # fill the knns now with the distances computed
-                for key in D_bool[d][order]:
-                    D_sparse[d][order][key] = dist[key]
-
-    return D_knn, D_sparse, knns
-
-
-@njit(nogil=True, fastmath=True, cache=True, parallel=True)
+@njit(nogil=True, cache=True, parallel=True)
 def compute_distances_with_knns(
         time_series,
         m,
@@ -997,7 +859,7 @@ def compute_distances_with_knns(
     return D_knn, knns
 
 
-@njit(fastmath=True, cache=True)
+@njit(cache=True)
 def get_radius(D_full, motifset_pos):
     """Computes the radius of the passed motif set (leitmotif).
 
@@ -1027,7 +889,7 @@ def get_radius(D_full, motifset_pos):
     return leitmotif_radius
 
 
-@njit(fastmath=True, cache=True)
+@njit(cache=True)
 def get_pairwise_extent(D_full, motifset_pos, dims, upperbound=np.inf):
     """Computes the extent of the motifset.
 
@@ -1072,7 +934,7 @@ def get_pairwise_extent(D_full, motifset_pos, dims, upperbound=np.inf):
     return motifset_extent
 
 
-@njit(fastmath=True, cache=True, nogil=True)
+@njit(cache=True, nogil=True)
 def get_pairwise_extent_raw(
         series, motifset_pos, dims, motif_length,
         distance_single, preprocessing, upperbound=np.inf):
@@ -1123,7 +985,7 @@ def get_pairwise_extent_raw(
     return motifset_extent
 
 
-@njit(fastmath=True, cache=True)
+@njit
 def _argknn(
         dist, k, m, lowest_dist=np.inf, slack=0.5):
     """Finds the closest k-NN non-overlapping subsequences in candidates.
@@ -1189,7 +1051,7 @@ def _argknn(
     return np.array(idx, dtype=np.int32)
 
 
-@njit(fastmath=True, cache=True)
+@njit(cache=True)
 def run_LAMA(
         ts, m, k, D, knns, dim_index,
         distance_single=None,
@@ -1235,48 +1097,49 @@ def run_LAMA(
     leitmotif_dims = None
     leitmotif_candidate = None
 
-    for order in np.arange(n, dtype=np.int32):
+    for order in range(n):
         # Use the first (best) dimension for ordering of k-NNs
-        knn_idx = knns[dim_index[order, 0], order]
+        order_dims = dim_index[order]
+        knn_idx = knns[order_dims[0], order]
         if np.any(knn_idx[:k] == -1):
             continue
 
+        kth = knn_idx[k - 1]
+
         # sum over the knns from the best dimensions
         knn_distance = np.float64(0.0)
-        for d in dim_index[order]:
+        for d in order_dims:
             if use_D_full:
-                knn_distance += D[d][order][knn_idx[k - 1]]
+                knn_distance += D[d][order][kth]
             else:
                 a = ts[d, order:order + m]
-                id = knn_idx[k - 1]
-                b = ts[d, id:id + m]
-                knn_distance += distance_single(a, b, order, id, preprocessing[d])
+                b = ts[d, kth:kth + m]
+                knn_distance += distance_single(a, b, order, kth, preprocessing[d])
 
-        if len(knn_idx) >= k and knn_idx[k - 1] >= 0:
-            if knn_distance <= leitmotif_dist:
-                if use_D_full:
-                    # dimension chosen based on "first to k-th entry" order
-                    candidate = knn_idx[:k]
-                    candidate_dims = dim_index[candidate[-1]]
-                    candidate_extent = get_pairwise_extent(
-                        D, candidate, candidate_dims, leitmotif_dist)
-                else:
-                    # dimension chosen based on "first to k-th entry" order
-                    candidate = knn_idx[:k]
-                    candidate_dims = dim_index[candidate[-1]]
-                    candidate_extent = get_pairwise_extent_raw(
-                        ts, candidate, candidate_dims,
-                        m, distance_single, preprocessing, leitmotif_dist)
+            if knn_distance > leitmotif_dist:
+                break
 
-                if candidate_extent <= leitmotif_dist:
-                    leitmotif_dist = candidate_extent
-                    leitmotif_candidate = knn_idx[:k]
-                    leitmotif_dims = candidate_dims
+        if knn_distance <= leitmotif_dist:
+            # dimension chosen based on "first to k-th entry" order
+            candidate = knn_idx[:k]
+            candidate_dims = dim_index[candidate[-1]]
+            if use_D_full:
+                candidate_extent = get_pairwise_extent(
+                    D, candidate, candidate_dims, leitmotif_dist)
+            else:
+                candidate_extent = get_pairwise_extent_raw(
+                    ts, candidate, candidate_dims,
+                    m, distance_single, preprocessing, leitmotif_dist)
+
+            if candidate_extent <= leitmotif_dist:
+                leitmotif_dist = candidate_extent
+                leitmotif_candidate = candidate
+                leitmotif_dims = candidate_dims
 
     return leitmotif_candidate, leitmotif_dist, leitmotif_dims
 
 
-@njit(fastmath=True, cache=True)
+@njit(cache=True)
 def _check_unique(motifset_1, motifset_2, motif_length):
     """Check for overlaps between two motif sets.
 
@@ -1344,7 +1207,7 @@ def _filter_unique(elbow_points, candidates, motif_length):
     return np.array(filtered_ebp)
 
 
-@njit(fastmath=True, cache=True)
+@njit(cache=True)
 def find_elbow_points(dists, alpha=2, elbow_deviation=1.00):
     """Finds elbow-points in the elbow-plot (extent over each k).
 
@@ -1442,10 +1305,9 @@ def select_subdimensions(
     distance_preprocessing: callable (default=sliding_mean_std)
         The distance preprocessing function to be computed.
     backend : String, default="scalable"
-        The backend to use. As of now 'scalable', 'sparse' and 'default' are supported.
+        The backend to use. As of now 'scalable' and 'default' are supported.
         Use 'default' for the original exact implementation with excessive memory,
-        Use 'scalable' for a scalable, exact implementation with less memory,
-        Use 'sparse' for a scalable, exact implementation with more memory.
+        Use 'scalable' for a scalable, exact implementation with less memory.
 
     Returns
     -------
@@ -1545,10 +1407,9 @@ def find_au_ef_motif_length(
     distance_preprocessing: callable
         The distance preprocessing function to be computed.
     backend : String, default="scalable"
-        The backend to use. As of now 'scalable', 'sparse' and 'default' are supported.
+        The backend to use. As of now 'scalable' and 'default' are supported.
         Use 'default' for the original exact implementation with excessive memory,
-        Use 'scalable' for a scalable, exact implementation with less memory,
-        Use 'sparse' for a scalable, exact implementation with more memory.
+        Use 'scalable' for a scalable, exact implementation with less memory.
 
     Returns
     -------
@@ -1756,10 +1617,9 @@ def _search_leitmotifs_elbow_impl(
     distance_preprocessing: callable
             The distance preprocessing function to be computed.
     backend : String, default="scalable"
-        The backend to use. As of now 'scalable', 'sparse' and 'default' are supported.
+        The backend to use. As of now 'scalable' and 'default' are supported.
         Use 'default' for the original exact implementation with excessive memory,
-        Use 'scalable' for a scalable, exact implementation with less memory,
-        Use 'sparse' for a scalable, exact implementation with more memory.
+        Use 'scalable' for a scalable, exact implementation with less memory.
 
     Returns
     -------
@@ -1794,8 +1654,6 @@ def _search_leitmotifs_elbow_impl(
     n_dims = d if n_dims is None else n_dims
     sum_dims = True if n_dims >= d else False
 
-    # switch to sparse matrix representation when length is above 30_000
-    # sparse matrix is up to 2x slower but needs less memory
     scalable_gb = ((n ** 2) * d) * 32 / (1024 ** 3) / 8.0
     recommend_scalable = (scalable_gb > 8.0)
 
@@ -1831,22 +1689,6 @@ def _search_leitmotifs_elbow_impl(
 
             D_full = D_full.reshape(1, D_full.shape[0], D_full.shape[1])
             knns = knns.reshape(1, knns.shape[0], knns.shape[1])
-        elif backend == "sparse":
-            warnings.warn(
-                "Backend 'sparse' is deprecated and will be removed in a "
-                "future version. Use backend 'scalable' instead.",
-                DeprecationWarning,
-                stacklevel=2
-            )
-            D_knns, D_full, knns = compute_distances_with_knns_sparse(
-                data_raw, m, k_max_,
-                n_jobs=n_jobs,
-                slack=slack,
-                distance=distance,
-                distance_single=distance_single,
-                distance_preprocessing=distance_preprocessing,
-                use_dim=use_dim
-            )
         elif backend == "scalable":
             D_knns, knns = compute_distances_with_knns(
                 data_raw, m, k_max_,
@@ -1870,7 +1712,7 @@ def _search_leitmotifs_elbow_impl(
         else:
             raise ValueError(
                 "No valid backend (combination) chosen. "
-                "Please choose 'scalable', 'sparse' or 'default'.")
+                "Please choose 'scalable' or 'default'.")
 
     print(f"Using '{backend}' Backend", flush=True)
     memory_usage = process.memory_info().rss / (1024 * 1024)  # MB
@@ -1893,8 +1735,7 @@ def _search_leitmotifs_elbow_impl(
         elif not sum_dims:
             # k-th NN and it's distance along all dimensions
             knn_idx = knns[:, :, test_k - 1]
-            if ((backend in ["sparse", "scalable"]) or
-                    isinstance(D_full, List) or isinstance(D_full, list)):
+            if backend == "scalable":
                 D_knn = take_along_axis(D_knns, d, test_k - 1, n)
             else:
                 D_knn = np.take_along_axis(
@@ -1908,7 +1749,7 @@ def _search_leitmotifs_elbow_impl(
         else:
             raise ValueError(
                 "No valid backend (combination) chosen. "
-                "Please choose 'scalable', 'sparse' or 'default'.")
+                "Please choose 'scalable' or 'default'.")
 
         candidate, candidate_dist, candidate_dims = run_LAMA(
             data_raw, m, test_k, D_full, knns, dim_index,
@@ -1955,7 +1796,7 @@ def _search_leitmotifs_elbow_impl(
                 elbow_points, m, memory_usage)
 
 
-@njit(fastmath=True, cache=True)
+@njit(cache=True)
 def _argknns(D_full, k_max_, m, n, slack):
     # compute knns from new distance matrix
     knns = np.full((n, k_max_), -1, dtype=np.int32)
@@ -1966,7 +1807,7 @@ def _argknns(D_full, k_max_, m, n, slack):
     return knns
 
 
-@njit(fastmath=True, cache=True, parallel=True)
+@njit(cache=True, parallel=True)
 def take_along_axis(D_knns, d, knn, n):
     D_knn = np.zeros((d, n), dtype=np.float32)
     for dim in prange(d):
@@ -1975,7 +1816,7 @@ def take_along_axis(D_knns, d, knn, n):
     return D_knn
 
 
-@njit(fastmath=True, cache=True)
+@njit(cache=True)
 def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
     leitmotif_candidate_dist = 0
     m_half = int(m * slack)
@@ -1992,7 +1833,7 @@ def candidate_dist(D_full, pool, upperbound, m, slack=0.5):
     return leitmotif_candidate_dist
 
 
-@njit(fastmath=True, cache=True, parallel=True)
+@njit(cache=True, parallel=True)
 def compute_distances_full_univ(ts, m, exclude_trivial_match=True, n_jobs=4, slack=0.5):
     """Compute the full Distance Matrix between all pairs of subsequences.
 
