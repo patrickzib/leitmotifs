@@ -3,11 +3,15 @@
 
 __author__ = ["patrickzib"]
 
-import toml
 from setuptools import find_packages, setup
 from pathlib import Path
 
-pyproject = toml.load("pyproject.toml")
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
+pyproject = tomllib.loads(Path("pyproject.toml").read_text())
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
